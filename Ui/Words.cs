@@ -747,6 +747,16 @@ internal static class Words
         "Puts every setting back to how it was when the app was new, including your displays, "
             + "audio devices and HDR game list.";
 
+    public const string AskClose = "Close";
+
+    // Buttons named after what they do, not "Yes" and "No". Someone skimming reads the buttons and
+    // nothing else, so the buttons have to carry the decision on their own.
+    public const string ResetConfirmYes = "Reset everything";
+    public const string ResetConfirmNo = "Keep my settings";
+
+    public const string ResetPageYes = "Reset this page";
+    public const string ResetPageNo = "Leave it alone";
+
     public const string ResetConfirmTitle = "Reset all settings";
 
     public const string ResetConfirm =

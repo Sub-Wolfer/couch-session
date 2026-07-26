@@ -5488,11 +5488,9 @@ public sealed class SettingsForm : Form
     /// </summary>
     private void ResetEverything()
     {
-        var answer = MessageBox.Show(this, Words.ResetConfirm, Words.ResetConfirmTitle,
-                                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
-                                     MessageBoxDefaultButton.Button2);
-
-        if (answer != DialogResult.Yes) return;
+        if (!AskBox.Confirm(this, Words.ResetConfirmTitle, Words.ResetConfirm,
+                            Words.ResetConfirmYes, Words.ResetConfirmNo))
+            return;
 
         // Stopped first: it is running on a debounce, and letting it fire afterwards would
         // write the old values straight back over the defaults.
@@ -5625,12 +5623,10 @@ public sealed class SettingsForm : Form
             _ => "",
         };
 
-        var answer = MessageBox.Show(this,
-            string.Format(Words.ResetPageConfirm, name, loses),
-            string.Format(Words.ResetPageTitle, name),
-            MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-
-        if (answer != DialogResult.Yes) return;
+        if (!AskBox.Confirm(this, string.Format(Words.ResetPageTitle, name),
+                            string.Format(Words.ResetPageConfirm, name, loses),
+                            Words.ResetPageYes, Words.ResetPageNo))
+            return;
 
         // Stopped first, for the same reason the full reset stops it: it is running on a debounce and
         // would otherwise fire afterwards and write the old values straight back over the defaults.
@@ -6472,8 +6468,7 @@ public sealed class SettingsForm : Form
         }
     }
 
-    private void Warn(string message) =>
-        MessageBox.Show(this, message, "Couch Session", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    private void Warn(string message) => AskBox.Tell(this, AppInfo.Name, message);
 
     // ================= background refresh =================
 
