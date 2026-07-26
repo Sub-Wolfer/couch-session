@@ -1,0 +1,37 @@
+# Build output
+bin/
+obj/
+build/out/
+publish/
+
+# The finished single-file executable, which publish.cmd copies up to the project root.
+# 119 MB — self-contained builds embed the whole .NET runtime. Ships as a release asset, not in git.
+CouchSession.exe
+*.zip
+
+# Local snapshots kept inside the project folder. The csproj already excludes these from
+# compilation; this keeps them out of history as well.
+_backup*/
+_to_delete/
+*.bak
+
+# Optional embedded assets, deliberately not in the repository.
+#
+# The console button artwork is trademarked and cannot be redistributed here — the app draws its own
+# marks when these are absent, which is the shipping behaviour. Drop your own copies beside the csproj
+# if you have the rights to them.
+ps-button.png
+xbox-button.png
+
+# The easter egg is whatever you put there, so it is not assumed to be redistributable — and the gif
+# alone is 52 MB, past the size GitHub warns about and most of the way to the size it refuses.
+easteregg.gif
+easteregg.wav
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+.vscode/
