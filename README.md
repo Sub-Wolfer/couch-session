@@ -32,12 +32,12 @@ it.
 
 | | |
 |---|---|
-| 🖥️ **Display** | Switches to your TV — on its own, or alongside your monitors — at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
-| 🔊 **Sound** | Moves audio to the TV on the way out and back to your desk on the way in. |
-| 🌈 **HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. |
-| 🎮 **Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Tested on Xbox and PS5 pads. |
-| ⚡ **Performance** | Power plan, Game Mode, game priority, and silencing notifications — most of it undone when the session ends. |
-| 🔄 **Updates** | Tells you when a new version exists and installs it with one click. |
+| 🖥️&nbsp;**Display** | Switches to your TV — on its own, or alongside your monitors — at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
+| 🔊&nbsp;**Sound** | Moves audio to the TV on the way out and back to your desk on the way in. |
+| 🌈&nbsp;**HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. |
+| 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Tested on Xbox and PS5 pads. |
+| ⚡&nbsp;**Performance** | Power plan, Game Mode, game priority, and silencing notifications — most of it undone when the session ends. |
+| 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. |
 
 ---
 
@@ -90,28 +90,33 @@ it when the session ends — because a switch you can't reason about is a switch
 
 ---
 
-## ⚠️ Settings that change Windows itself
+## ⚙️ Settings that outlast the session
 
-Most of what this app does is temporary. A few things aren't, and they're worth reading before you
-switch them on. **Every one is off unless you turn it on.**
+Most of what this app does is temporary — the power plan, notification silencing and game priority are
+all put back when a session ends. A few settings aren't, and they're worth understanding before you
+switch them on. **Every one of these is off until you turn it on**, and each says so on its own row.
+
+### 👍 Recommended, and they stay on
+
+🏎️ **Windows Game Mode** asks Windows to prioritise the game and hold back background work. Worth
+having on. Couch Session switches it on and then leaves it alone — it's a Windows-wide preference, and
+flipping it back off afterwards would fight anyone who'd turned it on themselves.
+
+🎮 **Switch off the Xbox Game Bar** stops the Guide button opening the Game Bar over your game, which
+is awkward from a sofa. Also worth having on, with one thing to know: it applies for the whole time
+Couch Session is running rather than just during a session, and it takes background clip recording with
+it. If Win+G has stopped working at your desk, this is why. Closing the app puts both back.
+
+### ⚠️ Your call, and they lower your security
 
 > 🔓 **User Account Control** and **Windows Defender Firewall** can both be switched off from the
-> Performance page. **These lower your PC's security**, and they aren't tied to a session — they stay
+> Performance page. **These reduce your PC's security**, and they aren't tied to a session — they stay
 > off until you turn them back on here.
 >
 > They exist because a UAC prompt appears on a secure desktop a controller cannot reach, and the
-> firewall's "allow this app?" dialog needs a mouse and blocks a game's networking until answered.
-> Both are dead ends when the only thing in your hand is a gamepad. If that trade isn't one you want,
-> leave them alone — nothing else depends on them.
-
-🎮 **Xbox Game Bar** is switched off for the whole time Couch Session is running, not just during a
-session, and put back when you close the app. This also disables background clip recording. If Win+G
-has stopped working at your desk, this is why.
-
-🏎️ **Windows Game Mode** is only ever switched on, never back off — it's a Windows-wide preference and
-flipping it back would fight anyone who turned it on themselves.
-
-The power plan, notification silencing and game priority are all restored when a session ends.
+> firewall's "allow this app?" dialog needs a mouse and blocks a game's networking until it's answered.
+> Both are dead ends when the only thing in your hand is a gamepad. If that isn't a trade you want,
+> leave them alone — nothing else in the app depends on them.
 
 ---
 

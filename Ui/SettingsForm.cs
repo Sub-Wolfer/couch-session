@@ -2819,8 +2819,12 @@ public sealed class SettingsForm : Form
         AddToggle(windows, Words.SilenceNotifications, _silenceNotifications, Words.SilenceNotificationsWhy, setting: nameof(AppConfig.SilenceNotifications),
                   check: PerformanceCheck.CheckNotifications);
 
-        AddToggle(windows, Words.EnableGameMode, _enableGameMode, Words.EnableGameModeWhy, setting: nameof(AppConfig.EnableGameMode),
-                  check: PerformanceCheck.CheckGameMode);
+        // Badged, because it is the one setting on this page that is a plain recommendation. The rest
+        // are trades — security for reach, or a Windows-wide preference for a quieter session — and
+        // sitting unlabelled among them made a switch worth having look like another thing to weigh up.
+        AddToggle(windows, Words.EnableGameMode + Words.BadgeRecommended, _enableGameMode,
+                  Words.EnableGameModeWhy, setting: nameof(AppConfig.EnableGameMode),
+                  titleEmphasis: Theme.Good, check: PerformanceCheck.CheckGameMode);
 
         // Priority sits here rather than under a heading of its own.
         //
