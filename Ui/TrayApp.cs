@@ -1912,6 +1912,10 @@ public sealed class TrayApp : IDisposable
                                   && (_hdr.RunningGameWindow() != IntPtr.Zero
                                       || BigPictureLauncher.FindWindow() != IntPtr.Zero),
 
+            // The narrower question, for the Close Game button. Big Picture waiting on its own is
+            // something to resume into and nothing to close.
+            GameRunningState = () => _hdr.RunningGameWindow() != IntPtr.Zero,
+
             // Whatever the launch check found, so the window shows it the moment it opens rather
             // than only after someone presses the button on the About page.
             PendingUpdate = _pendingUpdate,

@@ -56,6 +56,15 @@ public sealed class SettingsForm : Form
     /// </summary>
     public Func<bool>? LeftRunningState { get; init; }
 
+    /// <summary>
+    /// Asks the app whether a *game* is running, as opposed to anything at all being left behind.
+    ///
+    /// Not the same question as LeftRunningState, and conflating them put a Close Game button on
+    /// screen when the only thing waiting behind the desktop was Big Picture. There was nothing for
+    /// it to close.
+    /// </summary>
+    public Func<bool>? GameRunningState { get; init; }
+
     /// <summary>Whether a session was running when this window opened.</summary>
     public bool SessionActive { get; init; }
 
@@ -86,6 +95,16 @@ public sealed class SettingsForm : Form
             if (SessionNow) return false;
 
             try { return LeftRunningState?.Invoke() ?? false; }
+            catch { return false; }
+        }
+    }
+
+    /// <summary>Whether there is a game to close right now.</summary>
+    private bool GameRunningNow
+    {
+        get
+        {
+            try { return GameRunningState?.Invoke() ?? false; }
             catch { return false; }
         }
     }
@@ -2033,10 +2052,12 @@ public sealed class SettingsForm : Form
             Text = Words.ButtonReset,
             Size = new Size(150, BigButton),
 
-            // Top margin puts it back on the primary button's line — see the note below. No margin on
-            // either side: the primary button's bleed already provides the gap to its right, and its
-            // own left edge is the end of the row.
-            Margin = new Padding(0, FlatButton.Bleed, 0, 3),
+            // Top margin puts it back on the primary button's line — see the note below.
+            //
+            // The right margin makes the gap to its neighbour match the one between the two pills,
+            // which cannot be closer than two bleeds. Written as the constant rather than as the
+            // number it works out to, so all three gaps stay equal if the bleed ever changes.
+            Margin = new Padding(0, FlatButton.Bleed, FlatButton.Bleed, 3),
         };
 
         reset.Click += (_, _) => ResetEverything();
@@ -2060,12 +2081,36 @@ public sealed class SettingsForm : Form
         // wants it arrives. Same height as Reset, and quiet rather than red: it is the smaller of
         // the two things offered, and a second coloured button beside the primary one would make
         // the pair read as a choice of equals.
+        // Styled as a primary action in red, beside the green one.
+        //
+        // Two emphasised buttons in a row is normally the wrong answer — two competing primaries is
+        // the same as none — but this pair is the exception the rule is about. They are the two
+        // halves of one decision, asked at the same moment about the same game, and giving one of
+        // them the quiet treatment would say "this is the minor option" about an action that closes
+        // the thing you were playing. Red carries the weight instead, exactly as it does on End
+        // Couch Session, which is the same shape of action.
         _closeGame = new FlatButton
         {
+            Emphasis = true,
+            IconGap = 10,
             Text = Words.ButtonCloseGame,
-            Size = new Size(140, BigButton),
-            Margin = new Padding(0, FlatButton.Bleed, 8, 3),
+            Size = new Size(152 + FlatButton.Bleed * 2, BigButton + FlatButton.Bleed * 2),
+            Fill = Theme.Bad,
+            ForeColor = Color.White,
+            Line = Color.Empty,
+            Icon = AppIcon.Stop(15, Color.White),
+            Margin = new Padding(0),
             Visible = false,
+        };
+
+        // One bitmap, made once and let go once. The primary button replaces its icon as the session
+        // state moves and disposes the old one for the same reason; this one never changes, so the
+        // window closing is the only moment it can be released.
+        FormClosed += (_, _) =>
+        {
+            var mark = _closeGame?.Icon;
+            if (_closeGame is not null) _closeGame.Icon = null;
+            mark?.Dispose();
         };
 
         _closeGame.Click += (_, _) => OnCloseGameButton();
@@ -6455,7 +6500,11 @@ public sealed class SettingsForm : Form
     {
         if (_closeGame is null) return;
 
-        bool wanted = state == FooterState.Resume;
+        // A game, specifically. "Something is waiting behind the desktop" also covers a Big Picture
+        // left minimized with nothing running in it, and offering to close a game there is offering
+        // to close nothing.
+        bool wanted = state == FooterState.Resume && GameRunningNow;
+
         if (_closeGame.Visible == wanted) return;
 
         _closeGame.Visible = wanted;
