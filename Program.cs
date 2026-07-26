@@ -27,68 +27,95 @@ internal static class Program
     /// <summary>
     /// Whether another copy of this app is already running.
     ///
-    /// Two independent checks, because the mutex on its own is not reliable enough here. A
-    /// named mutex can fail to be shared for reasons that have nothing to do with intent —
-    /// one copy started elevated and another not, a different logon session, a policy that
-    /// refuses global names — and every one of those failures looks like "no other instance"
-    /// and quietly starts a second app that fights the first over the user's displays.
+    /// [BUG] Two faults here hid each other, and together they let two copies run.
     ///
-    /// So the mutex is tried first, and if it does not settle the question the process list
-    /// does. Looking for another process running the same executable cannot be fooled by any
-    /// of the above.
+    /// The live copy never took the mutex. It was created with <c>initiallyOwned: false</c> and the
+    /// ownership attempt sat behind <c>createdNew ||</c>, so the first process short-circuited and
+    /// never called WaitOne — the mutex existed, was owned by nobody, and blocked nothing.
+    ///
+    /// That left the fallback as the only real check, and the fallback compared full executable
+    /// *paths* on purpose, so a build in another folder was deliberately let through. Which means the
+    /// one arrangement guaranteed to produce two running copies — a freshly published exe sitting in
+    /// build\out beside the one already running from the project root — was the exact case it was
+    /// written to permit.
+    ///
+    /// Now ownership is the test, taken properly and held for the life of the process, and the
+    /// fallback matches on process name so a second copy is a second copy wherever it was launched
+    /// from. Both are kept, because a named mutex can fail to be shared for reasons that have nothing
+    /// to do with intent — one copy elevated and another not, a different logon session, a policy
+    /// refusing global names — and every one of those failures looks like "nobody else is here".
     /// </summary>
     private static bool AlreadyRunning()
     {
         try
         {
             _singleInstance = new Mutex(initiallyOwned: false,
-                                        @"Global\CouchSession.SingleInstance",
-                                        out bool createdNew);
+                                        @"Global\CouchSession.SingleInstance", out _);
 
-            // Owning it is what marks this copy as the live one. A mutex that exists but is
-            // held by nobody means the previous owner died without cleaning up, and this copy
-            // is entitled to take over.
-            if (createdNew || _singleInstance.WaitOne(TimeSpan.Zero))
+            bool mine;
+
+            try
             {
-                if (!SameExeRunning()) return false;
+                mine = _singleInstance.WaitOne(TimeSpan.Zero);
+            }
+            catch (AbandonedMutexException)
+            {
+                // The previous owner died without releasing it. Ownership passes to this process,
+                // which is the right answer: whoever held it is gone.
+                Log.Info("The previous copy exited without releasing the single-instance lock.");
+                mine = true;
+            }
 
-                Log.Info("Another copy is running despite the mutex being free.");
+            if (!mine)
+            {
+                Log.Info("Another copy holds the single-instance lock.");
                 return true;
             }
 
-            Log.Info("Another copy holds the single-instance mutex.");
-            return true;
+            // Held from here until this process exits. Nothing gives it back deliberately — the app
+            // that is running is the app, and it stops being that only by dying.
+            if (SameExeRunning())
+            {
+                Log.Info("Another copy is running despite the single-instance lock being free.");
+                try { _singleInstance.ReleaseMutex(); } catch { /* nothing to give back */ }
+                return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
             // Most likely an access error on the global name. Fall back rather than give up:
             // the point is to avoid two copies, and there is another way to check.
-            Log.Warn($"Single-instance mutex unavailable ({ex.Message}); checking processes.");
+            Log.Warn($"Single-instance lock unavailable ({ex.Message}); checking processes.");
             return SameExeRunning();
         }
     }
 
-    /// <summary>Another process running the same executable file.</summary>
+    /// <summary>
+    /// Another process of this app, launched from anywhere.
+    ///
+    /// [BUG] This used to compare full paths, so a copy in a different folder was let through on
+    /// purpose — the reasoning being that a developer testing a second build should not be blocked.
+    /// In practice the folder that produces a second executable is build\out, three seconds after
+    /// every publish, and two copies of this app is not a harmless situation: they both watch for
+    /// Big Picture, both grab hotkeys, both drive the displays, and they fight.
+    ///
+    /// Matching on process name instead means a second copy is a second copy however it was started.
+    /// The cost is that a genuinely separate build can no longer be run side by side, which is a
+    /// thing worth doing roughly never, and is what --quit is for when it is.
+    /// </summary>
     private static bool SameExeRunning()
     {
         try
         {
             using var me = System.Diagnostics.Process.GetCurrentProcess();
 
-            var path = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(path)) return false;
-
             foreach (var other in System.Diagnostics.Process.GetProcessesByName(me.ProcessName))
             {
                 try
                 {
-                    if (other.Id == me.Id) continue;
-
-                    // Compared by path so a different build in another folder is left alone;
-                    // two copies of the same file are the case worth stopping.
-                    if (string.Equals(other.MainModule?.FileName, path,
-                                      StringComparison.OrdinalIgnoreCase))
-                        return true;
+                    if (other.Id != me.Id) return true;
                 }
                 catch
                 {
