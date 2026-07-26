@@ -15,7 +15,12 @@
     <Description>Steam Big Picture on your TV — one click there and back.</Description>
     <Company>Couch Session</Company>
     <AssemblyTitle>Couch Session</AssemblyTitle>
-    <ApplicationIcon>CouchPotato.ico</ApplicationIcon>
+    <!-- Conditional, so a missing icon is a plainer icon rather than a failed build.
+         Two reasons. The icon is generated from the app's own mark by the write-icon switch
+         (see Ui/IconFile.cs), and a hard reference makes that circular: you cannot build the tool that
+         writes the file the build refuses to start without. And a fresh clone that has not generated
+         one yet should compile and run, not stop at CS7064 with an error about an image. -->
+    <ApplicationIcon Condition="Exists('CouchPotato.ico')">CouchPotato.ico</ApplicationIcon>
 
     <!-- Single portable exe, no runtime install required -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -39,11 +44,9 @@
          with no loose asset to ship alongside the single-file build. -->
     <EmbeddedResource Include="CouchPotato.ico" LogicalName="CouchPotato.ico" />
 
-    <!-- The easter egg, baked in so it cannot be found, swapped or deleted from the data folder.
-         Condition so a missing file is not a build error: drop easteregg.gif beside the csproj to
-         arm it, remove it and the app simply has no easter egg. -->
-    <EmbeddedResource Include="easteregg.gif" LogicalName="easteregg.gif" Condition="Exists('easteregg.gif')" />
-    <EmbeddedResource Include="easteregg.wav" LogicalName="easteregg.wav" Condition="Exists('easteregg.wav')" />
+    <!-- The easter egg is gone. It was embedded, and the gif alone was 52 MB — over half the size of
+         the finished executable, on a download people are asked to take on trust from an unsigned
+         beta. A joke nobody can find is not worth doubling what everyone downloads. -->
 
     <!-- The real console button artwork, if you have supplied it. Optional: both marks are trademarks
          and cannot be shipped in the repository, so the app draws its own when these are absent. Square
@@ -56,11 +59,22 @@
     <!-- Backup snapshots live inside the project folder (the working tree is all the sandbox can
          reach), and the SDK's default globbing would compile every .cs in them — defining the whole
          app twice. Anything under a folder starting with _backup is source to keep, not source to
-         build. -->
+         build.
+
+         _to_delete is the same problem arriving from the other direction: files taken out of the app
+         and parked there until they are binned for good. The globbing pulled them straight back into
+         the compile, so removing a file appeared to break the build — StarLegend.cs went first and
+         failed on the Words constant that was deleted with it. Parked is not the same as gone, and
+         until it is gone the compiler must not see it. -->
     <Compile Remove="_backup*/**/*.cs" />
     <EmbeddedResource Remove="_backup*/**/*" />
     <None Remove="_backup*/**/*" />
     <Content Remove="_backup*/**/*" />
+
+    <Compile Remove="_to_delete/**/*.cs" />
+    <EmbeddedResource Remove="_to_delete/**/*" />
+    <None Remove="_to_delete/**/*" />
+    <Content Remove="_to_delete/**/*" />
   </ItemGroup>
 
 </Project>

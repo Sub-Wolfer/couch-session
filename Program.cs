@@ -130,6 +130,33 @@ internal static class Program
         //
         // If nothing is running, this is a no-op and a success. "Make sure it is not running"
         // is the thing being asked for, and it is already true.
+        // Redraw the file icon from the app's own mark.
+        //
+        // Before the single-instance test and before anything else starts, because this is not the app
+        // running — it is a one-shot that writes a file and leaves. See Ui/IconFile.cs for why it lives
+        // in the app rather than in a separate tool.
+        if (args.Contains("--write-icon", StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                // Beside the exe, which is the project root during development — where the csproj
+                // expects to find it.
+                string path = Path.Combine(AppContext.BaseDirectory, "CouchPotato.ico");
+
+                Ui.IconFile.WriteMonogram(path);
+
+                Log.Info($"Wrote the application icon to {path}.");
+                Console.WriteLine($"Wrote {path}. Rebuild to pick it up.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Could not write the application icon", ex);
+                Console.WriteLine($"Could not write the icon: {ex.Message}");
+                return 1;
+            }
+        }
+
         if (args.Contains("--quit", StringComparer.OrdinalIgnoreCase))
         {
             uint quit = RegisterWindowMessage(TrayApp.BroadcastWatcher.QuitMessage);

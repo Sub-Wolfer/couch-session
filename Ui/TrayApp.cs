@@ -223,7 +223,6 @@ public sealed class TrayApp : IDisposable
             // A session changing hands never leaves the easter egg on screen. It is summoned from a
             // window that is about to go away, and a fullscreen overlay surviving that would sit over
             // the television with nothing left to dismiss it.
-            EasterEgg.Stop();
 
             // Poll less often once we are on the TV, and hand memory back to Windows: from
             // here until the session ends this process should be as close to invisible as
@@ -1783,7 +1782,6 @@ public sealed class TrayApp : IDisposable
         _windowSampler.Stop();
         _idleWatch.Stop();
         _guideWatch.Stop();
-        EasterEgg.Stop();   // never leave a fullscreen window behind us
         _pads.ResumeReports();   // never leave the pad's input released after we are gone
         _watcher.Stop();
         try { _session.Config.Save(); } catch { /* best effort on the way out */ }
