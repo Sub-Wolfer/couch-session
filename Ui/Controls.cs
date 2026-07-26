@@ -315,6 +315,34 @@ internal sealed class FlatButton : Control
     public Image? Icon { get; set; }
     public int IconGap { get; set; } = 8;
 
+    /// <summary>
+    /// Draw this as the primary action rather than as one more button.
+    ///
+    /// Three changes, and they only make sense together. The shape becomes a pill, because a 34-pixel
+    /// button with an 8-pixel radius is the default shape of every button in every toolkit and reads
+    /// as a control rather than as an invitation. A glow in the button's own colour is laid under it,
+    /// which is the one cue that actually separates a primary action from a secondary one on a dark
+    /// surface — a shadow says "raised", but a *tinted* shadow says "this thing is lit". And a rim
+    /// light along the top edge gives the fill somewhere for the light to come from, so the gradient
+    /// underneath reads as a curved surface instead of a colour ramp.
+    ///
+    /// Off by default. Exactly one button in a window should have this; two competing primaries is
+    /// the same as none.
+    /// </summary>
+    public bool Emphasis { get; set; }
+
+    /// <summary>
+    /// Transparent margin inside the control, reserved for the glow.
+    ///
+    /// A Control cannot paint outside its own bounds, so a glow that spreads past the button has to
+    /// be given room *inside* a control that is larger than the button drawn in it. Callers that set
+    /// <see cref="Emphasis"/> therefore size the control to the button plus twice this, and pull the
+    /// difference back out with a negative margin so nothing around it moves.
+    /// </summary>
+    public const int Bleed = 9;
+
+    private int Inset => Emphasis ? Bleed : 0;
+
     private bool _hover;
     private bool _down;
 
@@ -347,30 +375,99 @@ internal sealed class FlatButton : Control
                  : _down ? Theme.Mix(Fill, Color.Black, 0.12f)
                  : _hover ? hover : Fill;
 
-        var bounds = new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
+        int pad = Inset;
 
-        var (top, bottom) = Theme.Sheen(fill, 0.07f);
-        Theme.FillRoundedGradient(g, bounds, Radius, top, bottom);
+        var bounds = new RectangleF(pad + 0.5f, pad + 0.5f, Width - pad * 2 - 1f, Height - pad * 2 - 1f);
 
-        if (Line != Color.Empty) Theme.DrawRounded(g, bounds, Radius, Line);
+        // A pill when this is the primary action. Worth being literal about why: the radius is half
+        // the height rather than a larger fixed number, so the shape stays a pill at any size the
+        // caller picks instead of turning back into a rounded rectangle the moment the button grows.
+        float radius = Emphasis ? bounds.Height / 2f : Radius;
+
+        if (Emphasis && Enabled) Glow(g, bounds, radius);
+
+        // More lift on the primary button than the rest. The shallow 7% sheen is right for a row of
+        // secondary buttons, where anything stronger bands visibly on a dark theme; on a saturated
+        // fill at pill size it disappears, and the surface goes flat.
+        var (top, bottom) = Theme.Sheen(fill, Emphasis ? 0.15f : 0.07f);
+        Theme.FillRoundedGradient(g, bounds, radius, top, bottom);
+
+        // The rim light. Drawn all the way round rather than only across the top: clipping it to the
+        // top half would need a hard-edged rectangular clip, and a hard edge cutting across an
+        // anti-aliased curve leaves a visible nick at the two points where it crosses.
+        if (Emphasis)
+        {
+            int strength = !Enabled ? 0 : _down ? 22 : _hover ? 78 : 58;
+
+            if (strength > 0)
+                Theme.DrawRounded(g, RectangleF.Inflate(bounds, -0.5f, -0.5f), radius - 0.5f,
+                                  Color.FromArgb(strength, 255, 255, 255));
+        }
+
+        if (Line != Color.Empty) Theme.DrawRounded(g, bounds, radius, Line);
 
         var textSize = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding);
         int iconW = Icon?.Width ?? 0;
         int gap = Icon is not null && Text.Length > 0 ? IconGap : 0;
-        int left = (Width - (iconW + gap + textSize.Width)) / 2;
+
+        // Centred on the button, not on the control. They are the same thing until the glow bleed
+        // makes them different, and then the label sits off-centre in the pill by the width of it.
+        int left = (int)(bounds.X + (bounds.Width - (iconW + gap + textSize.Width)) / 2f);
+        int middle = (int)(bounds.Y + bounds.Height / 2f);
 
         if (Icon is not null)
         {
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.DrawImage(Icon, new Rectangle(left, (Height - Icon.Height) / 2, Icon.Width, Icon.Height));
+            g.DrawImage(Icon, new Rectangle(left, middle - Icon.Height / 2, Icon.Width, Icon.Height));
         }
 
-        var textRect = new Rectangle(left + iconW + gap, (Height - textSize.Height) / 2,
+        var textRect = new Rectangle(left + iconW + gap, middle - textSize.Height / 2,
                                      textSize.Width, textSize.Height);
 
         TextRenderer.DrawText(g, Text, Font, textRect,
                               Enabled ? ForeColor : Theme.TextFaint,
                               TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+    }
+
+    /// <summary>
+    /// The tinted glow under the primary button.
+    ///
+    /// Built by stacking translucent copies of the same pill, each one slightly larger and slightly
+    /// fainter than the last. That is a cheap approximation of a blur, and it is here because the
+    /// real thing is not available: GDI+ has no blur, and doing it properly would mean rendering to
+    /// an off-screen bitmap and convolving it by hand on every repaint of a button that repaints on
+    /// every mouse move. Eight rings at a few percent alpha are indistinguishable at this size.
+    ///
+    /// Offset downward, because light in this window comes from above — the sheen on every card and
+    /// the rim light on this button both assume it, and a glow centred on the shape would contradict
+    /// them. It tightens and dims on press, which is what makes the button feel like it moves without
+    /// anything actually moving.
+    /// </summary>
+    private void Glow(Graphics g, RectangleF bounds, float radius)
+    {
+        const int Rings = 8;
+
+        float spread = _down ? Bleed * 0.55f : _hover ? Bleed : Bleed * 0.8f;
+        float drop = _down ? 0.5f : 2f;
+        int peak = _down ? 20 : _hover ? 44 : 32;
+
+        for (int i = Rings; i >= 1; i--)
+        {
+            float grow = spread * i / Rings;
+
+            var halo = RectangleF.Inflate(bounds, grow, grow);
+            halo.Offset(0, drop);
+
+            // Fades to nothing at the outside. The innermost ring is fully under the button, so the
+            // alpha piling up in the middle is never seen.
+            int alpha = (int)(peak * (1f - (i - 1) / (float)Rings));
+            if (alpha < 1) continue;
+
+            using var brush = new SolidBrush(Color.FromArgb(alpha, Fill));
+            using var path = Theme.Rounded(halo, radius + grow);
+
+            g.FillPath(brush, path);
+        }
     }
 }
 

@@ -1946,11 +1946,31 @@ public sealed class SettingsForm : Form
         // Close was redundant: the title bar X does the same thing, and settings save
         // themselves, so the button confirmed nothing and dismissed nothing. Reset is the one
         // action in this window with no other route to it.
-        var reset = new FlatButton { Text = Words.ButtonReset, Size = new Size(150, 34) };
+        var reset = new FlatButton { Text = Words.ButtonReset, Size = new Size(150, 38) };
         reset.Click += (_, _) => ResetEverything();
         _tips.SetToolTip(reset, Wrapped(Words.TipReset));
 
-        _action = new FlatButton { Size = new Size(168, 34) };
+        // The one button this window exists for, so the one button drawn as a primary action.
+        //
+        // The control is bigger than the button. FlatButton.Emphasis lays a glow under the pill, and
+        // a Control cannot paint outside its own bounds, so the glow needs FlatButton.Bleed of
+        // transparent room on every side. The negative margin takes that room straight back out of
+        // the layout: the panel gaps stay what they were, and the pill lands where the old
+        // rectangular button did instead of nine pixels down and to the left of it.
+        //
+        // Written as arithmetic against the default margin of 3 rather than as the numbers it works
+        // out to, so changing Bleed cannot silently knock the footer out of alignment.
+        const int Flow = 3;
+        int pull = Flow - FlatButton.Bleed;
+
+        _action = new FlatButton
+        {
+            Emphasis = true,
+            IconGap = 10,
+            Size = new Size(186 + FlatButton.Bleed * 2, 38 + FlatButton.Bleed * 2),
+            Margin = new Padding(pull, pull, pull, Flow),
+        };
+
         _action.Click += (_, _) => OnActionButton();
 
         RefreshActionButton();
@@ -6314,6 +6334,17 @@ public sealed class SettingsForm : Form
         // the button the window exists for. Near-black on it is about 7.5:1. White stays on the red,
         // where it is already fine, which is also why the two cannot simply share one ink.
         _action.ForeColor = live ? Color.White : Color.FromArgb(10, 28, 18);
+
+        // A play mark to start, a stop mark to end, in whichever ink the fill needs.
+        //
+        // Replaced rather than kept, and the old one disposed: this runs on every change of session
+        // state for the life of the window, and a GDI+ bitmap abandoned each time is a handle leak in
+        // a process that is meant to sit in the tray for weeks.
+        var was = _action.Icon;
+
+        _action.Icon = live ? AppIcon.Stop(15, _action.ForeColor) : AppIcon.Play(15, _action.ForeColor);
+        was?.Dispose();
+
         _action.Invalidate();
     }
 

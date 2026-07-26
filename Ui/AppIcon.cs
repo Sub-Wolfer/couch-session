@@ -189,6 +189,80 @@ internal static class AppIcon
 
 
     /// <summary>
+    /// A play triangle, for the button that starts a session.
+    ///
+    /// Corners rounded rather than sharp. A hard-pointed triangle at 15 pixels puts three needle tips
+    /// against the button's ink colour and each one aliases into a grey smear; rounding them is also
+    /// what every other glyph in a modern interface does, so it sits with the pill shape rather than
+    /// against it.
+    /// </summary>
+    public static Image Play(int size, Color colour) => Glyph(size, colour, play: true);
+
+    /// <summary>A stop square, for the button that ends one. Same rounding, same reasons.</summary>
+    public static Image Stop(int size, Color colour) => Glyph(size, colour, play: false);
+
+    private static Image Glyph(int size, Color colour, bool play)
+    {
+        const int Scale = 4;
+        int big = size * Scale;
+
+        using var large = new Bitmap(big, big);
+
+        using (var g = Graphics.FromImage(large))
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            g.Clear(Color.Transparent);
+
+            float w = big, h = big;
+
+            using var brush = new SolidBrush(colour);
+
+            // The rounding is done with a fat round-capped pen tracing the outline, then the same
+            // outline filled. Drawing both means the corner radius is half the pen width and needs no
+            // path arithmetic, which for a triangle would mean solving three corner bisectors.
+            using var pen = new Pen(colour, big * 0.16f)
+            {
+                LineJoin = System.Drawing.Drawing2D.LineJoin.Round,
+                StartCap = System.Drawing.Drawing2D.LineCap.Round,
+                EndCap = System.Drawing.Drawing2D.LineCap.Round,
+            };
+
+            if (play)
+            {
+                // Nudged right of centre. A triangle's visual centre of mass sits behind its point,
+                // so a play mark centred on its bounding box always looks like it has drifted left.
+                var points = new[]
+                {
+                    new PointF(w * 0.34f, h * 0.24f),
+                    new PointF(w * 0.78f, h * 0.50f),
+                    new PointF(w * 0.34f, h * 0.76f),
+                };
+
+                g.DrawPolygon(pen, points);
+                g.FillPolygon(brush, points);
+            }
+            else
+            {
+                var box = new RectangleF(w * 0.30f, h * 0.30f, w * 0.40f, h * 0.40f);
+
+                g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
+                g.FillRectangle(brush, box);
+            }
+        }
+
+        var small = new Bitmap(size, size);
+
+        using (var g = Graphics.FromImage(small))
+        {
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(large, new Rectangle(0, 0, size, size));
+        }
+
+        return small;
+    }
+
+    /// <summary>
     /// The brand mark, drawn at runtime: a "CS" monogram on a rounded, vivid violet-to-blue gradient
     /// tile, with a glossy top sheen, a bright accent bar under the letters, and a crisp rim. The extra
     /// flair — the sheen and the accent stroke — gives it a memorable, app-store look while staying
