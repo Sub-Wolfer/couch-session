@@ -119,15 +119,6 @@ public sealed class AppConfig
     public bool AutoHdrEnabled { get; set; }
 
     /// <summary>
-    /// Whether the games list has been populated once already.
-    ///
-    /// Without this there is no way to tell "a new install, nothing chosen yet" from "chosen,
-    /// and the answer was none" — and the difference matters, because the first should be
-    /// filled in for the user and the second must be left exactly as they left it.
-    /// </summary>
-    public bool HdrGamesChosen { get; set; }
-
-    /// <summary>
     /// Turn HDR on for the whole couch session rather than per game.
     ///
     /// The guaranteed option. A game samples the display's HDR state once, while building its
@@ -169,29 +160,19 @@ public sealed class AppConfig
     /// </summary>
     public bool HdrHotkeyRemembersGame { get; set; } = true;
 
-    /// <summary>Games chosen for automatic HDR, identified by install folder.</summary>
+    /// <summary>
+    /// Games chosen for automatic HDR, identified by install folder.
+    ///
+    /// Empty on a new install, and it stays empty until somebody ticks something. There used to be
+    /// two mechanisms filling it in on the user's behalf — one that ticked every game the HDR
+    /// database called native the first time the list appeared, and a setting that ticked anything
+    /// installed later. Both are gone. A fresh install that has already decided which of your games
+    /// should change your display is making a claim it cannot support: the database is a best guess,
+    /// "native HDR" is not the same as "you want HDR for it", and the ticks appeared with no record
+    /// of anyone having agreed to them. An empty list is the honest starting state, and the Native
+    /// HDR button next to the list does the same job in one press for anyone who wants it.
+    /// </summary>
     public List<HdrGame> HdrGames { get; set; } = [];
-
-    /// <summary>
-    /// Tick HDR for any game found from now on, without being asked.
-    ///
-    /// Off by default: it is a decision about games that do not exist yet, and making that on
-    /// somebody's behalf is not the sort of default to ship.
-    /// </summary>
-    public bool AutoTickNewGames { get; set; }
-
-    /// <summary>
-    /// Every game ever discovered, ticked or not.
-    ///
-    /// This is what makes "new" mean anything. HdrGames only lists the ticked ones, so without a
-    /// separate record there is no way to tell a game nobody has seen from one the user
-    /// deliberately unticked — and the setting above would helpfully re-tick it on the next scan,
-    /// over and over, which is the most irritating possible reading of "automatic".
-    ///
-    /// Only ever added to. A game that is uninstalled and reinstalled is not new; the user already
-    /// had their say about it.
-    /// </summary>
-    public List<string> SeenGames { get; set; } = [];
 
     /// <summary>
     /// HDR support you have set by hand, keyed by install folder, overriding the database.
@@ -435,8 +416,26 @@ public sealed class AppConfig
     /// <summary>Start a session as soon as a game controller is switched on.</summary>
     public bool StartOnControllerConnect { get; set; }
 
-    /// <summary>End the session when the last controller disconnects.</summary>
-    public bool StopOnControllerDisconnect { get; set; }
+    /// <summary>
+    /// React at all when the last controller disconnects.
+    ///
+    /// On by default, because a pad going quiet during a session leaves a television showing a game
+    /// nobody can drive, and something has to offer a way out of that. Off is for the setup where a
+    /// disconnect is routine — a pad that sleeps on its own, a wireless dongle that drops the link
+    /// while a film plays — and where being asked about it every time is the annoyance rather than
+    /// the help.
+    /// </summary>
+    public bool StopOnControllerDisconnect { get; set; } = true;
+
+    /// <summary>
+    /// Ask before ending, rather than ending outright.
+    ///
+    /// On by default, and worth keeping on. A pad going quiet is the most ambiguous signal the app
+    /// receives — a flat battery, a knocked cable, an adapter dropping the link for a second — and
+    /// none of those is the same as deciding to stop playing. Asking settles on changing nothing if
+    /// nobody answers, so an empty battery costs nothing; ending outright means it closes the game.
+    /// </summary>
+    public bool AskOnControllerDisconnect { get; set; } = true;
 
     /// <summary>
     /// Switch the Xbox Game Bar off while this app is running.

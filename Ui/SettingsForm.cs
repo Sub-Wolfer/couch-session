@@ -109,7 +109,6 @@ public sealed class SettingsForm : Form
     /// </summary>
     private readonly List<(Func<bool> When, List<Control> Rows)> _nested = [];
     private InlineCheck _hdrHotkeyRemember = null!;
-    private InlineCheck _autoTickNewGames = null!;
     private readonly ToggleSwitch _startWithWindows = new();
     private readonly ToggleSwitch _startOnLaunch = new();
     private readonly ToggleSwitch _startOnWake = new();
@@ -156,6 +155,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _gamePriority = new();
     private readonly ToggleSwitch _startOnController = new();
     private readonly ToggleSwitch _stopOnController = new();
+    private readonly ToggleSwitch _askOnDisconnect = new();
 
     private readonly GameIcons _icons = new();
     private readonly HashSet<string> _checkedGames = new(StringComparer.OrdinalIgnoreCase);
@@ -1331,6 +1331,22 @@ public sealed class SettingsForm : Form
             HdrMode.PerGame => $"per game · {Config.HdrGames.Count} games",
             _ => "off",
         }, autoHdr, page: HdrPage, anchor: _hdrMode);
+        // Whether turning HDR on by hand teaches the app anything.
+        //
+        // On this page because it is the setting that changes the HDR list behind your back — switch
+        // HDR on during a game and that game is added to it. Somebody who does not know it is on has
+        // no way to account for a list that keeps growing, and somebody who wants that behaviour has
+        // no way to tell whether they have it. Neither question was answerable from this page.
+        // Read through the same null guard the save routine uses. The field is declared with null!
+        // but is genuinely null until the HDR page has been built, and the home page is built first
+        // on a cold start — so the saved value is the honest answer until the control exists.
+        bool hdrLearns = _hdrHotkeyRemember is not null
+                             ? _hdrHotkeyRemember.Checked
+                             : Config.HdrHotkeyRemembersGame;
+
+        Tile("Remember HDR games", hdrLearns ? "learns as you switch" : "list unchanged",
+             hdrLearns, page: HdrPage, anchor: _hdrHotkeyRemember);
+
         Tile("HDR hotkey (pad)", _shortcutControllerHdr.Value != 0
                                      ? PadText(_shortcutControllerHdr.Value) : "not set",
              _shortcutControllerHdr.Value != 0, page: HotkeysPage, anchor: _shortcutControllerHdr,
@@ -1345,10 +1361,13 @@ public sealed class SettingsForm : Form
              page: ControllerPage, anchor: _startOnController);
         Tile("Start on wake", _startOnWake.Checked ? "yes" : "no", _startOnWake.Checked, page: GeneralPage,
              anchor: _startOnWake);
-        // "Controller disconnects" is not reported here any more. Every other tile on this page is a
-        // setting — something chosen, and worth checking at a glance. This one now describes fixed
-        // behaviour, so it could only ever say the same thing, and a tile that cannot change is a tile
-        // nobody needs to read twice.
+        // Back on this page, having been dropped while the behaviour was fixed and could only ever
+        // say one thing. It is a setting again, and it is the one that decides what a flat battery
+        // mid-game does — so it says which of the three states it is in rather than just on or off.
+        Tile("Controller disconnects", !_stopOnController.Checked ? "ignored"
+                                     : _askOnDisconnect.Checked ? "asks what to do"
+                                                                : "ends the session",
+             _stopOnController.Checked, page: ControllerPage, anchor: _stopOnController);
 
         // ── performance and pointer ──
         Tile("Power plan", _changePowerPlan.Checked
@@ -2405,6 +2424,23 @@ public sealed class SettingsForm : Form
                     Words.PadLinkOptions[(int)PadLink.Either], indent: Indent);
         });
 
+        // Ending on a disconnect is a setting again.
+        //
+        // It was taken away on the reasoning that the prompt asks rather than acts, so nobody could
+        // want it off. That holds right up until the disconnect is routine — a pad that sleeps by
+        // itself, an adapter that drops the link during a film — at which point a prompt arriving
+        // over whatever is on the television is the annoyance rather than the way out of one.
+        AddToggle(pad, Words.StopOnController, _stopOnController, Words.StopOnControllerWhy,
+                  setting: nameof(AppConfig.StopOnControllerDisconnect));
+
+        // Nested, because it only means anything while the switch above is on. Whether to ask is the
+        // whole safety of this feature — see AskOnDisconnectWhy — so it is a setting of its own
+        // rather than something folded into the one above.
+        WhenOn(() => _stopOnController.Checked, pad, () =>
+            AddToggle(pad, Words.AskOnDisconnect, _askOnDisconnect, Words.AskOnDisconnectWhy,
+                      indent: Indent, titleEmphasis: Theme.Good,
+                      setting: nameof(AppConfig.AskOnControllerDisconnect)));
+
         AddNote(pad, Words.ControllerDisconnectNote);
         AddNote(pad, Words.ControllerTriggerNote);
 
@@ -2536,12 +2572,6 @@ public sealed class SettingsForm : Form
         scan.Click += (_, _) => ScanForGames();
         _tips.SetToolTip(scan, Wrapped(Words.TipScan));
 
-        _autoTickNewGames = new InlineCheck { Text = Words.AutoTickNewGames, Height = HeaderHeight, Font = Theme.Small };
-        _autoTickNewGames.SetQuietly(Config.AutoTickNewGames);
-        _autoTickNewGames.Width = _autoTickNewGames.PreferredWidth();
-        _autoTickNewGames.CheckedChanged += (_, _) => { MarkDirty(); };
-        _tips.SetToolTip(_autoTickNewGames, Wrapped(Plain(Words.AutoTickNewGamesWhy)));
-
         _hdrBulk = new FlatButton { Text = Words.ButtonNativeHdr, Size = new Size(132, HeaderHeight), Radius = 6, Font = Theme.Small };
         _hdrBulk.Click += (_, _) => ToggleNativeHdrGames();
         _tips.SetToolTip(_hdrBulk, Wrapped(Words.TipHdrBulk));
@@ -2672,11 +2702,9 @@ public sealed class SettingsForm : Form
         _hdrHotkeyRemember.Height = 30;
         _hdrHotkeyRemember.Margin = new Padding(0, 0, 0, 2);
 
-        _autoTickNewGames.Width = RowWidth;
-        _autoTickNewGames.Height = 30;
-        _autoTickNewGames.Margin = new Padding(0);
-
-        options.Controls.AddRange([_hdrHotkeyRemember, _autoTickNewGames]);
+        // "Switch HDR for new games automatically" used to sit under this one and has been removed
+        // along with the seeding that ticked native-HDR games on a first run. See AppConfig.HdrGames.
+        options.Controls.Add(_hdrHotkeyRemember);
 
         var listHolder = new BufferedPanel
         {
@@ -2710,9 +2738,6 @@ public sealed class SettingsForm : Form
 
         _gameList.CheckChanged += () =>
         {
-            // From here the list is the user's, including if they empty it.
-            Config.HdrGamesChosen = true;
-
             MarkDirty();
             UpdateHdrBulkLabel();
 
@@ -3079,6 +3104,12 @@ public sealed class SettingsForm : Form
         // being set is a problem, and problems belong in the alerts.
 
         // ---- the facts ----
+        //
+        // Headed, where it used to start with no heading at all. A grid of twenty-odd tiles arriving
+        // under the guide banner with nothing said about it has to be worked out before it can be
+        // read; four words in front of it means it is understood before the first tile is.
+        NewSection(page, Words.SectionGlance);
+
         var glance = NewCard(page);
 
         _homeGlance = new FlowLayoutPanel
@@ -4160,8 +4191,6 @@ public sealed class SettingsForm : Form
                 _games.Add(new GameEntry(saved.Name, saved.InstallDir, GameSource.Manual));
             }
 
-            SeedNativeGames();
-            TickNewGames();
             RebuildGameList();
 
             // Covers the periodic rescan as well as startup, so a game installed while the
@@ -4183,8 +4212,6 @@ public sealed class SettingsForm : Form
     /// </summary>
     private void ToggleNativeHdrGames()
     {
-        Config.HdrGamesChosen = true;
-
         var before = new HashSet<string>(_checkedGames, StringComparer.OrdinalIgnoreCase);
 
         var native = _games.Where(g => SupportOf(g) == HdrSupport.Native).ToList();
@@ -4411,8 +4438,6 @@ public sealed class SettingsForm : Form
     /// </summary>
     private void ToggleNonNativeHdrGames()
     {
-        Config.HdrGamesChosen = true;
-
         var before = new HashSet<string>(_checkedGames, StringComparer.OrdinalIgnoreCase);
 
         var others = _games.Where(g => SupportOf(g) != HdrSupport.Native).ToList();
@@ -4694,8 +4719,6 @@ public sealed class SettingsForm : Form
     /// </summary>
     private void SetAllGames(bool selected)
     {
-        Config.HdrGamesChosen = true;
-
         var before = new HashSet<string>(_checkedGames, StringComparer.OrdinalIgnoreCase);
 
         foreach (var game in SortedGames())
@@ -5399,27 +5422,6 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>
-    /// On a fresh install, tick the games known to render HDR themselves.
-    ///
-    /// Those are the ones the feature exists for, and leaving the list entirely unticked meant
-    /// switching Auto HDR on appeared to do nothing at all. Games with no native support are
-    /// deliberately left alone: Windows Auto HDR may improve them, but that is a judgement
-    /// call, and making it on someone's behalf is different to filling in the obvious answer.
-    ///
-    /// Runs once ever. After that the list is the user's, including when they empty it.
-    /// </summary>
-    /// <summary>
-    /// Tick anything discovered for the first time, when the user has asked for that.
-    ///
-    /// Unlike SeedNativeGames this never stops running — the whole point is games installed later.
-    /// What keeps it from being infuriating is the record of every game ever seen: a game is only
-    /// ticked the first time it appears, so unticking one makes it stay unticked forever after.
-    ///
-    /// The record is updated whether the setting is on or not. Otherwise switching it on would
-    /// treat the entire existing library as new and tick all of it at once, which is emphatically
-    /// not what "include new games" says.
-    /// </summary>
-    /// <summary>
     /// Rediscover games now, rather than waiting for the periodic rescan.
     ///
     /// The rescan already runs on a timer, so this is not new capability — it is the difference
@@ -5428,9 +5430,8 @@ public sealed class SettingsForm : Form
     /// for the manual button, so it earns its place beside Browse.
     ///
     /// LoadGames does the actual work and is safe to call again: it rebuilds from a fresh
-    /// discovery, keeps hand-added games, and TickNewGames inside it handles anything genuinely
-    /// new. This only adds the user feedback, because a button that changes nothing visible reads
-    /// as broken even when it worked.
+    /// discovery and keeps hand-added games. This only adds the user feedback, because a button
+    /// that changes nothing visible reads as broken even when it worked.
     /// </summary>
     private void ScanForGames()
     {
@@ -5442,56 +5443,6 @@ public sealed class SettingsForm : Form
 
         ShowScanNote(found > 0 ? string.Format(Words.NoticeScanFound, found)
                                 : Words.NoticeScanNothing);
-    }
-
-    private void TickNewGames()
-    {
-        var seen = new HashSet<string>(Config.SeenGames, StringComparer.OrdinalIgnoreCase);
-
-        var fresh = _games.Where(g => !seen.Contains(g.Key)).ToList();
-        if (fresh.Count == 0) return;
-
-        foreach (var game in fresh) Config.SeenGames.Add(game.Key);
-
-        if (!Config.AutoTickNewGames)
-        {
-            // Recorded but not ticked, so turning the setting on later applies to games from
-            // that point rather than retroactively.
-            MarkDirty();
-            return;
-        }
-
-        int ticked = 0;
-
-        foreach (var game in fresh)
-            if (_checkedGames.Add(game.Key)) ticked++;
-
-        if (ticked > 0) Log.Info($"Ticked {ticked} newly installed game(s) for HDR.");
-
-        MarkDirty();
-    }
-
-    private void SeedNativeGames()
-    {
-        if (Config.HdrGamesChosen) return;
-
-        // Deliberately not a one-shot.
-        //
-        // Most HDR tags are not known when the list first appears — Steam and the wiki are
-        // queried in the background and land over the following seconds — so ticking once at
-        // startup would catch only the handful in the bundled list and silently miss the rest.
-        // This runs again each time new tags arrive, and stops for good the moment the user
-        // ticks anything themselves, at which point the list is theirs.
-        var native = _games.Where(g => SupportOf(g) == HdrSupport.Native)
-                           .Where(g => !_checkedGames.Contains(g.Key))
-                           .ToList();
-
-        if (native.Count == 0) return;
-
-        foreach (var game in native) _checkedGames.Add(game.Key);
-
-        Log.Info($"Ticked {native.Count} newly identified native-HDR game(s).");
-        MarkDirty();
     }
 
     /// <summary>
@@ -5595,26 +5546,26 @@ public sealed class SettingsForm : Form
             nameof(AppConfig.DesktopAudioDeviceId), nameof(AppConfig.DesktopAudioDeviceName),
         ],
 
-        // Three properties on this page are deliberately kept, none of which is a setting.
+        // HdrTags is deliberately kept, and is not a setting: it is looked-up data about which
+        // games support HDR, and clearing it would throw away a download for nothing.
         //
-        // HdrTags is looked-up data about which games support HDR, and SeenGames is the record of
-        // which games have been offered already; clearing them would throw away a download and make
-        // every game in the library announce itself as new.
-        //
-        // HdrGamesChosen is subtler and was a bug. It is the flag that says the list has been filled
-        // in once, and it is the only thing stopping SeedNativeGames from ticking every native-HDR
-        // game it finds. Resetting it to false re-armed that — so the list emptied as the confirmation
-        // promised, and then quietly re-ticked itself the next time the game watcher ran, within five
-        // minutes, auto-saving as it went. Clearing the list has to mean the list stays cleared.
+        // Two other properties used to be listed here for a subtler reason, and no longer need to
+        // be. HdrGamesChosen was the flag that stopped the first-run seeding from re-ticking every
+        // native-HDR game, and resetting it re-armed exactly that: the list emptied as the
+        // confirmation promised, then quietly re-ticked itself within five minutes and auto-saved.
+        // SeenGames was the record that kept "new game" meaningful for the auto-tick setting.
+        // Both the seeding and the setting are gone, so nothing can refill the list behind anyone
+        // any more — which is a better guarantee than remembering to exclude two fields.
         HdrPage =>
         [
             nameof(AppConfig.AutoHdrEnabled), nameof(AppConfig.HdrForWholeSession),
-            nameof(AppConfig.HdrHotkeyRemembersGame), nameof(AppConfig.AutoTickNewGames),
+            nameof(AppConfig.HdrHotkeyRemembersGame),
         ],
 
         ControllerPage =>
         [
             nameof(AppConfig.StartOnControllerConnect), nameof(AppConfig.StartOnControllerLink),
+            nameof(AppConfig.StopOnControllerDisconnect), nameof(AppConfig.AskOnControllerDisconnect),
             nameof(AppConfig.TriggerControllerId), nameof(AppConfig.TriggerControllerName),
             nameof(AppConfig.MouseControlEnabled), nameof(AppConfig.MouseCursorStick),
             nameof(AppConfig.MouseSpeed), nameof(AppConfig.MouseDeadzone),
@@ -5842,7 +5793,6 @@ public sealed class SettingsForm : Form
             _checkForUpdates.Checked = Config.CheckForUpdates;
             _hdrMode.SelectedIndex = (int)Config.HdrSwitching;
             _hdrHotkeyRemember?.SetQuietly(Config.HdrHotkeyRemembersGame);
-            _autoTickNewGames?.SetQuietly(Config.AutoTickNewGames);
             _minimizeOnClose.Checked = Config.MinimizeToTrayOnClose;
             _startOnLaunch.Checked = Config.StartSessionOnLaunch;
             _startOnWake.Checked = Config.StartSessionOnWake;
@@ -5890,6 +5840,7 @@ public sealed class SettingsForm : Form
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
             _stopOnController.Checked = Config.StopOnControllerDisconnect;
+            _askOnDisconnect.Checked = Config.AskOnControllerDisconnect;
 
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
@@ -6018,8 +5969,8 @@ public sealed class SettingsForm : Form
         Config.EnableGameMode = _enableGameMode.Checked;
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
-        // Baked in rather than chosen — see the note where its toggle used to be.
-        Config.StopOnControllerDisconnect = true;
+        Config.StopOnControllerDisconnect = _stopOnController.Checked;
+        Config.AskOnControllerDisconnect = _askOnDisconnect.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
         if (_triggerPad.SelectedItem is ControllerDevice pad)
@@ -6047,7 +5998,6 @@ public sealed class SettingsForm : Form
 
         Config.HdrSwitching = HdrModeOf(_hdrMode);
         if (_hdrHotkeyRemember is not null) Config.HdrHotkeyRemembersGame = _hdrHotkeyRemember.Checked;
-        if (_autoTickNewGames is not null) Config.AutoTickNewGames = _autoTickNewGames.Checked;
         Config.HdrGames = _games
             .Where(g => _checkedGames.Contains(g.Key))
             .Select(g => new HdrGame { Name = g.Name, InstallDir = g.InstallDir })
@@ -6085,9 +6035,6 @@ public sealed class SettingsForm : Form
 
         BeginInvoke(() =>
         {
-            // New tags may have identified more native-HDR games worth ticking on a first run.
-            SeedNativeGames();
-
             _gameList?.Invalidate();
             UpdateHdrBulkLabel();
             if (_listHeader?.Sort == GameSort.Hdr) RebuildGameList(keepView: true);
@@ -6256,7 +6203,6 @@ public sealed class SettingsForm : Form
 
         bool hdr = HdrModeOf(_hdrMode) != HdrMode.Off;
 
-        if (_autoTickNewGames is not null) _autoTickNewGames.Enabled = hdr;
         if (_hdrHotkeyRemember is not null) _hdrHotkeyRemember.Enabled = hdr;
 
         // Deliberately still editable when HDR is set to the whole session.
@@ -6273,9 +6219,6 @@ public sealed class SettingsForm : Form
         if (_actingRow is not null) _actingRow.Enabled = hdr;
         if (_browseButton is not null) _browseButton.Enabled = hdr;
         if (_scanButton is not null) _scanButton.Enabled = hdr;
-
-        // Was inside the row above before it moved, so it followed the same rule; it still does.
-        if (_autoTickNewGames is not null) _autoTickNewGames.Enabled = hdr;
 
 
         // Both read the same pair of switches: one decides whether the picker can be used at
@@ -6360,13 +6303,22 @@ public sealed class SettingsForm : Form
         _action.Fill = live ? Theme.Bad : Theme.Good;
         _action.Line = Color.Empty;
 
-        // Dark ink on the green, white on the red.
+        // White on both, by request.
         //
-        // Not a style choice. Green reads brighter to the eye than red or blue at the same value, so
-        // white on this green measures 2.35:1 — the lowest-contrast text anywhere in the window, on
-        // the button the window exists for. Near-black on it is about 7.5:1. White stays on the red,
-        // where it is already fine, which is also why the two cannot simply share one ink.
-        _action.ForeColor = live ? Color.White : Color.FromArgb(10, 28, 18);
+        // Worth writing down what that costs, because it was near-black on the green before and the
+        // reason was not decorative. Green reads brighter to the eye than red or blue at the same
+        // value, so white on this particular green measures about 2.35:1 against roughly 7.5:1 for
+        // the near-black — the lowest-contrast text in the window, on the button the window exists
+        // for. The fill is deepened below to claw some of that back.
+        _action.ForeColor = Color.White;
+
+        // A deeper green under white ink, and only under white ink.
+        //
+        // Theme.Good stays what it is: it is the colour of every "this is fine" state in the app and
+        // is read against a dark surface, where it is right. Here it is a background with text on
+        // it, which is a different job — and dropping it a fifth of the way toward black takes white
+        // from 2.35:1 to about 3.6:1 while still reading as the same green from across a room.
+        _action.Fill = live ? Theme.Bad : Theme.Mix(Theme.Good, Color.Black, 0.20f);
 
         // A play mark to start, a stop mark to end, in whichever ink the fill needs.
         //

@@ -144,26 +144,37 @@ public sealed class TrayApp : IDisposable
 
         _pads.Disconnected += device => OnUi(() =>
         {
-            // No setting gates this any more.
-            //
-            // It only ever chose between asking and ignoring, and ignoring is not a behaviour anyone
-            // wants: the pad going quiet during a session leaves a television showing a game nobody
-            // can drive, and the prompt is the thing that offers a way out of it. Since the prompt
-            // asks rather than acts, and settles on changing nothing when nobody answers, there is
-            // no case where switching it off is better than leaving it on.
             if (!_session.IsInTvMode) { Log.Info($"{device.Name} disconnected; already on the desktop."); return; }
             if (_busy) { Log.Info($"{device.Name} disconnected while busy switching; ignored."); return; }
 
-            // Asked rather than done. A pad going quiet is the most ambiguous signal there is — a flat
-            // battery, a knocked cable, a wireless adapter dropping the link for a moment — and none of
-            // those are the same as deciding to stop playing. Ending outright meant a dead battery
-            // closed the game.
+            // Switched off entirely, for the setup where a pad going quiet is routine rather than the
+            // end of playing.
+            if (!_session.Config.StopOnControllerDisconnect)
+            {
+                Log.Info($"{device.Name} disconnected; ending on disconnect is switched off.");
+                return;
+            }
+
+            // Asked rather than done, unless the user has said otherwise.
             //
-            // So this goes through the ordinary session-end route, which puts the prompt up. The
-            // controller is gone, so the prompt is answered with mouse or keyboard — and if nobody is
-            // there to answer, it settles on leaving everything exactly as it was.
-            Log.Info($"{device.Name} disconnected; asking what to do with the session.");
-            EndSession(bigPictureStillUp: true);
+            // A pad going quiet is the most ambiguous signal there is — a flat battery, a knocked
+            // cable, a wireless adapter dropping the link for a moment — and none of those is the
+            // same as deciding to stop playing. So the default goes through the ordinary session-end
+            // route, which puts the prompt up. The controller is gone, so the prompt is answered with
+            // mouse or keyboard, and if nobody is there to answer it settles on leaving everything
+            // exactly as it was.
+            if (_session.Config.AskOnControllerDisconnect)
+            {
+                Log.Info($"{device.Name} disconnected; asking what to do with the session.");
+                EndSession(bigPictureStillUp: true);
+                return;
+            }
+
+            // Straight back to the desktop, no question asked. Deliberately not routed through
+            // EndSession: that puts a prompt up whenever a game is running, which is precisely the
+            // prompt this setting exists to skip.
+            Log.Info($"{device.Name} disconnected; ending the session without asking.");
+            RunBackground("Returning to the desktop", () => _session.ReturnToDesktop());
         });
 
         // Handles held for reading buttons go stale the moment a pad is unplugged, and a new
@@ -1167,11 +1178,13 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private static bool NeedsPadWatching(AppConfig config)
     {
-        // Always, now that the disconnect prompt is not something that can be switched off: a pad
-        // going quiet mid-session has to be noticed whatever else is configured. Still takes the
-        // config, and still exists as a question, because it is a real one and the answer may narrow
-        // again — the previous list was StartOnControllerConnect, the two controller shortcuts, and
-        // pad-as-mouse, every one of which is now covered by this.
+        // Always, and deliberately not narrowed now that ending on a disconnect is a setting again.
+        //
+        // The obvious move would be to stop watching when that setting is off, and it would be a bug:
+        // the watcher's raw input registration is also how button reports arrive, so switching off
+        // one trigger would silently kill the controller shortcuts and pad-as-mouse with it. That is
+        // exactly the failure this method's summary was written about. Still takes the config, and
+        // still exists as a question, because it is a real one and the answer may narrow again.
         _ = config;
         return true;
     }

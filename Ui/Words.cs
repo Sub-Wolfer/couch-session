@@ -89,6 +89,7 @@ internal static class Words
 
     // ── Section headings ──────────────────────────────────────────────────────────
 
+    public const string SectionGlance = "Settings at a glance";
     public const string SectionDisplay = "Display";
     public const string SectionAudio = "Audio";
     public const string SectionBigPicture = "Big Picture";
@@ -395,10 +396,6 @@ internal static class Words
     public const string HdrDisplaysUnknown =
         "No display could be identified just now, so HDR support is unknown.";
 
-    public const string AutoTickNewGames = "Switch HDR for new games automatically";
-    public const string AutoTickNewGamesWhy =
-        "Ticks newly found games for HDR automatically. Anything you untick by hand stays off.";
-
     public const string HdrHotkeyRemember = "Remember games when HDR is turned on — however you turn it on";
     public const string HdrHotkeyRememberWhy =
         "Turning HDR on during a game — or before it launches — adds it to (or drops it from) the "
@@ -535,6 +532,21 @@ internal static class Words
             + "the Game Bar off for the whole time Couch Session is running — not just during a session "
             + "— and **puts it back when you close the app**. Background clip recording goes off with "
             + "it. PlayStation pads don't trigger it.";
+
+    public const string StopOnController = "End the session when your controller disconnects";
+    public const string StopOnControllerWhy =
+        "Putting the pad down and switching it off is usually the end of playing, so this treats it "
+            + "as the cue to come back to the desktop. Off, a pad going quiet is ignored completely "
+            + "and the session runs until you end it yourself — worth it if your controller sleeps on "
+            + "its own or your wireless adapter drops the link now and then.";
+
+    public const string AskOnDisconnect = "Ask first, rather than ending it";
+    public const string AskOnDisconnectWhy =
+        "**Recommended.** A controller going quiet is the most ambiguous thing that can happen: a "
+            + "flat battery, a knocked cable and putting the pad down all look identical to the app. "
+            + "Asking puts the same prompt up that ending a session by hand does, answerable with "
+            + "mouse or keyboard, and it settles on changing nothing when nobody answers. Off, the "
+            + "session ends the moment the pad goes — including on a battery dying mid-game.";
 
     public const string StartOnController = "Start a session when a controller connects";
     public const string StartOnControllerWhy =
@@ -996,8 +1008,9 @@ internal static class Words
     /// and it does not — the prompt asks, and does nothing at all if nobody answers.
     /// </summary>
     public const string ControllerDisconnectNote =
-        "**A disconnect never ends your session on its own.** You are asked what to do, and if nobody "
-            + "answers, nothing changes — so a flat battery mid-game costs you nothing.";
+        "With the ask left on, **a disconnect never ends your session on its own** — you are asked "
+            + "what to do, and if nobody answers, nothing changes, so a flat battery mid-game costs "
+            + "you nothing.";
 
     public const string PadOnBattery = "on battery";
     public const string PadCharging = "charging";
