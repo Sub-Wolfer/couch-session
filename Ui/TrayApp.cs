@@ -384,6 +384,19 @@ public sealed class TrayApp : IDisposable
         // Held for as long as the app runs, not just a session — see GameBarControl.
         GameBarControl.Apply(config);
 
+        // Look for a new version shortly after launch, and once a day after that.
+        //
+        // [BUG] AppConfig.CheckForUpdates has existed and defaulted to true since the setting was
+        // added, and nothing ever read it. The only caller of Updates.CheckAsync was a button on the
+        // About page — the one page nobody opens — so in practice an update existed and no one heard
+        // about it. This is the switch finally doing what its name says.
+        //
+        // Delayed rather than immediate: launch is the busiest moment this app has, and a version
+        // number is the least urgent thing it could be doing. The daily repeat matters because this
+        // lives in the tray for weeks at a time; checking only at launch would mean a machine that is
+        // never rebooted never hears about anything.
+        StartUpdateWatch(config);
+
         // Both shortcuts toggle: press once to go to the TV, press again to come back. A
         // shortcut that only started a session would be half a feature, since the moment you
         // most want a keyboard is when you are trying to get *out* of one.
@@ -1417,6 +1430,66 @@ public sealed class TrayApp : IDisposable
         }
     }
 
+    /// <summary>The newest release found, when it is newer than what is running. Null otherwise.</summary>
+    private UpdateInfo? _pendingUpdate;
+
+    private System.Windows.Forms.Timer? _updateWatch;
+
+    private void StartUpdateWatch(AppConfig config)
+    {
+        if (!config.CheckForUpdates)
+        {
+            Log.Info("Update checking is switched off.");
+            return;
+        }
+
+        // Fifteen seconds in, then daily. Long enough that the check is never competing with the
+        // display switch of a start-on-launch session.
+        var first = new System.Windows.Forms.Timer { Interval = 15_000 };
+
+        first.Tick += (_, _) =>
+        {
+            first.Stop();
+            first.Dispose();
+            LookForUpdate();
+
+            _updateWatch = new System.Windows.Forms.Timer { Interval = 24 * 60 * 60 * 1000 };
+            _updateWatch.Tick += (_, _) => LookForUpdate();
+            _updateWatch.Start();
+        };
+
+        first.Start();
+    }
+
+    /// <summary>
+    /// Ask GitHub, quietly.
+    ///
+    /// Nothing is installed and nothing is shown as a result of this — it only records what was found
+    /// so the Home page can offer it. Replacing the executable restarts the app, and doing that on a
+    /// timer, unasked, while someone is mid-game is not an update, it is a crash with a changelog.
+    /// </summary>
+    private async void LookForUpdate()
+    {
+        try
+        {
+            var found = await Updates.CheckAsync();
+
+            if (found.Error.Length > 0) { Log.Info($"Update check: {found.Error}"); return; }
+            if (!found.Available) return;
+
+            _pendingUpdate = found;
+
+            // A window already open needs telling; one opened later is handed it on construction.
+            if (_settings is { IsDisposed: false } open) OnUi(() => open.PendingUpdate = found);
+
+            Notify(string.Format(Words.NoticeUpdateFound, found.Version), ToolTipIcon.Info);
+        }
+        catch (Exception ex)
+        {
+            Log.Info($"Update check failed: {ex.Message}");
+        }
+    }
+
     private void ShowSettings()
     {
         using var form = new SettingsForm(_session.Config, _pads)
@@ -1427,6 +1500,10 @@ public sealed class TrayApp : IDisposable
             // can start or end from the pad while it is sitting there, and a footer button still
             // offering to start one that is already running is worse than no button at all.
             SessionState = () => _session.IsInTvMode,
+
+            // Whatever the launch check found, so the window shows it the moment it opens rather
+            // than only after someone presses the button on the About page.
+            PendingUpdate = _pendingUpdate,
         };
 
         // Recorded before it is shown, since ShowDialog does not return until it closes and
