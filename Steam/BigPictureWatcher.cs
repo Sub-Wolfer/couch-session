@@ -73,7 +73,8 @@ public sealed class BigPictureWatcher : IDisposable
 
         if (_current != IntPtr.Zero)
             Log.Info("Big Picture was already open when the app started; adopting it rather than "
-                   + "treating it as newly opened. Close and reopen it to start a session.");
+                   + "treating it as newly opened. Starting a session by hand takes it over — see "
+                   + "TrayApp.LaunchBigPicture.");
 
         _timer.Start();
     }

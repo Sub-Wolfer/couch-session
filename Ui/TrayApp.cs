@@ -605,7 +605,39 @@ public sealed class TrayApp : IDisposable
     {
         if (_busy || !Configured()) return;
 
-        // Just open Big Picture; the watcher's Opened event starts the session from there.
+        bool alreadyUp = BigPictureLauncher.FindWindow() != IntPtr.Zero;
+
+        // Big Picture already open, and nothing about to announce it.
+        //
+        // [BUG] This only ever asked Steam to open Big Picture and left the watcher's Opened event to
+        // start the session from there. That is exactly right when Big Picture is closed, and does
+        // nothing at all when it is not: the watcher *adopts* a Big Picture that was already up when
+        // the app started rather than treating it as newly opened — deliberately, so restarting the
+        // app during a session does not drag anyone back to the television — so there is no Opened
+        // event coming, and asking Steam to open a window it already has open produces no second one
+        // either. Pressing Start Couch Session did nothing whatsoever, silently.
+        //
+        // The session is started here instead. ToggleMode already knows how to take over a Big
+        // Picture that is running: it enters TV mode and places the existing window, because the same
+        // situation arises when a session is begun by a controller switching on.
+        if (alreadyUp && !_session.IsInTvMode)
+        {
+            Log.Info("Big Picture was already open, so starting the session directly rather than "
+                   + "waiting for an open that will never be announced.");
+
+            ToggleMode();
+            return;
+        }
+
+        // In a session already, with the shell somewhere behind a game. The tray menu item that lands
+        // here means "show me Big Picture", and there is nothing to launch.
+        if (alreadyUp)
+        {
+            BigPictureLauncher.BringToFront();
+            return;
+        }
+
+        // Nothing open: ask Steam, and let the watcher's Opened event start the session from there.
         RunBackground("Opening Big Picture", () => _session.LaunchBigPicture());
     }
 
