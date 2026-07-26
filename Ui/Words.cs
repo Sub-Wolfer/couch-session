@@ -185,6 +185,30 @@ internal static class Words
     // a while; they went when that path did, because closing Big Picture with no game up costs nothing
     // that is not one press away from being undone.
 
+    // ── A new version ─────────────────────────────────────────────────────────────
+    //
+    // {0} is the version number that was found.
+
+    public const string NoticeUpdateFound = "Version {0} is available.";
+
+    public const string CheckForUpdates = "Look for new versions";
+    public const string CheckForUpdatesWhy =
+        "Asks GitHub shortly after the app starts, and once a day after that. Nothing is ever "
+            + "installed on its own — a new version appears on the Home page with a button, and only "
+            + "that button installs it.";
+
+    public const string UpdateCardTitle = "Version {0} is ready";
+    public const string UpdateCardBody =
+        "You are on {0}. This downloads the new version, swaps it in and restarts — a few seconds, "
+            + "and your settings are untouched.";
+
+    public const string UpdateCardButton = "Update now";
+    public const string UpdateCardBusy = "Updating…";
+
+    /// <summary>Shown instead of the button while a session is running.</summary>
+    public const string UpdateCardDuringSession =
+        "Updating restarts the app, so it waits until your session has ended.";
+
     public const string ConfirmClosingGame = "Double-check before closing a running game";
     public const string ConfirmClosingGameWhy =
         "Puts one more question in the way of anything that would close the game you are playing, "

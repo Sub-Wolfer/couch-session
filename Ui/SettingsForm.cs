@@ -79,6 +79,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _guideEndsSession = new();
     private readonly ToggleSwitch _restartSteam = new();
     private readonly ToggleSwitch _confirmClosingGame = new();
+    private readonly ToggleSwitch _checkForUpdates = new();
     private readonly ToggleSwitch _disableUac = new();
     private bool _settingUac;
     private readonly ToggleSwitch _disableFirewall = new();
@@ -1555,8 +1556,11 @@ public sealed class SettingsForm : Form
                 : new("Session running", "Big Picture, no game yet", AlertKind.Good, -1));
         }
 
-        if (_update is { } update)
-            list.Add(new($"Version {update} is available", "see About to install it", AlertKind.Notice, AboutPage));
+        // No alert row for an available update any more.
+        //
+        // It said "see About to install it", which is three clicks and a page nobody opens. The offer
+        // is now a card at the top of this page with the button on it, so hearing about an update and
+        // taking it are the same gesture.
 
         // ── anything the log grumbled about ──
         // Counted the same way the list is built, so the number and the rows agree.
@@ -1595,6 +1599,29 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>The newer version found by the update check, or null. Set by the About page's check.</summary>
+    /// <summary>
+    /// A newer release the tray's launch check already found, if there is one.
+    ///
+    /// Set by TrayApp — either when the window is constructed, or later if the check lands while it is
+    /// open. Setting it rebuilds the Home page so the offer appears without anyone doing anything.
+    /// </summary>
+    public UpdateInfo? PendingUpdate
+    {
+        get => _pendingUpdate;
+        set
+        {
+            if (value is null || _pendingUpdate?.Version == value.Version) return;
+
+            _pendingUpdate = value;
+            _update = value.Version;
+
+            // Only if Home is the page on screen; anywhere else it is built fresh on arrival anyway.
+            if (_currentPage == HomePage) BeginInvoke(() => RebuildPage(HomePage));
+        }
+    }
+
+    private UpdateInfo? _pendingUpdate;
+
     private string? _update;
 
     /// <summary>Connected pads by name, or null when there are none.</summary>
@@ -2820,6 +2847,65 @@ public sealed class SettingsForm : Form
         return page;
     }
 
+    /// <summary>
+    /// The offer to install a newer version, on the Home page where it will actually be seen.
+    ///
+    /// Deliberately not silent. Installing replaces the executable and restarts the app, so it happens
+    /// when someone presses the button and at no other time — an update that restarted the app by
+    /// itself, mid-game, would be indistinguishable from a crash.
+    ///
+    /// And not during a session either. The restart would take the television with it.
+    /// </summary>
+    private void AddUpdateCard(Panel page, UpdateInfo ready)
+    {
+        var card = NewCard(page);
+
+        var title = NewLabel(string.Format(Words.UpdateCardTitle, ready.Version),
+                             Theme.BodySemi, Theme.Good);
+        title.Margin = new Padding(0, 0, 0, 2);
+        AddRow(card, title, 0, elbow: false);
+
+        var body = NewLabel(string.Format(Words.UpdateCardBody, AppInfo.Version),
+                            Theme.Small, Theme.TextDim, RowWidth - 8);
+        body.Margin = new Padding(0, 0, 0, 10);
+        AddRow(card, body, 0, elbow: false);
+
+        if (SessionNow)
+        {
+            var waiting = NewLabel(Words.UpdateCardDuringSession, Theme.Small, Theme.TextFaint,
+                                   RowWidth - 8);
+            AddRow(card, waiting, 0, elbow: false);
+            return;
+        }
+
+        var button = new FlatButton
+        {
+            Text = Words.UpdateCardButton,
+            Size = new Size(150, 34),
+            Fill = Theme.Accent,
+            ForeColor = Color.White,
+        };
+
+        button.Click += (_, _) =>
+        {
+            button.Enabled = false;
+            button.Text = Words.UpdateCardBusy;
+            OfferUpdate(ready);
+        };
+
+        var line = new Panel
+        {
+            Width = RowWidth,
+            Height = 40,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0),
+        };
+
+        button.Location = new Point(0, 2);
+        line.Controls.Add(button);
+        AddRow(card, line, 0, elbow: false);
+    }
+
     private Panel BuildHomePage()
     {
         var page = NewPage(Words.PageHome, Words.PageHomeWhy);
@@ -2831,6 +2917,12 @@ public sealed class SettingsForm : Form
         // now lives in the title bar where it is visible from every page rather than just this one.
         // Starting and ending a session is the footer button and the PS button on the pad — both of
         // which are always to hand — so a third control for it was one too many.
+
+        // ---- a new version, if there is one ----
+        //
+        // Above even the alerts. Everything else on this page describes the app you are running; this
+        // is the only thing offering to change it, and it is gone the moment there is nothing to say.
+        if (_pendingUpdate is { } ready) AddUpdateCard(page, ready);
 
         // ---- what is happening right now ----
         //
@@ -2958,6 +3050,11 @@ public sealed class SettingsForm : Form
         AddToggle(start, Words.StartOnWakeControllerOnly, _startOnWakeControllerOnly, Words.StartOnWakeControllerOnlyWhy, Indent, setting: nameof(AppConfig.StartOnWakeControllerOnly));
 
         AddToggle(start, Words.MinimizeOnClose, _minimizeOnClose, Words.MinimizeOnCloseWhy, setting: nameof(AppConfig.MinimizeToTrayOnClose));
+
+        // The switch that finally does something. AppConfig.CheckForUpdates has defaulted to true since
+        // it was added and nothing read it, so there was a setting on record that governed nothing.
+        AddToggle(start, Words.CheckForUpdates, _checkForUpdates, Words.CheckForUpdatesWhy,
+                  setting: nameof(AppConfig.CheckForUpdates));
 
         // The one thing the Steam page was still carrying.
         //
@@ -4620,9 +4717,9 @@ public sealed class SettingsForm : Form
             status.ForeColor = Theme.Info;
             status.Text = string.Format(Words.UpdateFound, found.Version);
 
-            // Remembered so the home page can mention it. The check lives on the About page, which is
-            // the one page nobody opens — an update nobody hears about may as well not exist.
-            _update = found.Version;
+            // Through the same property the launch check uses, so pressing the button here also puts
+            // the offer on the Home page. The two routes should not disagree about what is available.
+            PendingUpdate = found;
 
             OfferUpdate(found);
         };
@@ -5481,7 +5578,7 @@ public sealed class SettingsForm : Form
             nameof(AppConfig.StartWithWindows), nameof(AppConfig.StartSessionOnLaunch),
             nameof(AppConfig.StartSessionOnWake), nameof(AppConfig.StartOnWakeControllerOnly),
             nameof(AppConfig.MinimizeToTrayOnClose), nameof(AppConfig.SteamAfterBigPicture),
-            nameof(AppConfig.ConfirmClosingGame),
+            nameof(AppConfig.ConfirmClosingGame), nameof(AppConfig.CheckForUpdates),
             nameof(AppConfig.ShowNotifications), nameof(AppConfig.ShowSessionNotifications),
             nameof(AppConfig.ShowHdrNotifications), nameof(AppConfig.ShowMinimizeNotification),
             nameof(AppConfig.ShowProblemNotifications), nameof(AppConfig.ShowActionNotifications),
@@ -5673,6 +5770,7 @@ public sealed class SettingsForm : Form
             _guideEndsSession.Checked = Config.EndSessionOnGuideButton;
             _restartSteam.Checked = Config.RestartSteamForAudio;
             _confirmClosingGame.Checked = Config.ConfirmClosingGame;
+            _checkForUpdates.Checked = Config.CheckForUpdates;
             _hdrMode.SelectedIndex = (int)Config.HdrSwitching;
             _hdrHotkeyRemember?.SetQuietly(Config.HdrHotkeyRemembersGame);
             _autoTickNewGames?.SetQuietly(Config.AutoTickNewGames);
@@ -5806,6 +5904,7 @@ public sealed class SettingsForm : Form
         // Forced off while the setting is withdrawn — see the note where its toggle used to be.
         Config.RestartSteamForAudio = false;
         Config.ConfirmClosingGame = _confirmClosingGame.Checked;
+        Config.CheckForUpdates = _checkForUpdates.Checked;
         Config.MinimizeToTrayOnClose = _minimizeOnClose.Checked;
         Config.StartSessionOnLaunch = _startOnLaunch.Checked;
         Config.StartSessionOnWake = _startOnWake.Checked;
