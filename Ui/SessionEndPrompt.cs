@@ -94,9 +94,6 @@ internal sealed class SessionEndPrompt : Form
     /// <summary>A B / Circle press seen while live, waiting for its release to back out.</summary>
     private bool _bArmed;
 
-    /// <summary>Latched while the secret combination is held, so it fires once per hold.</summary>
-    private bool _eggFired;
-
     // 25ms, not 70. A quick tap of the D-pad can be over inside 70ms, and a poll that slow simply never
     // saw it happen — the press went down and back up between two looks. Fast scrolling was made of
     // exactly those taps, which is why some of them did nothing.
@@ -862,24 +859,6 @@ internal sealed class SessionEndPrompt : Form
 
         if ((live && up && !_pUp) || stickUp || repeatUp) MoveSelection(-1);
         if ((live && down && !_pDown) || stickDown || repeatDown) MoveSelection(+1);
-        // ---- the easter egg ----
-        //
-        // L1 + R1 + Triangle/Y, held together. Three buttons, none of which do anything on this window
-        // on their own, so it cannot be reached by accident while answering the prompt — and it is not
-        // written down anywhere in the UI, which is the point of the thing.
-        if (live
-            && PadShortcut.IsControlHeld(PadControl.L1)
-            && PadShortcut.IsControlHeld(PadControl.R1)
-            && PadShortcut.IsControlHeld(PadControl.FaceUp))
-        {
-            if (!_eggFired)
-            {
-                _eggFired = true;
-                EasterEgg.Play(_target);
-            }
-        }
-        else _eggFired = false;
-
         if (live && a && !_pA) Decide(_options[_selected].Choice);
 
         // Acted on the press, like A and unlike B. B waits for the release because its press has to
@@ -952,10 +931,6 @@ internal sealed class SessionEndPrompt : Form
     /// </summary>
     private void HoldForeground()
     {
-        // Never fight the easter egg. This method exists to keep the prompt in front of everything, and
-        // that includes the thing the prompt itself summoned — it would cover it within a poll or two.
-        if (EasterEgg.IsPlaying) return;
-
         // Fast while something is still fighting for the foreground, then four times a second.
         //
         // Steam opens its overlay from the same button press that opens this, and it does not always
@@ -1139,7 +1114,6 @@ internal sealed class SessionEndPrompt : Form
 
         // The egg cannot outlive the window that summoned it. It has its own timer and its own backstop,
         // but this is the one that matters: whatever else goes wrong, closing the prompt closes it.
-        EasterEgg.Stop();
         base.OnFormClosed(e);
     }
 

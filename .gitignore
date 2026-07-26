@@ -23,11 +23,6 @@ _to_delete/
 ps-button.png
 xbox-button.png
 
-# The easter egg is whatever you put there, so it is not assumed to be redistributable — and the gif
-# alone is 52 MB, past the size GitHub warns about and most of the way to the size it refuses.
-easteregg.gif
-easteregg.wav
-
 # Visual Studio / Rider / VS Code
 .vs/
 .idea/
