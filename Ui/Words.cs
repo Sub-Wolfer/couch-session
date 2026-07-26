@@ -580,19 +580,20 @@ internal static class Words
     public static readonly string[] DisconnectOptions =
         ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
 
-    public const string DisconnectPick = "If your controller disconnects mid-session";
+    public const string DisconnectPick = "What should happen";
     // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
     // adds, and when to pick neither. It was one dense block that answered all three at once and had
     // to be read twice — on a setting somebody meets on their first run.
+    // Three short lines, one per option, in the order they appear in the list. The reader is
+    // choosing between three things, so the description is three things — not three paragraphs of
+    // prose they have to take apart to work out which sentence belongs to which option.
     public const string DisconnectPickWhy =
-        "**Nothing here ever closes anything.** Your display and sound come back to the desk with the "
-            + "game still running behind them, so **switching the controller on again drops you "
-            + "straight back into it**.\n\n"
-            + "**Come back and ask** also puts a prompt on your desk screen: go back, close the game, "
-            + "or leave it. It only appears when a game is running, and it has a **stop asking me "
-            + "this** tick that switches you to the middle option.\n\n"
-            + "**Ignore it** if your controller sleeps by itself and you would rather nothing "
-            + "happened.";
+        "**Ignore it** — nothing happens. A controller going flat or dropping out mid-game leaves "
+            + "your session exactly as it was.\n\n"
+            + "**Come back to the desktop** — your display and sound return to the desk. The game "
+            + "keeps running, and switching the controller on again takes you straight back in.\n\n"
+            + "**Come back and ask** — the same, plus a prompt at your desk offering to go back, "
+            + "close the game, or leave it. Only shown when a game is running.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
@@ -1089,9 +1090,7 @@ internal static class Words
     // third in a paragraph nobody was going to finish.
     public const string ControllerTriggerNote =
         "**Paused while you are on this page or the Hotkeys page**, so switching a controller on to "
-            + "set it up will not also start a session.\n\n"
-            + "Only Windows seeing a controller arrive or leave counts. Putting one down changes "
-            + "nothing, however long it sits there.";
+            + "set it up will not also start a session.";
 
     // Live state at the top of the card. Nielsen's first heuristic, and the one thing this page could
     // not answer: whether the app can see your controller right now.

@@ -444,7 +444,16 @@ public sealed class AppConfig
     /// drops straight back in. The way out cannot be a prompt on the television, because the only
     /// thing that could have answered one is the controller that just vanished.
     /// </summary>
-    public DisconnectAction OnDisconnect { get; set; } = DisconnectAction.ComeBackAndAsk;
+    /// Defaults to Ignore.
+    ///
+    /// It defaulted to coming back and asking, on the reasoning that a controller going flat leaves a
+    /// television showing a game nobody can drive. That is a real problem and it is not the common
+    /// case: the ordinary reason a controller stops reporting is somebody switching it off because
+    /// they have finished, and Windows cannot tell those two apart — the device simply goes away
+    /// either way. Acting on the ambiguous signal by default means the app interrupts the many to
+    /// rescue the few, which is the wrong way round for something nobody asked for. Anyone who wants
+    /// the rescue can switch it on and gets the prompt with it.
+    public DisconnectAction OnDisconnect { get; set; } = DisconnectAction.Ignore;
 
     /// <summary>
     /// Switch the Xbox Game Bar off while this app is running.

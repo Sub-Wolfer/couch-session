@@ -2594,7 +2594,7 @@ public sealed class SettingsForm : Form
 
         SetOptions(_onDisconnect, Words.DisconnectOptions);
         AddPick(losing, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
-                Words.DisconnectOptions[(int)DisconnectAction.ComeBackAndAsk]);
+                Words.DisconnectOptions[(int)DisconnectAction.Ignore]);
 
         // ── the mouse ──
         //
@@ -6402,7 +6402,7 @@ public sealed class SettingsForm : Form
     private static DisconnectAction DisconnectOf(Dropdown pick) =>
         pick.SelectedIndex is var i and >= 0 && i <= (int)DisconnectAction.ComeBackAndAsk
             ? (DisconnectAction)i
-            : DisconnectAction.ComeBackAndAsk;
+            : DisconnectAction.Ignore;
 
     private static HdrMode HdrModeOf(Dropdown pick) =>
         pick.SelectedIndex is var i and >= 0 && i <= (int)HdrMode.WholeSession ? (HdrMode)i : HdrMode.Off;
