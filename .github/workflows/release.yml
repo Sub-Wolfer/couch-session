@@ -1,12 +1,16 @@
 # Builds and publishes a release when a version tag is pushed.
 #
-# Tagging is the only action needed:
-#
-#     git tag v1.1.0 && git push origin v1.1.0
+#     git tag v0.9.1
+#     git push origin v0.9.1
 #
 # The version in the tag is written into the assembly, so the number the app reports and the
 # number people downloaded always agree — which matters here because the update check compares
 # exactly those two.
+#
+# The project file and the executable are named differently and both names matter. The project is
+# still CouchPotato.csproj from an earlier name; the assembly it produces is CouchSession.exe, set
+# by <AssemblyName> in that file. This referenced CouchModeGaming for both, which is two renames
+# out of date and would have failed on the first tag push.
 
 name: Release
 
@@ -14,11 +18,10 @@ on:
   push:
     tags: ['v*']
 
-  # Runnable by hand as well, for testing the workflow without publishing a tag.
   workflow_dispatch:
 
 permissions:
-  contents: write        # needed to create the release
+  contents: write
 
 jobs:
   build:
@@ -35,7 +38,6 @@ jobs:
         id: version
         shell: bash
         run: |
-          # Tag pushes carry the number; a manual run gets a placeholder so it still builds.
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "number=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
           else
@@ -44,7 +46,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish CouchModeGaming.csproj
+          dotnet publish CouchPotato.csproj
           -c Release
           -p:Version=${{ steps.version.outputs.number }}
           -o publish
@@ -52,12 +54,12 @@ jobs:
       - name: Upload the build
         uses: actions/upload-artifact@v4
         with:
-          name: CouchModeGaming
-          path: publish/CouchModeGaming.exe
+          name: CouchSession
+          path: publish/CouchSession.exe
 
       - name: Create the release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: publish/CouchModeGaming.exe
-          generate_release_notes: true      # from the commits since the last tag
+          files: publish/CouchSession.exe
+          generate_release_notes: true
