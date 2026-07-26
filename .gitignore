@@ -23,6 +23,12 @@ _to_delete/
 ps-button.png
 xbox-button.png
 
+# The landing page, kept out of the code repository.
+#
+# It is a separate deliverable with its own life — nobody cloning this to build the app needs it, and
+# it would otherwise turn every wording tweak on the site into a commit against the application.
+website/
+
 # Visual Studio / Rider / VS Code
 .vs/
 .idea/

@@ -9,8 +9,7 @@
 #
 # The project file and the executable are named differently and both names matter. The project is
 # still CouchSession.csproj from an earlier name; the assembly it produces is CouchSession.exe, set
-# by <AssemblyName> in that file. This referenced CouchModeGaming for both, which is two renames
-# out of date and would have failed on the first tag push.
+# by <AssemblyName> in that file. Both names matter and they are not the same name.
 
 name: Release
 

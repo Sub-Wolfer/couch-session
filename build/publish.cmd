@@ -6,8 +6,6 @@ cd /d "%~dp0\.."
 
 echo Closing Couch Session if it's running...
 taskkill /IM CouchSession.exe /F >nul 2>&1
-taskkill /IM CouchLauncher.exe /F >nul 2>&1
-taskkill /IM CouchPotato.exe /F >nul 2>&1
 
 REM Give the tray a second to release the exe file lock before we overwrite it.
 timeout /t 1 /nobreak >nul

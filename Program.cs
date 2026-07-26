@@ -139,9 +139,18 @@ internal static class Program
         {
             try
             {
-                // Beside the exe, which is the project root during development — where the csproj
-                // expects to find it.
-                string path = Path.Combine(AppContext.BaseDirectory, "CouchSession.ico");
+                // Environment.ProcessPath, not AppContext.BaseDirectory.
+                //
+                // [BUG] BaseDirectory looks like the obvious answer and is wrong for this app. The
+                // csproj sets IncludeNativeLibrariesForSelfExtract, so a single-file build unpacks
+                // itself into a temporary folder at startup and BaseDirectory points *there* — which
+                // meant every run of this wrote a perfectly good icon into a temp directory Windows
+                // then cleaned up. It reported success each time, and the icon beside the exe never
+                // changed, which is exactly what it looked like from the outside: nothing happening.
+                //
+                // ProcessPath is the actual executable, extraction or no extraction.
+                string beside = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+                string path = Path.Combine(beside, "CouchSession.ico");
 
                 Ui.IconFile.WriteMonogram(path);
 
