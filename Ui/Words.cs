@@ -193,9 +193,23 @@ internal static class Words
 
     public const string CheckForUpdates = "Look for new versions";
     public const string CheckForUpdatesWhy =
-        "Asks GitHub shortly after the app starts, and once a day after that. Nothing is ever "
-            + "installed on its own — a new version appears on the Home page with a button, and only "
-            + "that button installs it.";
+        "Asks GitHub shortly after the app starts, whenever you open this window, and once a day "
+            + "otherwise. Nothing is ever installed on its own — a new version appears on the Home "
+            + "page with a button, and only that button installs it.";
+
+    /// <summary>{0} is the version you are on, {1} the one on offer.</summary>
+    public const string UpdateFromTo = "You have {0}  ·  new version {1}";
+
+    public const string UpdateWhatChanged = "WHAT CHANGED";
+    public const string UpdateLater = "Not now";
+
+    public const string UpdateNoNotes =
+        "This release came without notes.";
+
+    public const string UpdateMoreChanges = "•  …and more";
+
+    public const string UpdateEndsSession =
+        "**A session is running.** Updating restarts the app, which will end it.";
 
     public const string UpdateCardTitle = "Version {0} is ready";
     public const string UpdateCardBody =
@@ -1016,11 +1030,7 @@ internal static class Words
     public const string UpToDate = "Version {0} is the newest.";
     public const string UpdateFound = "Version {0} is available.";
 
-    public const string UpdateAskTitle = "Update available";
 
-    public const string UpdateAsk =
-        "Version {0} is available. You are running {1}.\n\nCouch Session will replace "
-        + "itself and restart. Any session in progress will end.";
 
     public const string UpdateFailed =
         "The update could not be installed. Nothing has been changed.\n\nYou can download it "

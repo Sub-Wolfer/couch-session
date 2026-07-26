@@ -7,7 +7,7 @@ namespace CouchMode.Ui;
 ///
 /// Exists because the mark lives in two places that had drifted apart. <see cref="AppIcon.Monogram"/>
 /// draws it at run time — it is what the settings window, the tray and the session prompt show — while
-/// the file icon Explorer and the taskbar use comes from CouchPotato.ico, a static file compiled in as
+/// the file icon Explorer and the taskbar use comes from CouchSession.ico, a static file compiled in as
 /// the ApplicationIcon. Redraw the monogram and only half the app changes; the .ico keeps whatever it
 /// was and the executable goes on wearing the old design.
 ///

@@ -141,7 +141,7 @@ internal static class Program
             {
                 // Beside the exe, which is the project root during development — where the csproj
                 // expects to find it.
-                string path = Path.Combine(AppContext.BaseDirectory, "CouchPotato.ico");
+                string path = Path.Combine(AppContext.BaseDirectory, "CouchSession.ico");
 
                 Ui.IconFile.WriteMonogram(path);
 
