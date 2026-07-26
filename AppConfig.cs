@@ -776,6 +776,17 @@ public enum DisconnectAction
 
     /// <summary>The same, then a prompt at the desk — but only ever when a game is running.</summary>
     ComeBackAndAsk,
+
+    /// <summary>
+    /// Close the game and end the session outright.
+    ///
+    /// Last in the list because it is the only irreversible answer here, and offered for a deliberate
+    /// power-off only — see Words.DisconnectOptionsLost. Somebody who switches their controller off
+    /// has said they are finished and can mean it; a controller that went flat has said nothing, and
+    /// closing a game on that signal is the exact disaster the two questions were split apart to
+    /// avoid.
+    /// </summary>
+    EndAndClose,
 }
 
 

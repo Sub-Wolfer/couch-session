@@ -578,7 +578,21 @@ internal static class Words
     // first was on — and where one of the three states was reachable two ways, since the prompt's own
     // "leave it for now" answer did the same thing as turning the second switch off. Same shape as
     // HdrModeOptions, for the same reason.
+    // Two lists, and the difference between them is the point.
+    //
+    // Closing the game is offered for a deliberate power-off and for nothing else. Somebody who held
+    // the guide button until their controller shut down has said they are finished and is allowed to
+    // mean it. A controller that went flat has said nothing at all, and putting "close the game" in
+    // front of that event would hand a dead battery the power to end somebody's evening.
     public static readonly string[] DisconnectOptions =
+        [
+        "Ignore it",
+        "Come back to the desktop",
+        "Come back and ask what to do",
+        "End the session and close the game",
+    ];
+
+    public static readonly string[] DisconnectOptionsLost =
         ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
 
     // Two questions, not one, because they are two events with two right answers.
@@ -593,27 +607,33 @@ internal static class Words
     // once before and had to be rescued from. Neither of these depends on the other; both are always
     // live, and each says which event it is about in its own title.
     public const string DisconnectOff = "When you switch it off";
-    // Judged from the button, not from how the controller is attached — see TrayApp.WasPoweredOff.
+    // One sentence each, and no cross-reference between them.
+    //
+    // These two grew to four sentences apiece, explaining how the app tells the events apart and
+    // pointing at each other to say which covered what. That is a description of the mechanism, and
+    // the reader does not have the mechanism's problem — they have two named events in front of
+    // them and want to know what each one does. Each row now says what it covers and stops. How it
+    // is worked out is in TrayApp.WasPoweredOff, where anyone who needs it will look.
     public const string DisconnectOffWhy =
-        "Holding the guide button to power a controller down is how most people say they have "
-            + "finished, so it is worth acting on.\n\n"
-            + "Recognised by that hold, so a controller that vanishes with no button held — a cable "
-            + "pulled out, a battery going flat — is treated as the question below instead.";
+        "Holding the guide button until the controller powers down. That is usually somebody saying "
+            + "they have finished playing.";
 
     public const string DisconnectLost = "If it disconnects on its own";
     public const string DisconnectLostWhy =
-        "A flat battery, a cable knocked out, or a wireless adapter dropping the link. **Left alone "
-            + "by default** — you may still be sitting there. Set this if you would rather not be "
-            + "stranded looking at a television nothing can drive.";
+        "A flat battery, a cable pulled out, or a wireless link dropping. **Left alone by default** "
+            + "— you may still be sitting there.";
     // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
     // adds, and when to pick neither. It was one dense block that answered all three at once and had
     // to be read twice — on a setting somebody meets on their first run.
     // What the three options mean, said once above both pickers rather than twice inside them.
     public const string DisconnectNote =
-        "**Nothing here ever closes your game.** Coming back moves your display and sound to the "
-            + "desk while the game keeps running, so switching the controller on again takes you "
-            + "straight back in. **Come back and ask** adds a prompt at your desk offering to go "
-            + "back, close the game, or leave it — shown only when a game is running.";
+        "**Come back to the desktop** moves your display and sound to the desk with the game still "
+            + "running, so switching the controller on again takes you straight back in. **Come back "
+            + "and ask** adds a prompt at your desk offering to go back, close the game, or leave "
+            + "it, shown only when a game is running.\n\n"
+            + "**End the session and close the game** is the one answer that cannot be undone, and "
+            + "it is only offered for switching your controller off — never for a battery going "
+            + "flat.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";

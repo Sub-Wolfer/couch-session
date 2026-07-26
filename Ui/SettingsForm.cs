@@ -1432,6 +1432,7 @@ public sealed class SettingsForm : Form
 
         static string Says(DisconnectAction action) => action switch
         {
+            DisconnectAction.EndAndClose => "closes the game",
             DisconnectAction.ComeBackAndAsk => "back to the desk, then asks",
             DisconnectAction.ComeBack => "back to the desk",
             _ => "nothing",
@@ -2608,7 +2609,8 @@ public sealed class SettingsForm : Form
         AddPick(losing, Words.DisconnectOff, _onControllerOff, Words.DisconnectOffWhy,
                 Words.DisconnectOptions[(int)DisconnectAction.ComeBack]);
 
-        SetOptions(_onControllerLost, Words.DisconnectOptions);
+        // The shorter list: no "close the game" for an event nobody chose. See DisconnectOptions.
+        SetOptions(_onControllerLost, Words.DisconnectOptionsLost);
         AddPick(losing, Words.DisconnectLost, _onControllerLost, Words.DisconnectLostWhy,
                 Words.DisconnectOptions[(int)DisconnectAction.Ignore]);
 
@@ -6112,7 +6114,12 @@ public sealed class SettingsForm : Form
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
             _onControllerOff.SelectedIndex = (int)Config.OnControllerOff;
-            _onControllerLost.SelectedIndex = (int)Config.OnControllerLost;
+
+            // Clamped, because this list is one shorter than the other and a config edited by hand —
+            // or carried over from a build where both lists matched — could name an answer that is
+            // deliberately not on offer here.
+            _onControllerLost.SelectedIndex = Math.Min((int)Config.OnControllerLost,
+                                                       (int)DisconnectAction.ComeBackAndAsk);
             _muteOnDesktop.Checked = Config.MuteGameOnDesktop;
 
 
@@ -6247,7 +6254,8 @@ public sealed class SettingsForm : Form
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
         Config.OnControllerOff = DisconnectOf(_onControllerOff, DisconnectAction.ComeBack);
-        Config.OnControllerLost = DisconnectOf(_onControllerLost, DisconnectAction.Ignore);
+        Config.OnControllerLost = DisconnectOf(_onControllerLost, DisconnectAction.Ignore,
+                                               most: DisconnectAction.ComeBackAndAsk);
         Config.MuteGameOnDesktop = _muteOnDesktop.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
@@ -6421,8 +6429,14 @@ public sealed class SettingsForm : Form
     /// What "nothing selected" means, which differs by question: switching a controller off defaults
     /// to coming back, losing one defaults to doing nothing.
     /// </param>
-    private static DisconnectAction DisconnectOf(Dropdown pick, DisconnectAction fallback) =>
-        pick.SelectedIndex is var i and >= 0 && i <= (int)DisconnectAction.ComeBackAndAsk
+    /// <param name="most">
+    /// The last answer this particular picker offers. The two disconnect questions do not offer the
+    /// same list — closing the game is on one and not the other — so the ceiling is per-picker
+    /// rather than per-enum.
+    /// </param>
+    private static DisconnectAction DisconnectOf(Dropdown pick, DisconnectAction fallback,
+                                                 DisconnectAction most = DisconnectAction.EndAndClose) =>
+        pick.SelectedIndex is var i and >= 0 && i <= (int)most
             ? (DisconnectAction)i
             : fallback;
 

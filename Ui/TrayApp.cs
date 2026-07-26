@@ -164,6 +164,28 @@ public sealed class TrayApp : IDisposable
                 return;
             }
 
+            // The one answer that closes something, and the only one that skips the mute, the swap
+            // and the prompt — all three exist to keep a game alive, and this is the case where the
+            // user has said not to.
+            //
+            // Not confirmed first, deliberately. Every other route to closing a game asks, because
+            // every other route is a button pressed by somebody sitting in front of the screen. This
+            // one is reached by switching a controller off and walking away, so a confirmation would
+            // be a window nobody is there to answer, sitting over the television until it times out.
+            // The confirmation for this answer is having chosen it in the settings.
+            if (wanted == DisconnectAction.EndAndClose)
+            {
+                Log.Info($"{device.Name} was switched off; closing the game and ending the session.");
+
+                _leftRunning = false;
+                _swappedOnDisconnect = false;
+
+                // ReturnToDesktop runs the teardown hook, which is what closes the game, and takes
+                // Big Picture with it. Nothing else to arrange.
+                RunBackground("Ending the session", () => _session.ReturnToDesktop());
+                return;
+            }
+
             // Come back to the desk. Nothing is closed, and nothing is asked on the television.
             //
             // [BUG] This used to put the session-end prompt up where it was: on the TV. That prompt
