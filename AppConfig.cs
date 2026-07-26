@@ -417,27 +417,21 @@ public sealed class AppConfig
     public bool StartOnControllerConnect { get; set; }
 
     /// <summary>
-    /// Come back to the desktop when the last controller disconnects. Nothing is closed.
+    /// What happens when the last controller disconnects mid-session.
     ///
-    /// On by default. A pad going quiet during a session leaves a television showing a game nobody
-    /// can drive, and something has to offer a way out of that — but the way out cannot be a prompt
-    /// on the TV, because the only thing that could have answered it is the controller that just
-    /// vanished. So the display and sound come back to the desk, where there is a mouse, while the
-    /// game and Big Picture keep running untouched behind it.
+    /// One three-way choice rather than two switches, and it was two switches for about an hour.
+    /// They were not independent — the second only meant anything while the first was on — and the
+    /// pair could not say the three states out loud: the reader had to work out what a combination
+    /// meant. Worse, one of the three was reachable two ways, since the prompt's own "leave it for
+    /// now" answer does exactly what turning the second switch off did. The same argument, and the
+    /// same fix, as <see cref="HdrSwitching"/> a few pages up.
     ///
-    /// Off is for the setup where a disconnect is routine: a pad that sleeps on its own, or a
-    /// wireless adapter that drops the link for a moment during a film.
+    /// Nothing here ever closes anything. Coming back means the display and sound return to the
+    /// desk while the game and Big Picture keep running behind it, so switching the pad on again
+    /// drops straight back in. The way out cannot be a prompt on the television, because the only
+    /// thing that could have answered one is the controller that just vanished.
     /// </summary>
-    public bool SwapToDesktopOnDisconnect { get; set; } = true;
-
-    /// <summary>
-    /// Put a prompt on the desk screen after that swap, offering to close the game or go back.
-    ///
-    /// On by default, because arriving at your desktop with no explanation is worse than being
-    /// asked. Off just leaves you on the desktop with everything still running, which is fine if
-    /// you know that switching the pad back on takes you straight back into the game.
-    /// </summary>
-    public bool PromptAfterDisconnect { get; set; } = true;
+    public DisconnectAction OnDisconnect { get; set; } = DisconnectAction.ComeBackAndAsk;
 
     /// <summary>
     /// Switch the Xbox Game Bar off while this app is running.
@@ -731,6 +725,23 @@ public enum PadLink { Either, WiredOnly, WirelessOnly }
 /// When Auto HDR switches the display. Ordered so the value doubles as the dropdown's index.
 /// </summary>
 public enum HdrMode { Off, PerGame, WholeSession }
+
+/// <summary>
+/// What a controller dropping out mid-session does. See <see cref="AppConfig.OnDisconnect"/>.
+///
+/// Order matters: these are the dropdown's rows, and the index is what gets stored.
+/// </summary>
+public enum DisconnectAction
+{
+    /// <summary>Nothing. Suits a pad that sleeps on its own, or a link that flickers.</summary>
+    Ignore,
+
+    /// <summary>Display and sound come back to the desk. Nothing is closed, nothing is asked.</summary>
+    ComeBack,
+
+    /// <summary>The same, then a prompt at the desk — but only ever when a game is running.</summary>
+    ComeBackAndAsk,
+}
 
 
 

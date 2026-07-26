@@ -540,21 +540,23 @@ internal static class Words
             + "— and **puts it back when you close the app**. Background clip recording goes off with "
             + "it. PlayStation pads don't trigger it.";
 
-    public const string SwapOnDisconnect = "Come back to the desktop when your controller disconnects";
-    public const string SwapOnDisconnectWhy =
-        "**Nothing is closed.** Your display and sound come back to the desk while the game and Big "
-            + "Picture keep running behind it. **Switch the controller back on and you go straight "
-            + "back into the game.** This is here because a flat battery on the sofa otherwise leaves "
-            + "a television showing a game nothing can drive. Off, a pad going quiet is ignored "
-            + "completely, which suits a controller that sleeps on its own.";
+    // One three-way choice, replacing two switches where the second only meant anything while the
+    // first was on — and where one of the three states was reachable two ways, since the prompt's own
+    // "leave it for now" answer did the same thing as turning the second switch off. Same shape as
+    // HdrModeOptions, for the same reason.
+    public static readonly string[] DisconnectOptions =
+        ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
 
-    public const string PromptAfterDisconnect = "Ask what to do once you are back at the desk";
-    public const string PromptAfterDisconnectWhy =
-        "**Recommended.** Puts a prompt on your desk screen offering to go back to the session, close "
-            + "the game, or leave everything as it is. It appears where there is a mouse to answer "
-            + "it, which the television no longer has. **Only ever shown when a game is running** — "
-            + "putting the pad down in Big Picture just brings you back, with nothing to answer. Off, "
-            + "you simply arrive at your desktop with the game still running.";
+    public const string DisconnectPick = "If your controller disconnects mid-session";
+    public const string DisconnectPickWhy =
+        "**Nothing here ever closes anything.** Coming back moves your display and sound to the desk "
+            + "while the game and Big Picture keep running behind it, so **switching the controller "
+            + "back on takes you straight back into the game**. It is here because a flat battery on "
+            + "the sofa otherwise leaves a television showing a game nothing can drive.\n\n"
+            + "**Come back and ask** adds a prompt on your desk screen offering to go back, close the "
+            + "game, or leave it — shown only when a game is actually running, since putting the pad "
+            + "down in Big Picture has nothing to answer. **Ignore it** suits a controller that "
+            + "sleeps on its own, or an adapter that drops the link now and then.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
@@ -1027,11 +1029,6 @@ internal static class Words
     /// the fear is that a controller going flat mid-game drops the television back to the desktop,
     /// and it does not — the prompt asks, and does nothing at all if nobody answers.
     /// </summary>
-    public const string ControllerDisconnectNote =
-        "**A disconnect never closes anything.** Your game and Big Picture keep running while the "
-            + "display and sound come back to the desk, so a flat battery mid-game costs you nothing "
-            + "at all. Charge the pad, switch it on, and you are back where you were.";
-
     public const string PadOnBattery = "on battery";
     public const string PadCharging = "charging";
 

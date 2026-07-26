@@ -154,8 +154,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _enableGameMode = new();
     private readonly ToggleSwitch _gamePriority = new();
     private readonly ToggleSwitch _startOnController = new();
-    private readonly ToggleSwitch _swapOnDisconnect = new();
-    private readonly ToggleSwitch _promptAfterDisconnect = new();
+    private readonly Dropdown _onDisconnect = new();
 
     private readonly GameIcons _icons = new();
     private readonly HashSet<string> _checkedGames = new(StringComparer.OrdinalIgnoreCase);
@@ -1364,10 +1363,13 @@ public sealed class SettingsForm : Form
         // Back on this page, having been dropped while the behaviour was fixed and could only ever
         // say one thing. It is a setting again, and it is the one that decides what a flat battery
         // mid-game does — so it says which of the three states it is in rather than just on or off.
-        Tile("Controller disconnects", !_swapOnDisconnect.Checked ? "ignored"
-                                     : _promptAfterDisconnect.Checked ? "back to the desk, then asks"
-                                                                      : "back to the desk",
-             _swapOnDisconnect.Checked, page: ControllerPage, anchor: _swapOnDisconnect);
+        Tile("Controller disconnects", DisconnectOf(_onDisconnect) switch
+        {
+            DisconnectAction.ComeBackAndAsk => "back to the desk, then asks",
+            DisconnectAction.ComeBack => "back to the desk",
+            _ => "ignored",
+        }, DisconnectOf(_onDisconnect) != DisconnectAction.Ignore,
+             page: ControllerPage, anchor: _onDisconnect);
 
         // ── performance and pointer ──
         Tile("Power plan", _changePowerPlan.Checked
@@ -2441,22 +2443,18 @@ public sealed class SettingsForm : Form
 
         // What happens when the pad drops out mid-session.
         //
-        // This was a setting, then it was taken away as "nobody could want it off", and it is back
-        // because both of those decisions were about the wrong behaviour: what it used to do was put
-        // a prompt on the television and wait for the controller that had just vanished to answer
-        // it. Coming back to the desk is the only answer that can actually be acted on, so that is
-        // what the switch now says.
-        AddToggle(pad, Words.SwapOnDisconnect, _swapOnDisconnect, Words.SwapOnDisconnectWhy,
-                  setting: nameof(AppConfig.SwapToDesktopOnDisconnect));
+        // Three states, said in one control. It was a pair of switches for about an hour and they
+        // could not say those states out loud — the second only meant anything while the first was
+        // on, so the reader had to work out what a combination meant, and one of the three was
+        // reachable two ways because the prompt's own "leave it for now" answer does exactly what
+        // turning the second switch off did. Same objection and same fix as the HDR mode pick.
+        SetOptions(_onDisconnect, Words.DisconnectOptions);
+        AddPick(pad, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
+                Words.DisconnectOptions[(int)DisconnectAction.ComeBackAndAsk]);
 
-        // Nested, because it only means anything while the switch above is on.
-        WhenOn(() => _swapOnDisconnect.Checked, pad, () =>
-            AddToggle(pad, Words.PromptAfterDisconnect, _promptAfterDisconnect,
-                      Words.PromptAfterDisconnectWhy,
-                      indent: Indent, titleEmphasis: Theme.Good,
-                      setting: nameof(AppConfig.PromptAfterDisconnect)));
-
-        AddNote(pad, Words.ControllerDisconnectNote);
+        // ControllerDisconnectNote used to sit here, saying "a disconnect never closes anything" under
+        // the setting whose own description opens with exactly that. It went with the two switches:
+        // the note existed to explain a combination, and there is no combination left to explain.
         AddNote(pad, Words.ControllerTriggerNote);
 
         // Named for the state the switches are already in. Every later change comes through
@@ -5586,7 +5584,7 @@ public sealed class SettingsForm : Form
         ControllerPage =>
         [
             nameof(AppConfig.StartOnControllerConnect), nameof(AppConfig.StartOnControllerLink),
-            nameof(AppConfig.SwapToDesktopOnDisconnect), nameof(AppConfig.PromptAfterDisconnect),
+            nameof(AppConfig.OnDisconnect),
             nameof(AppConfig.TriggerControllerId), nameof(AppConfig.TriggerControllerName),
             nameof(AppConfig.MouseControlEnabled), nameof(AppConfig.MouseCursorStick),
             nameof(AppConfig.MouseSpeed), nameof(AppConfig.MouseDeadzone),
@@ -5860,8 +5858,7 @@ public sealed class SettingsForm : Form
             _enableGameMode.Checked = Config.EnableGameMode;
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
-            _swapOnDisconnect.Checked = Config.SwapToDesktopOnDisconnect;
-            _promptAfterDisconnect.Checked = Config.PromptAfterDisconnect;
+            _onDisconnect.SelectedIndex = (int)Config.OnDisconnect;
 
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
@@ -5990,8 +5987,7 @@ public sealed class SettingsForm : Form
         Config.EnableGameMode = _enableGameMode.Checked;
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
-        Config.SwapToDesktopOnDisconnect = _swapOnDisconnect.Checked;
-        Config.PromptAfterDisconnect = _promptAfterDisconnect.Checked;
+        Config.OnDisconnect = DisconnectOf(_onDisconnect);
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
         if (_triggerPad.SelectedItem is ControllerDevice pad)
@@ -6155,6 +6151,16 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>The HDR mode a dropdown is showing. An unset dropdown reads as Off.</summary>
+    /// <summary>
+    /// The disconnect choice as its enum, clamped. Same shape and same reason as HdrModeOf: a
+    /// dropdown with nothing selected reports -1, and the safe reading of "no answer" is the
+    /// least surprising behaviour rather than the most.
+    /// </summary>
+    private static DisconnectAction DisconnectOf(Dropdown pick) =>
+        pick.SelectedIndex is var i and >= 0 && i <= (int)DisconnectAction.ComeBackAndAsk
+            ? (DisconnectAction)i
+            : DisconnectAction.ComeBackAndAsk;
+
     private static HdrMode HdrModeOf(Dropdown pick) =>
         pick.SelectedIndex is var i and >= 0 && i <= (int)HdrMode.WholeSession ? (HdrMode)i : HdrMode.Off;
 
@@ -6424,7 +6430,7 @@ public sealed class SettingsForm : Form
         // Conditional again, now that it is a setting rather than fixed behaviour. Listing something
         // the user has switched off as a reason the app has to keep running is how a list like this
         // stops being read.
-        if (Config.SwapToDesktopOnDisconnect) features.Add(Words.FeatureControllerOff);
+        if (Config.OnDisconnect != DisconnectAction.Ignore) features.Add(Words.FeatureControllerOff);
 
         return features;
     }

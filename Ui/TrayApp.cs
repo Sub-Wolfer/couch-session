@@ -154,7 +154,7 @@ public sealed class TrayApp : IDisposable
 
             // Switched off entirely, for the setup where a pad going quiet is routine rather than the
             // end of playing.
-            if (!_session.Config.SwapToDesktopOnDisconnect)
+            if (_session.Config.OnDisconnect == DisconnectAction.Ignore)
             {
                 Log.Info($"{device.Name} disconnected; coming back on disconnect is switched off.");
                 return;
@@ -208,7 +208,8 @@ public sealed class TrayApp : IDisposable
                     return;
                 }
 
-                if (_session.Config.PromptAfterDisconnect) OnUi(RaiseDisconnectPrompt);
+                if (_session.Config.OnDisconnect == DisconnectAction.ComeBackAndAsk)
+                    OnUi(RaiseDisconnectPrompt);
             });
         });
 
