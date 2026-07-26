@@ -56,17 +56,23 @@ public static class GameAudio
     private sealed record Held(uint Pid, string Name);
 
     /// <summary>
-    /// Mute every audio session belonging to <paramref name="game"/> or anything it started.
+    /// Mute every audio session belonging to <paramref name="pid"/> or anything it started.
     ///
-    /// Safe to call when there is no game, when the game has no audio, and twice in a row.
+    /// Takes a process id rather than a Process. [BUG] It took a Process, supplied by the HDR game
+    /// watcher — and that watcher only follows games on the HDR list, which is empty on a fresh
+    /// install now that nothing pre-ticks it. So the common case was a game running, the user at
+    /// their desk, and this returning at the first line because the app had no Process to hand.
+    /// A window handle is always available for a running game; a Process often is not.
+    ///
+    /// Safe to call with a dead pid, with a game that has no audio, and twice in a row.
     /// </summary>
-    public static void MuteGame(Process? game)
+    public static void MuteProcess(uint pid, string label)
     {
-        if (game is null) return;
+        if (pid == 0) return;
 
         try
         {
-            var family = Family(game);
+            var family = Family(pid);
             if (family.Count == 0) return;
 
             // Written down first, applied second. The order is the whole safety net: a crash between
@@ -74,15 +80,18 @@ public static class GameAudio
             // harmless, while a crash the other way round leaves a muted game nobody knows about.
             lock (Gate)
             {
-                foreach (uint pid in family) Muted.Add(pid);
+                foreach (uint one in family) Muted.Add(one);
                 SaveRecovery();
             }
 
             int hit = Apply(family, mute: true);
 
+            // Named counts on both branches, because "it did not mute my game" is answerable from
+            // the log only if the log distinguishes "found no session" from "never got here".
             Log.Info(hit > 0
-                ? $"Muted {hit} audio session(s) for {game.ProcessName} while on the desktop."
-                : $"{game.ProcessName} has no audio session to mute right now.");
+                ? $"Muted {hit} audio session(s) for {label} (pid {pid}, {family.Count} process(es))."
+                : $"{label} (pid {pid}) has no audio session to mute right now; "
+                  + $"looked at {family.Count} process(es) across every playback device.");
         }
         catch (Exception ex)
         {
@@ -191,54 +200,93 @@ public static class GameAudio
 
         try
         {
-            // Only the default output. Muting on every endpoint would mean walking devices the game
-            // is not playing to, and a session only exists on the device it is actually using — which
-            // after a session swap is the desk one, because Windows moves default-device streams with
-            // the default.
-            if (enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia, out var device) != 0)
+            // Every playback device, not just the default one.
+            //
+            // [BUG] This looked at the default endpoint alone, on the reasoning that Windows moves
+            // default-device streams with the default, so after the swap the game would be on the
+            // desk device. That is true of a stream opened on the default and not of one opened on a
+            // named endpoint, which plenty of games and every audio middleware with a device picker
+            // do — and it is not true at all in the window before Windows has finished moving them.
+            // The session lives on whichever device it was opened against, so the honest thing is to
+            // ask all of them. There are rarely more than a handful.
+            if (enumerator.EnumAudioEndpoints(DataFlow.Render, DeviceState.Active, out var devices) != 0)
                 return 0;
 
-            var iid = typeof(IAudioSessionManager2).GUID;
+            if (devices.GetCount(out int deviceCount) != 0) return 0;
 
-            if (device.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out object raw) != 0) return 0;
-
-            var manager = (IAudioSessionManager2)raw;
-
-            if (manager.GetSessionEnumerator(out var sessions) != 0) return 0;
-            if (sessions.GetCount(out int count) != 0) return 0;
-
-            for (int i = 0; i < count; i++)
+            for (int d = 0; d < deviceCount; d++)
             {
-                if (sessions.GetSession(i, out var control) != 0) continue;
+                if (devices.Item(d, out var device) != 0) continue;
 
-                try
-                {
-                    if (control is not IAudioSessionControl2 identified) continue;
-                    if (identified.GetProcessId(out uint pid) != 0) continue;
-                    if (!pids.Contains(pid)) continue;
-
-                    // The system sounds session shares no process with anything and must never be
-                    // touched: silencing it takes the user's notification and error sounds with it.
-                    if (identified.IsSystemSoundsSession() == 0) continue;
-
-                    if (control is not ISimpleAudioVolume volume) continue;
-
-                    var context = Guid.Empty;
-                    if (volume.SetMute(mute, ref context) == 0) touched++;
-                }
-                finally
-                {
-                    if (control is not null && Marshal.IsComObject(control)) Marshal.ReleaseComObject(control);
-                }
+                try { touched += ApplyOn(device, pids, mute); }
+                catch (Exception ex) { Log.Warn($"Could not read sessions on one playback device: {ex.Message}"); }
+                finally { Marshal.ReleaseComObject(device); }
             }
 
-            Marshal.ReleaseComObject(sessions);
-            Marshal.ReleaseComObject(manager);
-            Marshal.ReleaseComObject(device);
+            Marshal.ReleaseComObject(devices);
         }
         finally
         {
             Marshal.ReleaseComObject(enumerator);
+        }
+
+        return touched;
+    }
+
+    /// <summary>The same, for one endpoint.</summary>
+    private static int ApplyOn(IMMDevice device, IReadOnlyCollection<uint> pids, bool mute)
+    {
+        var iid = typeof(IAudioSessionManager2).GUID;
+
+        if (device.Activate(ref iid, ClsCtxAll, IntPtr.Zero, out object raw) != 0) return 0;
+
+        var manager = (IAudioSessionManager2)raw;
+        int touched = 0;
+
+        try
+        {
+            if (manager.GetSessionEnumerator(out var sessions) != 0) return 0;
+
+            try
+            {
+                if (sessions.GetCount(out int count) != 0) return 0;
+
+                for (int i = 0; i < count; i++)
+                {
+                    if (sessions.GetSession(i, out var control) != 0) continue;
+
+                    try
+                    {
+                        if (control is not IAudioSessionControl2 identified) continue;
+                        if (identified.GetProcessId(out uint pid) != 0) continue;
+                        if (!pids.Contains(pid)) continue;
+
+                        // The system sounds session belongs to no application and must never be
+                        // touched: silencing it takes the user's notification and error sounds with
+                        // it. IsSystemSoundsSession returns S_OK for that one and S_FALSE otherwise,
+                        // so zero is the value to skip on.
+                        if (identified.IsSystemSoundsSession() == 0) continue;
+
+                        if (control is not ISimpleAudioVolume volume) continue;
+
+                        var context = Guid.Empty;
+                        if (volume.SetMute(mute, ref context) == 0) touched++;
+                    }
+                    finally
+                    {
+                        if (control is not null && Marshal.IsComObject(control))
+                            Marshal.ReleaseComObject(control);
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(sessions);
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(manager);
         }
 
         return touched;
@@ -253,12 +301,9 @@ public static class GameAudio
     /// me my children" call. One pass over every process on the machine, building parent to child,
     /// is cheap enough at the once-per-session rate this runs at.
     /// </summary>
-    private static List<uint> Family(Process game)
+    private static List<uint> Family(uint pid)
     {
-        var wanted = new List<uint>();
-
-        try { wanted.Add((uint)game.Id); }
-        catch { return wanted; }
+        var wanted = new List<uint> { pid };
 
         try
         {
@@ -285,7 +330,7 @@ public static class GameAudio
                 {
                     if (!parents.TryGetValue(at, out uint up)) break;
 
-                    if (up == (uint)game.Id) { wanted.Add(child); break; }
+                    if (up == pid) { wanted.Add(child); break; }
                     at = up;
                 }
             }

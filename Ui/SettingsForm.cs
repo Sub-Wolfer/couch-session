@@ -43,6 +43,19 @@ public sealed class SettingsForm : Form
     public bool StartRequested { get; private set; }
     public bool RevertRequested { get; private set; }
 
+    /// <summary>Close the game that was left running on the desktop, and nothing else.</summary>
+    public bool CloseGameRequested { get; private set; }
+
+    /// <summary>
+    /// Asks the app whether a game is still running behind the desktop.
+    ///
+    /// A third state the footer had no way to see. "On the TV" and "at the desk" are not the only
+    /// two things that can be true: dropping to the desktop from the prompt, or because a controller
+    /// dropped out, leaves a game alive with the session's windows waiting behind it — and in that
+    /// state "Start Couch Session" is the wrong offer, because nothing is going to be started.
+    /// </summary>
+    public Func<bool>? LeftRunningState { get; init; }
+
     /// <summary>Whether a session was running when this window opened.</summary>
     public bool SessionActive { get; init; }
 
@@ -62,6 +75,18 @@ public sealed class SettingsForm : Form
         {
             try { return SessionState?.Invoke() ?? SessionActive; }
             catch { return SessionActive; }
+        }
+    }
+
+    /// <summary>Whether a game is waiting behind the desktop right now. Never true during a session.</summary>
+    private bool LeftRunningNow
+    {
+        get
+        {
+            if (SessionNow) return false;
+
+            try { return LeftRunningState?.Invoke() ?? false; }
+            catch { return false; }
         }
     }
 
@@ -189,6 +214,7 @@ public sealed class SettingsForm : Form
     /// </summary>
     private readonly System.Windows.Forms.Timer _autoSave = new() { Interval = 400 };
     private FlatButton _action = null!;
+    private FlatButton? _closeGame;
     private Label _deviceNote = null!;
 
     private Panel _pageHost = null!;
@@ -2029,6 +2055,21 @@ public sealed class SettingsForm : Form
 
         _action.Click += (_, _) => OnActionButton();
 
+        // Created here and hidden, so the flow panel already knows its size when the state that
+        // wants it arrives. Same height as Reset, and quiet rather than red: it is the smaller of
+        // the two things offered, and a second coloured button beside the primary one would make
+        // the pair read as a choice of equals.
+        _closeGame = new FlatButton
+        {
+            Text = Words.ButtonCloseGame,
+            Size = new Size(140, BigButton),
+            Margin = new Padding(0, FlatButton.Bleed, 8, 3),
+            Visible = false,
+        };
+
+        _closeGame.Click += (_, _) => OnCloseGameButton();
+        _tips.SetToolTip(_closeGame, Wrapped(Words.TipCloseGame));
+
         RefreshActionButton();
 
         var right = new FlowLayoutPanel
@@ -2054,7 +2095,7 @@ public sealed class SettingsForm : Form
         // The primary action belongs at the end of the row: it is where the eye finishes and where
         // the hand already is, and it puts the most-used button furthest from Reset, which is the one
         // in this pair worth never hitting by accident.
-        right.Controls.AddRange([_action, reset]);
+        right.Controls.AddRange([_action, _closeGame, reset]);
 
         // Settings save themselves, so there is nothing to press. This only confirms it
         // happened — an interface that saves silently and says nothing invites the user to
@@ -6324,28 +6365,45 @@ public sealed class SettingsForm : Form
             if (!box.IsDisposed) box.Invalidate();
     }
 
-    /// <summary>Which session state the button was last painted for, so it is only redone on a change.</summary>
-    private bool? _actionShows;
+    /// <summary>The three things the footer can be saying, so it is only redone on a change.</summary>
+    private enum FooterState { Start, Resume, End }
+
+    private FooterState? _actionShows;
 
     /// <summary>
     /// The footer button, matched to what is actually happening.
     ///
-    /// Green and "Start Couch Session" on the desktop; quiet and "End Couch Session" during one. Both
-    /// the wording and the colour move, because a green button that ends something reads as the thing
-    /// to press to get going, which is the opposite of what it does.
+    /// Three states, not two. "On the TV" and "at the desk" were the only ones this knew about, and
+    /// that left the commonest interesting case wearing the wrong label: a game left running behind
+    /// the desktop is not a session waiting to be *started*, it is one waiting to be gone back to,
+    /// and the difference matters because pressing the button does something different in each case.
+    ///
+    /// Green to go, red to stop — the same pair the power button on the home page uses, so the
+    /// colour says which way it goes before the word is read. Resuming is green for that reason: it
+    /// puts you back on the television, whatever the wording.
     /// </summary>
     private void RefreshActionButton()
     {
-        bool live = SessionNow;
+        var state = SessionNow ? FooterState.End
+                  : LeftRunningNow ? FooterState.Resume
+                                   : FooterState.Start;
 
-        if (_actionShows == live) return;
-        _actionShows = live;
+        // The second button follows the same state, and has to be reconsidered even when the state
+        // has not changed — it is created hidden and the panel only lays it out once it is shown.
+        RefreshCloseGameButton(state);
 
-        _action.Text = live ? "End Couch Session" : "Start Couch Session";
+        if (_actionShows == state) return;
+        _actionShows = state;
 
-        // Green to start, red to end — the same pair the power button on the home page uses, so the
-        // colour says which way it goes before the word is read.
-        _action.Fill = live ? Theme.Bad : Theme.Good;
+        bool live = state == FooterState.End;
+
+        _action.Text = state switch
+        {
+            FooterState.End => "End Couch Session",
+            FooterState.Resume => "Resume Session",
+            _ => "Start Couch Session",
+        };
+
         _action.Line = Color.Empty;
 
         // White on both, by request.
@@ -6376,6 +6434,40 @@ public sealed class SettingsForm : Form
         was?.Dispose();
 
         _action.Invalidate();
+    }
+
+    /// <summary>
+    /// "Close Game", beside the main button and only while there is a game to close.
+    ///
+    /// Deliberately not called "End Session". There is no session running at this point — that is
+    /// the entire situation this state describes — so naming it after one would be describing
+    /// something that is not happening, and would read as the opposite of the Resume button beside
+    /// it rather than as the separate, smaller thing it is.
+    ///
+    /// Second in the row, inboard of Resume, so the destructive one is not the button nearest the
+    /// corner your hand goes to.
+    /// </summary>
+    private void RefreshCloseGameButton(FooterState state)
+    {
+        if (_closeGame is null) return;
+
+        bool wanted = state == FooterState.Resume;
+        if (_closeGame.Visible == wanted) return;
+
+        _closeGame.Visible = wanted;
+    }
+
+    private void OnCloseGameButton()
+    {
+        // Asked first, unless the user has switched that off — the same setting the session prompt
+        // reads, because it is the same irreversible thing being done from a different button.
+        if (_confirmClosingGame.Checked
+         && !AskBox.Confirm(this, Words.CloseGameTitle, Words.CloseGameBody,
+                            Words.CloseGameYes, Words.CloseGameNo))
+            return;
+
+        CloseGameRequested = true;
+        Close();
     }
 
     private void OnActionButton()

@@ -813,6 +813,22 @@ internal static class Words
 
     // ── Resetting ──────────────────────────────────────────────────────────────────
 
+    // Shown beside Resume Session, and only while a game is waiting behind the desktop. Named for
+    // what it does rather than "End Session", because no session is running at that point — see
+    // SettingsForm.RefreshCloseGameButton.
+    public const string ButtonCloseGame = "Close Game";
+    public const string TipCloseGame =
+        "Close the game still running behind your desktop. Nothing else changes — you are already at "
+            + "your desk.";
+
+    public const string CloseGameTitle = "Close the game?";
+    public const string CloseGameBody =
+        "The game left running behind your desktop will be asked to close, the same way Alt+F4 asks "
+            + "it to, so it saves and exits itself. **Anything you have not saved in-game is up to "
+            + "the game.**";
+    public const string CloseGameYes = "Close the game";
+    public const string CloseGameNo = "Leave it running";
+
     public const string ButtonReset = "Reset all settings";
 
     public const string TipReset =

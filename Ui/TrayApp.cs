@@ -913,11 +913,39 @@ public sealed class TrayApp : IDisposable
     {
         if (!_session.Config.MuteGameOnDesktop) return;
 
-        var game = _hdr.RunningGameProcess;
-        if (game is null) return;
+        uint pid = 0;
+        string label = "the game";
 
-        CouchMode.Audio.GameAudio.MuteGame(game);
+        // The watched process when there is one, and the foreground window's owner when there is not.
+        //
+        // [BUG] This only ever asked the HDR game watcher, and that watcher follows the games on the
+        // HDR list — which is empty on a fresh install now that nothing pre-ticks it. So for most
+        // people the mute never even reached the audio code: no Process, early return, silence in
+        // the log and a game still shouting at them. The window is the reliable half; every running
+        // game has one, and RunningGameWindow already falls back to asking Steam which game is up.
+        if (_hdr.RunningGameProcess is { } watched)
+        {
+            pid = (uint)watched.Id;
+            label = watched.ProcessName;
+        }
+        else
+        {
+            var window = _hdr.RunningGameWindow();
+
+            if (window != IntPtr.Zero) GetWindowThreadProcessId(window, out pid);
+        }
+
+        if (pid == 0)
+        {
+            Log.Info("Nothing identifiable is running, so there is no game audio to mute.");
+            return;
+        }
+
+        CouchMode.Audio.GameAudio.MuteProcess(pid, label);
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
 
     /// <summary>
     /// Go back into a session that is waiting behind the desktop.
@@ -1818,6 +1846,15 @@ public sealed class TrayApp : IDisposable
             // offering to start one that is already running is worse than no button at all.
             SessionState = () => _session.IsInTvMode,
 
+            // And whether there is something waiting behind the desktop to go back to.
+            //
+            // The flag alone is not enough, exactly as it is not enough for the PS button: the game
+            // may have been closed from the desktop since, and offering to resume into nothing is
+            // worse than offering to start fresh.
+            LeftRunningState = () => _leftRunning
+                                  && (_hdr.RunningGameWindow() != IntPtr.Zero
+                                      || BigPictureLauncher.FindWindow() != IntPtr.Zero),
+
             // Whatever the launch check found, so the window shows it the moment it opens rather
             // than only after someone presses the button on the About page.
             PendingUpdate = _pendingUpdate,
@@ -1852,7 +1889,8 @@ public sealed class TrayApp : IDisposable
         // Only when the close was the whole action: starting or ending a session shows its own
         // notification, and the app being resident is the least interesting thing happening at
         // that moment. Two toasts stacked to say one useful thing is noise.
-        if (!form.StartRequested && !form.RevertRequested && _session.Config.ShowNotifications
+        if (!form.StartRequested && !form.RevertRequested && !form.CloseGameRequested
+                                 && _session.Config.ShowNotifications
                                  && _session.Config.ShowMinimizeNotification)
         {
             Toast.Show(Words.NoticeMinimized, Words.NoticeMinimizedDetail, Theme.Accent,
@@ -1871,10 +1909,34 @@ public sealed class TrayApp : IDisposable
 
         // Deliberately after the dialog has gone: in TV-only mode the desktop displays go
         // dark, and doing that with a modal window still up strands it on a dead screen.
-        if (form.StartRequested)
-            LaunchBigPicture();
+        if (form.CloseGameRequested)
+        {
+            // Just the game. No session is running, so there is nothing to end — and Big Picture
+            // goes with it because it was left minimized by the same swap that left the game, and
+            // with nothing pointing back at it there would be no way to reach it again.
+            _leftRunning = false;
+            _swappedOnDisconnect = false;
+
+            RunBackground("Closing the game", () =>
+            {
+                _hdr.CloseRunningGame();
+                BigPictureLauncher.Close();
+                CouchMode.Audio.GameAudio.Restore();
+            });
+        }
+        else if (form.StartRequested)
+        {
+            // Resume rather than start, when there is something to resume into. Same decision the PS
+            // button makes on the desktop, and made in the same place so the two cannot drift apart:
+            // launching Big Picture over a game that is already running would put the shell in front
+            // of it and the player on a menu they did not ask for.
+            if (_leftRunning) ResumeOrStart("The Resume button was pressed");
+            else LaunchBigPicture();
+        }
         else if (form.RevertRequested)
+        {
             RunBackground("Returning to the desktop", () => _session.ReturnToDesktop());
+        }
     }
 
     private void ApplyConfig(AppConfig config)
@@ -2694,8 +2756,19 @@ public sealed class TrayApp : IDisposable
             return;
         }
 
-        // Only a genuine leftover counts. The flag alone is not enough — the game may have been closed
-        // from the desktop in the meantime, and resuming into nothing would be worse than starting fresh.
+        ResumeOrStart("PS/Guide button pressed on the desktop");
+    }
+
+    /// <summary>
+    /// Go back to a session waiting behind the desktop, or start a fresh one when there is none.
+    ///
+    /// Shared by the PS button and the Resume button in the settings footer. One place on purpose:
+    /// the decision is subtle — the flag alone is not enough, because the game may have been closed
+    /// from the desktop since, and resuming into nothing is worse than starting fresh — and two
+    /// copies of a subtle decision is two copies to keep in step.
+    /// </summary>
+    private void ResumeOrStart(string why)
+    {
         bool resumable = _leftRunning
                       && (_hdr.RunningGameWindow() != IntPtr.Zero
                           || BigPictureLauncher.FindWindow() != IntPtr.Zero);
@@ -2705,8 +2778,8 @@ public sealed class TrayApp : IDisposable
         _resumeWhenBack = resumable;
 
         Log.Info(resumable
-            ? "PS/Guide button pressed on the desktop with the session's windows still up; going back to it."
-            : "PS/Guide button pressed on the desktop; starting a session.");
+            ? $"{why} with the session's windows still up; going back to it."
+            : $"{why}; starting a session.");
 
         ToggleMode();
     }
