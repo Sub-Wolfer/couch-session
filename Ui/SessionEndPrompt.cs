@@ -104,6 +104,24 @@ internal sealed class SessionEndPrompt : Form
 
     private bool PadHints => !AtTheDesk;
 
+    /// <summary>
+    /// A "don't show this again" tick under the answers. Empty means no tick box at all.
+    ///
+    /// Only offered on a prompt that arrives uninvited. Everything else this class shows was opened
+    /// by pressing something, and a way to switch off a window you asked for is noise — but the
+    /// disconnect prompt appears because a battery died, which is not a request, and the setting that
+    /// governs it is three pages into a window the user is not currently looking at.
+    /// </summary>
+    public string DontAskText { get; init; } = "";
+
+    /// <summary>Whether that tick was left ticked. Read once, after <see cref="Chosen"/>.</summary>
+    public bool DontAskAgain { get; private set; }
+
+    private bool ShowsDontAsk => DontAskText.Length > 0;
+
+    private Rectangle _dontAskRect;
+    private bool _dontAskHover;
+
     private readonly string _title;
     private readonly string _body;
 
@@ -862,6 +880,19 @@ internal sealed class SessionEndPrompt : Form
         }
 
         int hintWidth = width - _pad * 2;
+
+        // The tick box sits between the answers and the hints, which on the one prompt that has it
+        // means directly under the answers, since that prompt has no hints.
+        //
+        // Its own row rather than squeezed beside something: it is not an answer, and putting it in
+        // line with the answers is how people end up dismissing a prompt when they meant to silence
+        // it. The gap above is larger than the gap between answers for the same reason.
+        _dontAskRect = ShowsDontAsk
+            ? new Rectangle(_pad, top + S(6), hintWidth, S(26))
+            : Rectangle.Empty;
+
+        if (ShowsDontAsk) top = _dontAskRect.Bottom + S(4);
+
         int hintRows = PadHints ? HintRows(hintWidth) : 0;
 
         _hintRect = new Rectangle(_pad, top + S(4), hintWidth, S(24) * hintRows);
@@ -1210,14 +1241,34 @@ internal sealed class SessionEndPrompt : Form
         for (int i = 0; i < _optionRects.Length; i++)
             if (_optionRects[i].Contains(e.Location)) { over = i; break; }
 
-        if (over != _hover) { _hover = over; Cursor = over >= 0 ? Cursors.Hand : Cursors.Default; Redraw(); }
+        bool tick = ShowsDontAsk && _dontAskRect.Contains(e.Location);
+
+        if (over != _hover || tick != _dontAskHover)
+        {
+            _hover = over;
+            _dontAskHover = tick;
+            Cursor = over >= 0 || tick ? Cursors.Hand : Cursors.Default;
+            Redraw();
+        }
+
         base.OnMouseMove(e);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
     {
+        // The tick first. Its row is checked before the answers so that a click landing on the
+        // boundary between the two silences the prompt rather than answering it — the recoverable
+        // mistake of the pair.
+        if (ShowsDontAsk && _dontAskRect.Contains(e.Location))
+        {
+            DontAskAgain = !DontAskAgain;
+            Redraw();
+            return;
+        }
+
         for (int i = 0; i < _optionRects.Length; i++)
             if (_optionRects[i].Contains(e.Location)) { Decide(_options[i].Choice); return; }
+
         base.OnMouseDown(e);
     }
 
@@ -1567,7 +1618,64 @@ internal sealed class SessionEndPrompt : Form
             }
         }
 
+        DrawDontAsk(g);
         DrawHint(g);
+    }
+
+    /// <summary>
+    /// The "don't show this again" tick.
+    ///
+    /// Drawn quietly on purpose: dimmer than the answers, smaller type, no fill of its own. It is a
+    /// thing to notice on the second or third time this window appears, not a fourth answer
+    /// competing with the three above it.
+    /// </summary>
+    private void DrawDontAsk(Graphics g)
+    {
+        if (!ShowsDontAsk) return;
+
+        int side = S(16);
+
+        var box = new Rectangle(_dontAskRect.Left + S(2),
+                                _dontAskRect.Top + (_dontAskRect.Height - side) / 2,
+                                side, side);
+
+        var line = _dontAskHover || DontAskAgain ? Theme.Accent : Theme.InputLine;
+
+        Theme.FillRounded(g, box, S(4), DontAskAgain ? Theme.Accent : Theme.Input);
+        Theme.DrawRounded(g, box, S(4), line);
+
+        if (DontAskAgain)
+        {
+            // Drawn rather than a glyph font: this window has no ClearType, and a tick from a font at
+            // 16 pixels on a layered surface is the one shape that comes out looking broken.
+            using var pen = new Pen(Color.White, Math.Max(1.6f, side * 0.14f))
+            {
+                StartCap = LineCap.Round,
+                EndCap = LineCap.Round,
+                LineJoin = LineJoin.Round,
+            };
+
+            var was = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            g.DrawLines(pen,
+            [
+                new PointF(box.Left + side * 0.24f, box.Top + side * 0.52f),
+                new PointF(box.Left + side * 0.43f, box.Top + side * 0.71f),
+                new PointF(box.Left + side * 0.77f, box.Top + side * 0.29f),
+            ]);
+
+            g.SmoothingMode = was;
+        }
+
+        int textLeft = box.Right + S(9);
+
+        TextRenderer.DrawText(g, DontAskText, _detailFont,
+                              new Rectangle(textLeft, _dontAskRect.Top,
+                                            _dontAskRect.Right - textLeft, _dontAskRect.Height),
+                              _dontAskHover || DontAskAgain ? Theme.Text : Theme.TextDim,
+                              TextFormatFlags.Left | TextFormatFlags.VerticalCenter
+                            | TextFormatFlags.NoPrefix);
     }
 
     /// <summary>Each hint: the glyphs to draw side by side, then its label.</summary>

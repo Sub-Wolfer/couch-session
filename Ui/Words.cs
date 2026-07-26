@@ -555,8 +555,10 @@ internal static class Words
             + "the sofa otherwise leaves a television showing a game nothing can drive.\n\n"
             + "**Come back and ask** adds a prompt on your desk screen offering to go back, close the "
             + "game, or leave it — shown only when a game is actually running, since putting the pad "
-            + "down in Big Picture has nothing to answer. **Ignore it** suits a controller that "
-            + "sleeps on its own, or an adapter that drops the link now and then.";
+            + "down in Big Picture has nothing to answer. That prompt has a **stop asking me this** "
+            + "tick on it, which drops this setting to the middle option; this is where you turn it "
+            + "back on. **Ignore it** suits a controller that sleeps on its own, or an adapter that "
+            + "drops the link now and then.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
@@ -572,6 +574,10 @@ internal static class Words
 
     public const string DisconnectLeave = "Leave it for now";
     public const string DisconnectLeaveWhat = "Stays on the desktop with the game running.";
+
+    // Named for what it does rather than "Don't show this again", which does not say whether the
+    // coming-back stops too. It does not: the setting drops one step, to "Come back to the desktop".
+    public const string DisconnectDontAsk = "Stop asking me this — just come back to the desktop";
 
     public const string StartOnController = "Start a session when a controller connects";
     public const string StartOnControllerWhy =

@@ -1026,6 +1026,10 @@ public sealed class TrayApp : IDisposable
         {
             // Everything this class does for a television is wrong here. See AtTheDesk.
             AtTheDesk = true,
+
+            // The one prompt in the app that arrives without being asked for, so the one prompt with
+            // a way to switch itself off.
+            DontAskText = Words.DisconnectDontAsk,
         };
 
         _endPrompt = prompt;
@@ -1033,6 +1037,25 @@ public sealed class TrayApp : IDisposable
 
         prompt.Chosen += choice =>
         {
+            // Read before the answer is acted on, and honoured whichever answer it was: someone who
+            // ticks this and then chooses to go back to their game has still said they do not want
+            // to be asked next time.
+            //
+            // It drops to ComeBack rather than Ignore. The tick is about the window, not about being
+            // stranded on a television with a pad that has stopped working — turning the whole
+            // feature off would be answering a question that was never put.
+            if (prompt.DontAskAgain && _session.Config.OnDisconnect == DisconnectAction.ComeBackAndAsk)
+            {
+                _session.Config.OnDisconnect = DisconnectAction.ComeBack;
+
+                // Applied first, saved second. What matters is the next disconnect, and a failed
+                // write must not be what decides whether the prompt appears again.
+                try { _session.Config.Save(); }
+                catch (Exception ex) { Log.Warn($"Could not save the disconnect setting: {ex.Message}"); }
+
+                Log.Info("Asked not to show the disconnect prompt again; coming back quietly from now on.");
+            }
+
             switch (choice)
             {
                 case SessionEndPrompt.Choice.Resume:
