@@ -13,7 +13,7 @@ REM Give the tray a second to release the exe file lock before we overwrite it.
 timeout /t 1 /nobreak >nul
 
 echo Building Couch Session...
-dotnet publish CouchPotato.csproj -c Release -r win-x64 -o build\out
+dotnet publish CouchSession.csproj -c Release -r win-x64 -o build\out
 if errorlevel 1 (
     echo.
     echo BUILD FAILED

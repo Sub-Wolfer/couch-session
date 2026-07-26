@@ -315,7 +315,7 @@ internal static class AppIcon
     {
         try
         {
-            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("CouchPotato.ico");
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("CouchSession.ico");
             if (stream is not null) return new Icon(stream);
 
             Log.Warn("Embedded icon not found; falling back to the system application icon.");

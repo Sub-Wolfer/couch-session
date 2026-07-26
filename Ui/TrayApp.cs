@@ -1468,8 +1468,28 @@ public sealed class TrayApp : IDisposable
     /// so the Home page can offer it. Replacing the executable restarts the app, and doing that on a
     /// timer, unasked, while someone is mid-game is not an update, it is a crash with a changelog.
     /// </summary>
+    /// <summary>When GitHub was last asked, so opening settings repeatedly does not hammer it.</summary>
+    private DateTime _lastUpdateCheck = DateTime.MinValue;
+
+    /// <summary>
+    /// The shortest gap between two checks.
+    ///
+    /// Opening the settings window triggers one, and someone fiddling with settings opens and closes
+    /// it several times in a row. The unauthenticated GitHub API allows sixty calls an hour from one
+    /// address, which is plenty — but a check per window open is a pointless way to spend them, and
+    /// nothing published in the last half hour is going to be missed by waiting.
+    /// </summary>
+    private static readonly TimeSpan CheckNoOftenerThan = TimeSpan.FromMinutes(30);
+
     private async void LookForUpdate()
     {
+        var config = _session.Config;
+
+        if (!config.CheckForUpdates) return;
+        if (DateTime.UtcNow - _lastUpdateCheck < CheckNoOftenerThan) return;
+
+        _lastUpdateCheck = DateTime.UtcNow;
+
         try
         {
             var found = await Updates.CheckAsync();
@@ -1492,6 +1512,15 @@ public sealed class TrayApp : IDisposable
 
     private void ShowSettings()
     {
+        // Opening the window is a check.
+        //
+        // Launch and a daily tick were the only two triggers, which for something that sits in the
+        // tray for weeks meant a new version could go unmentioned for the best part of a day. Opening
+        // settings is the moment someone is actually looking at this app, so it is the moment the
+        // answer should be current. Rate-limited by CheckNoOftenerThan; the result lands on the Home
+        // page by itself through PendingUpdate, so nothing here waits on it.
+        LookForUpdate();
+
         using var form = new SettingsForm(_session.Config, _pads)
         {
             SessionActive = _session.IsInTvMode,

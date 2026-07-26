@@ -20,7 +20,7 @@
          (see Ui/IconFile.cs), and a hard reference makes that circular: you cannot build the tool that
          writes the file the build refuses to start without. And a fresh clone that has not generated
          one yet should compile and run, not stop at CS7064 with an error about an image. -->
-    <ApplicationIcon Condition="Exists('CouchPotato.ico')">CouchPotato.ico</ApplicationIcon>
+    <ApplicationIcon Condition="Exists('CouchSession.ico')">CouchSession.ico</ApplicationIcon>
 
     <!-- Single portable exe, no runtime install required -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -42,7 +42,7 @@
   <ItemGroup>
     <!-- Embedded so the tray icon and window icon come from the same file as the exe icon,
          with no loose asset to ship alongside the single-file build. -->
-    <EmbeddedResource Include="CouchPotato.ico" LogicalName="CouchPotato.ico" />
+    <EmbeddedResource Include="CouchSession.ico" LogicalName="CouchSession.ico" />
 
     <!-- The easter egg is gone. It was embedded, and the gif alone was 52 MB — over half the size of
          the finished executable, on a download people are asked to take on trust from an unsigned

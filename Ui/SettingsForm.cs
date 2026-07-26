@@ -2886,11 +2886,22 @@ public sealed class SettingsForm : Form
             ForeColor = Color.White,
         };
 
-        button.Click += (_, _) =>
+        // [BUG] This used to disable the button, relabel it "Updating…" and fire OfferUpdate without
+        // waiting. Declining the dialog then left the card sitting there permanently claiming to be
+        // updating, with the only way out being to close and reopen the window. The busy state has to
+        // last exactly as long as the work does.
+        button.Click += async (_, _) =>
         {
             button.Enabled = false;
             button.Text = Words.UpdateCardBusy;
-            OfferUpdate(ready);
+
+            await OfferUpdate(ready);
+
+            // Only reached when nothing was installed — a successful install closes this window.
+            if (button.IsDisposed) return;
+
+            button.Enabled = true;
+            button.Text = Words.UpdateCardButton;
         };
 
         var line = new Panel
@@ -4721,7 +4732,7 @@ public sealed class SettingsForm : Form
             // the offer on the Home page. The two routes should not disagree about what is available.
             PendingUpdate = found;
 
-            OfferUpdate(found);
+            await OfferUpdate(found);
         };
 
         line.Controls.Add(button);
@@ -4730,17 +4741,17 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>Ask before replacing the program, then do it and restart.</summary>
-    private async void OfferUpdate(UpdateInfo found)
+    private async Task OfferUpdate(UpdateInfo found)
     {
-        var notes = found.Notes.Length > 0
-                  ? $"\n\n{found.Notes.Trim()}"
-                  : "";
+        // The app's own dialog, not a MessageBox.
+        //
+        // The box rendered in the system theme against this window's dark chrome, and worse, printed
+        // GitHub's markdown raw — "## What's Changed", a list of pull-request URLs, and a
+        // "**Full Changelog**:" line. The one question it exists to answer is "what am I getting",
+        // and that was the part hardest to read. See Ui/UpdateDialog.cs.
+        using var ask = new UpdateDialog(found, SessionNow);
 
-        var answer = MessageBox.Show(this,
-            string.Format(Words.UpdateAsk, found.Version, AppInfo.Version) + notes,
-            Words.UpdateAskTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-        if (answer != DialogResult.Yes) return;
+        if (ask.ShowDialog(this) != DialogResult.Yes) return;
 
         if (await Updates.InstallAsync(found.DownloadUrl))
         {
