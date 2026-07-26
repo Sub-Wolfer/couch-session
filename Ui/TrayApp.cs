@@ -152,11 +152,15 @@ public sealed class TrayApp : IDisposable
             if (!_session.IsInTvMode) { Log.Info($"{device.Name} disconnected; already on the desktop."); return; }
             if (_busy) { Log.Info($"{device.Name} disconnected while busy switching; ignored."); return; }
 
-            // Switched off entirely, for the setup where a pad going quiet is routine rather than the
-            // end of playing.
-            if (_session.Config.OnDisconnect == DisconnectAction.Ignore)
+            // Two events, told apart before either is acted on. Switching a controller off is how
+            // people say they have finished; a battery dying is not, and the same answer is wrong for
+            // both. See WasPoweredOff.
+            var wanted = WasPoweredOff(device) ? _session.Config.OnControllerOff
+                                               : _session.Config.OnControllerLost;
+
+            if (wanted == DisconnectAction.Ignore)
             {
-                Log.Info($"{device.Name} disconnected; coming back on disconnect is switched off.");
+                Log.Info($"{device.Name} disconnected; nothing is set to happen for that.");
                 return;
             }
 
@@ -210,8 +214,7 @@ public sealed class TrayApp : IDisposable
                     return;
                 }
 
-                if (_session.Config.OnDisconnect == DisconnectAction.ComeBackAndAsk)
-                    OnUi(RaiseDisconnectPrompt);
+                if (wanted == DisconnectAction.ComeBackAndAsk) OnUi(RaiseDisconnectPrompt);
             });
         });
 
@@ -1174,9 +1177,16 @@ public sealed class TrayApp : IDisposable
             // It drops to ComeBack rather than Ignore. The tick is about the window, not about being
             // stranded on a television with a pad that has stopped working — turning the whole
             // feature off would be answering a question that was never put.
-            if (prompt.DontAskAgain && _session.Config.OnDisconnect == DisconnectAction.ComeBackAndAsk)
+            // Steps whichever of the two settings raised this prompt down a notch. Both are checked
+            // because either can be the one asking, and a tick that silenced the wrong one would be
+            // worse than no tick.
+            if (prompt.DontAskAgain)
             {
-                _session.Config.OnDisconnect = DisconnectAction.ComeBack;
+                if (_session.Config.OnControllerOff == DisconnectAction.ComeBackAndAsk)
+                    _session.Config.OnControllerOff = DisconnectAction.ComeBack;
+
+                if (_session.Config.OnControllerLost == DisconnectAction.ComeBackAndAsk)
+                    _session.Config.OnControllerLost = DisconnectAction.ComeBack;
 
                 // Applied first, saved second. What matters is the next disconnect, and a failed
                 // write must not be what decides whether the prompt appears again.
@@ -2565,6 +2575,92 @@ public sealed class TrayApp : IDisposable
     /// <summary>Whether the PS / Guide button was down on the previous poll, so a hold fires once.</summary>
     private bool _guideHeld;
 
+    /// <summary>When the guide button went down, or default while it is up.</summary>
+    private DateTime _guideDownSince;
+
+    /// <summary>The last moment it was seen down, and how long it had been down by then.</summary>
+    private DateTime _guideLastDown;
+    private TimeSpan _guideHeldFor;
+
+    /// <summary>
+    /// Long enough to be a power-off rather than a press.
+    ///
+    /// An Xbox pad needs about six seconds of holding and a DualSense about ten, so anything over a
+    /// second is already well clear of a tap. Kept low deliberately: the cost of being generous here
+    /// is treating a slow press as deliberate, and the two answers this chooses between are "come
+    /// back to the desktop" and "do nothing" — neither of which closes anything.
+    /// </summary>
+    private static readonly TimeSpan PowerOffHold = TimeSpan.FromMilliseconds(1200);
+
+    /// <summary>
+    /// How recently the button must have been held for a disconnect to count as caused by it.
+    ///
+    /// The pad powers off mid-hold, so the last poll that saw the button down is within one poll
+    /// interval of the device vanishing. Two and a half seconds is generous enough to survive a slow
+    /// device-removal notification and short enough that a hold half a minute ago cannot be blamed
+    /// for an unrelated battery dying.
+    /// </summary>
+    private static readonly TimeSpan PowerOffWindow = TimeSpan.FromMilliseconds(2500);
+
+    /// <summary>
+    /// Keep a record of how long the guide button has been held, and when it was last seen down.
+    ///
+    /// Runs on every poll regardless of what any setting says, because it is evidence rather than
+    /// behaviour.
+    /// </summary>
+    private void NoteGuideHold(bool down)
+    {
+        var now = DateTime.UtcNow;
+
+        if (!down) { _guideDownSince = default; return; }
+
+        if (_guideDownSince == default) _guideDownSince = now;
+
+        // Held for, rather than held since: the duration has to survive the button going away, and
+        // when a controller powers off there is no release to record one from.
+        _guideHeldFor = now - _guideDownSince;
+        _guideLastDown = now;
+    }
+
+    /// <summary>
+    /// Whether the controller that just vanished was switched off on purpose.
+    ///
+    /// Powering a wireless controller off means holding the guide button — six seconds on an Xbox
+    /// pad, about ten on a DualSense — and the pad reports that button held right up until it stops
+    /// reporting anything. So a disconnect arriving moments after a long hold has exactly one
+    /// ordinary explanation. A flat battery or a lost link produces a disconnect with no button held
+    /// at all, which is the difference this reads.
+    ///
+    /// This is a judgement, not a fact, and it is deliberately used only for a choice between two
+    /// harmless answers — neither closes a game. The awkward cases are honest ones: a controller
+    /// with no hold-to-power-off never looks deliberate, and a battery dying during the seconds
+    /// somebody happens to be holding the button looks deliberate when it was not. Both are rare and
+    /// neither costs anything.
+    /// </summary>
+    private bool WasPoweredOff(ControllerDevice device)
+    {
+        // A cable coming out is deliberate by definition. Nothing unplugs itself, and a wired pad has
+        // no battery to go flat.
+        if (!device.Wireless)
+        {
+            Log.Info($"{device.Name} was on a cable, so unplugging it counts as switching it off.");
+            return true;
+        }
+
+        var now = DateTime.UtcNow;
+
+        bool held = _guideHeldFor >= PowerOffHold && now - _guideLastDown <= PowerOffWindow;
+
+        Log.Info(held
+            ? $"{device.Name} vanished {Math.Round((now - _guideLastDown).TotalMilliseconds)}ms after "
+              + $"a {Math.Round(_guideHeldFor.TotalMilliseconds)}ms guide hold; treating it as "
+              + "switched off on purpose."
+            : $"{device.Name} vanished with no guide hold before it; treating it as an unexpected "
+              + "disconnect.");
+
+        return held;
+    }
+
     /// <summary>
     /// Whether Steam's overlay was already open when the button went down — which makes the press a
     /// request to close the overlay rather than anything to do with us. See CheckGuideButton.
@@ -2625,13 +2721,21 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private void CheckGuideButton()
     {
-        if (!_session.Config.EndSessionOnGuideButton) { _guideHeld = false; return; }
-
         WakePadForInput();
 
         bool down;
         try { down = PadShortcut.IsControlHeld(PadControl.Home); }
         catch { return; }   // a pad vanishing mid-poll is not worth a crash
+
+        NoteGuideHold(down);
+
+        // Sampled before this gate, not after.
+        //
+        // The hold record above is what tells a controller being switched off from one whose battery
+        // died, and that has to work whether or not the guide button is also a session shortcut —
+        // those are unrelated settings. It used to return here first, which meant switching the
+        // shortcut off silently took the power-off detection with it.
+        if (!_session.Config.EndSessionOnGuideButton) { _guideHeld = false; return; }
 
         // Mid-transition: track the button so a press made during it cannot fire the moment it clears,
         // but act on nothing.

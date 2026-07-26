@@ -112,6 +112,7 @@ internal static class Words
     public const string SectionYourController = "Your controller";
     public const string SectionController = "Starting a session";
     public const string SectionDisconnect = "If it disconnects";
+
     public const string SectionPointer = "How the pointer moves";
     public const string SectionPointerWhen = "When the pointer works";
     public const string SectionMouse = "Using it as a mouse";
@@ -580,20 +581,36 @@ internal static class Words
     public static readonly string[] DisconnectOptions =
         ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
 
-    public const string DisconnectPick = "What should happen";
+    // Two questions, not one, because they are two events with two right answers.
+    //
+    // This was a single choice covering any disconnect, which forced one answer onto both "I have
+    // finished playing" and "my battery just died". They are told apart now — powering a controller
+    // off means holding the guide button, and the pad reports that right up until it stops
+    // reporting anything, so a disconnect moments after a long hold has one ordinary explanation.
+    // See TrayApp.WasPoweredOff.
+    //
+    // Deliberately not a master switch with a sub-option, which is the shape this setting was in
+    // once before and had to be rescued from. Neither of these depends on the other; both are always
+    // live, and each says which event it is about in its own title.
+    public const string DisconnectOff = "When you switch it off";
+    public const string DisconnectOffWhy =
+        "Holding the guide button to power a controller down is how most people say they have "
+            + "finished, so it is worth acting on. Unplugging a wired controller counts too.";
+
+    public const string DisconnectLost = "If it disconnects on its own";
+    public const string DisconnectLostWhy =
+        "A flat battery, a knocked cable, or a wireless adapter dropping the link. **Left alone by "
+            + "default** — you may still be sitting there. Set this if you would rather not be "
+            + "stranded looking at a television nothing can drive.";
     // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
     // adds, and when to pick neither. It was one dense block that answered all three at once and had
     // to be read twice — on a setting somebody meets on their first run.
-    // Three short lines, one per option, in the order they appear in the list. The reader is
-    // choosing between three things, so the description is three things — not three paragraphs of
-    // prose they have to take apart to work out which sentence belongs to which option.
-    public const string DisconnectPickWhy =
-        "**Ignore it** — nothing happens. A controller going flat or dropping out mid-game leaves "
-            + "your session exactly as it was.\n\n"
-            + "**Come back to the desktop** — your display and sound return to the desk. The game "
-            + "keeps running, and switching the controller on again takes you straight back in.\n\n"
-            + "**Come back and ask** — the same, plus a prompt at your desk offering to go back, "
-            + "close the game, or leave it. Only shown when a game is running.";
+    // What the three options mean, said once above both pickers rather than twice inside them.
+    public const string DisconnectNote =
+        "**Nothing here ever closes your game.** Coming back moves your display and sound to the "
+            + "desk while the game keeps running, so switching the controller on again takes you "
+            + "straight back in. **Come back and ask** adds a prompt at your desk offering to go "
+            + "back, close the game, or leave it — shown only when a game is running.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";

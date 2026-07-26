@@ -444,16 +444,28 @@ public sealed class AppConfig
     /// drops straight back in. The way out cannot be a prompt on the television, because the only
     /// thing that could have answered one is the controller that just vanished.
     /// </summary>
-    /// Defaults to Ignore.
+    /// <summary>
+    /// What happens when you switch the controller off yourself.
     ///
-    /// It defaulted to coming back and asking, on the reasoning that a controller going flat leaves a
-    /// television showing a game nobody can drive. That is a real problem and it is not the common
-    /// case: the ordinary reason a controller stops reporting is somebody switching it off because
-    /// they have finished, and Windows cannot tell those two apart — the device simply goes away
-    /// either way. Acting on the ambiguous signal by default means the app interrupts the many to
-    /// rescue the few, which is the wrong way round for something nobody asked for. Anyone who wants
-    /// the rescue can switch it on and gets the prompt with it.
-    public DisconnectAction OnDisconnect { get; set; } = DisconnectAction.Ignore;
+    /// Coming back to the desktop by default, because switching a controller off is how people say
+    /// they have finished playing, and it is worth acting on for exactly that reason. Nothing is
+    /// closed: the game keeps running and switching the controller back on returns to it.
+    /// </summary>
+    public DisconnectAction OnControllerOff { get; set; } = DisconnectAction.ComeBack;
+
+    /// <summary>
+    /// What happens when the controller goes away without being switched off — a flat battery, a
+    /// knocked cable, an adapter dropping the link.
+    ///
+    /// Nothing, by default. This is the ambiguous half and it is the one that used to be acted on:
+    /// the setting was a single choice covering both events, defaulting to coming back and asking,
+    /// which meant the app interrupted everyone to rescue the few whose battery had died. Split
+    /// apart, the deliberate case can be acted on confidently and this one can be left alone until
+    /// somebody asks for it.
+    ///
+    /// See TrayApp.WasPoweredOff for how the two are told apart, and for how sure it is.
+    /// </summary>
+    public DisconnectAction OnControllerLost { get; set; } = DisconnectAction.Ignore;
 
     /// <summary>
     /// Switch the Xbox Game Bar off while this app is running.
@@ -749,7 +761,8 @@ public enum PadLink { Either, WiredOnly, WirelessOnly }
 public enum HdrMode { Off, PerGame, WholeSession }
 
 /// <summary>
-/// What a controller dropping out mid-session does. See <see cref="AppConfig.OnDisconnect"/>.
+/// What a controller leaving mid-session does. Used by both halves of that question — see
+/// <see cref="AppConfig.OnControllerOff"/> and <see cref="AppConfig.OnControllerLost"/>.
 ///
 /// Order matters: these are the dropdown's rows, and the index is what gets stored.
 /// </summary>

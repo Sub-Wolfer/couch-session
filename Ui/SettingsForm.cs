@@ -197,7 +197,8 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _enableGameMode = new();
     private readonly ToggleSwitch _gamePriority = new();
     private readonly ToggleSwitch _startOnController = new();
-    private readonly Dropdown _onDisconnect = new();
+    private readonly Dropdown _onControllerOff = new();
+    private readonly Dropdown _onControllerLost = new();
     private readonly ToggleSwitch _muteOnDesktop = new();
 
     private readonly GameIcons _icons = new();
@@ -1421,13 +1422,20 @@ public sealed class SettingsForm : Form
         // Back on this page, having been dropped while the behaviour was fixed and could only ever
         // say one thing. It is a setting again, and it is the one that decides what a flat battery
         // mid-game does — so it says which of the three states it is in rather than just on or off.
-        Tile("Controller disconnects", DisconnectOf(_onDisconnect) switch
+        Tile("Switching it off", Says(DisconnectOf(_onControllerOff, DisconnectAction.ComeBack)),
+             DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore,
+             page: ControllerPage, anchor: _onControllerOff);
+
+        Tile("If it drops out", Says(DisconnectOf(_onControllerLost, DisconnectAction.Ignore)),
+             DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
+             page: ControllerPage, anchor: _onControllerLost);
+
+        static string Says(DisconnectAction action) => action switch
         {
             DisconnectAction.ComeBackAndAsk => "back to the desk, then asks",
             DisconnectAction.ComeBack => "back to the desk",
-            _ => "ignored",
-        }, DisconnectOf(_onDisconnect) != DisconnectAction.Ignore,
-             page: ControllerPage, anchor: _onDisconnect);
+            _ => "nothing",
+        };
 
         // ── performance and pointer ──
         Tile("Power plan", _changePowerPlan.Checked
@@ -2562,7 +2570,8 @@ public sealed class SettingsForm : Form
         // Only when the choice is genuinely deciding nothing, which is a state the page can be left
         // in and gave no account of.
         WhenOn(() => !_startOnController.Checked
-                  && DisconnectOf(_onDisconnect) == DisconnectAction.Ignore,
+                  && DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) == DisconnectAction.Ignore
+                  && DisconnectOf(_onControllerLost, DisconnectAction.Ignore) == DisconnectAction.Ignore,
                whose, () => AddNote(whose, Words.TriggerPadIdle));
 
         AddNote(whose, Words.ControllerTriggerNote);
@@ -2592,8 +2601,15 @@ public sealed class SettingsForm : Form
         NewSection(page, Words.SectionDisconnect);
         var losing = NewCard(page);
 
-        SetOptions(_onDisconnect, Words.DisconnectOptions);
-        AddPick(losing, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
+        // What the answers mean, once, above both questions.
+        AddNote(losing, Words.DisconnectNote);
+
+        SetOptions(_onControllerOff, Words.DisconnectOptions);
+        AddPick(losing, Words.DisconnectOff, _onControllerOff, Words.DisconnectOffWhy,
+                Words.DisconnectOptions[(int)DisconnectAction.ComeBack]);
+
+        SetOptions(_onControllerLost, Words.DisconnectOptions);
+        AddPick(losing, Words.DisconnectLost, _onControllerLost, Words.DisconnectLostWhy,
                 Words.DisconnectOptions[(int)DisconnectAction.Ignore]);
 
         // ── the mouse ──
@@ -5810,7 +5826,7 @@ public sealed class SettingsForm : Form
         ControllerPage =>
         [
             nameof(AppConfig.StartOnControllerConnect), nameof(AppConfig.StartOnControllerLink),
-            nameof(AppConfig.OnDisconnect),
+            nameof(AppConfig.OnControllerOff), nameof(AppConfig.OnControllerLost),
             nameof(AppConfig.TriggerControllerId), nameof(AppConfig.TriggerControllerName),
             nameof(AppConfig.MouseControlEnabled), nameof(AppConfig.MouseCursorStick),
             nameof(AppConfig.MouseSpeed), nameof(AppConfig.MouseDeadzone),
@@ -6095,7 +6111,8 @@ public sealed class SettingsForm : Form
             _enableGameMode.Checked = GameModeControl.IsEnabled();
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
-            _onDisconnect.SelectedIndex = (int)Config.OnDisconnect;
+            _onControllerOff.SelectedIndex = (int)Config.OnControllerOff;
+            _onControllerLost.SelectedIndex = (int)Config.OnControllerLost;
             _muteOnDesktop.Checked = Config.MuteGameOnDesktop;
 
 
@@ -6229,7 +6246,8 @@ public sealed class SettingsForm : Form
         Config.EnableGameMode = _enableGameMode.Checked;
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
-        Config.OnDisconnect = DisconnectOf(_onDisconnect);
+        Config.OnControllerOff = DisconnectOf(_onControllerOff, DisconnectAction.ComeBack);
+        Config.OnControllerLost = DisconnectOf(_onControllerLost, DisconnectAction.Ignore);
         Config.MuteGameOnDesktop = _muteOnDesktop.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
@@ -6399,10 +6417,14 @@ public sealed class SettingsForm : Form
     /// dropdown with nothing selected reports -1, and the safe reading of "no answer" is the
     /// least surprising behaviour rather than the most.
     /// </summary>
-    private static DisconnectAction DisconnectOf(Dropdown pick) =>
+    /// <param name="fallback">
+    /// What "nothing selected" means, which differs by question: switching a controller off defaults
+    /// to coming back, losing one defaults to doing nothing.
+    /// </param>
+    private static DisconnectAction DisconnectOf(Dropdown pick, DisconnectAction fallback) =>
         pick.SelectedIndex is var i and >= 0 && i <= (int)DisconnectAction.ComeBackAndAsk
             ? (DisconnectAction)i
-            : DisconnectAction.Ignore;
+            : fallback;
 
     private static HdrMode HdrModeOf(Dropdown pick) =>
         pick.SelectedIndex is var i and >= 0 && i <= (int)HdrMode.WholeSession ? (HdrMode)i : HdrMode.Off;
@@ -6498,7 +6520,8 @@ public sealed class SettingsForm : Form
         // Live only while something reads it. With neither end switched on, the choice of controller
         // decides nothing — see UpdateTriggerPadTitle for the same three states in words.
         _triggerPad.Enabled = _startOnController.Checked
-                           || DisconnectOf(_onDisconnect) != DisconnectAction.Ignore;
+                           || DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore
+                           || DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore;
 
         // Only about starting, so it follows only that switch.
         _padLink.Enabled = _startOnController.Checked;
@@ -6760,7 +6783,9 @@ public sealed class SettingsForm : Form
         // Conditional again, now that it is a setting rather than fixed behaviour. Listing something
         // the user has switched off as a reason the app has to keep running is how a list like this
         // stops being read.
-        if (Config.OnDisconnect != DisconnectAction.Ignore) features.Add(Words.FeatureControllerOff);
+        if (Config.OnControllerOff != DisconnectAction.Ignore
+         || Config.OnControllerLost != DisconnectAction.Ignore)
+            features.Add(Words.FeatureControllerOff);
 
         return features;
     }

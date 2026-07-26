@@ -84,7 +84,8 @@ public static class BugReport
         sb.AppendLine($"Auto HDR       : {config.AutoHdrEnabled} ({config.HdrGames.Count} game(s))");
         sb.AppendLine($"Whole session  : {config.HdrForWholeSession}");
         sb.AppendLine($"Start on pad   : {config.StartOnControllerConnect}");
-        sb.AppendLine($"Pad drop out   : {config.OnDisconnect}");
+        sb.AppendLine($"Pad switched off: {config.OnControllerOff}");
+        sb.AppendLine($"Pad dropped out : {config.OnControllerLost}");
         sb.AppendLine($"Mute on desktop: {config.MuteGameOnDesktop} (muted now: {CouchMode.Audio.GameAudio.AnythingMuted})");
         sb.AppendLine($"Chosen pad     : {Blank(config.TriggerControllerId)}");
         sb.AppendLine($"Power plan     : {config.ChangePowerPlan} ({Blank(config.SessionPowerPlan)})");
