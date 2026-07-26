@@ -245,7 +245,16 @@ public sealed class SettingsForm : Form
     private const string AutomaticAudio = Words.AutomaticAudio;
     private const int RailWidth = 208;
     private const int TitleBarHeight = 42;
-    private const int FooterHeight = 66;
+    /// <summary>
+    /// How tall the footer bar is.
+    ///
+    /// Six pixels taller than it was, to give the primary button its glow back. That glow is painted
+    /// inside the control, which therefore has to be taller than the button — and at the old height
+    /// the bottom of it ran straight into the window edge and was sliced off. Everything else in the
+    /// footer is centred against this constant rather than placed at a literal Y, so the bar can be
+    /// retuned here without hunting for four hard-coded offsets that no longer agree.
+    /// </summary>
+    private const int FooterHeight = 72;
 
     /// <summary>Height of the name-and-version block above the navigation list.</summary>
     private const int BrandHeight = 74;
@@ -1907,11 +1916,19 @@ public sealed class SettingsForm : Form
     {
         var bar = new Panel { Dock = DockStyle.Bottom, Height = FooterHeight, BackColor = Theme.Rail };
 
+        // Everything in this bar is centred against FooterHeight rather than sitting at a Y someone
+        // measured once. The two rows had drifted apart already — the left pair at 17 and 18 for the
+        // same 32-pixel height — and a bar that changes height cannot carry hard-coded offsets.
+        const int SmallButton = 32, BigButton = 38;
+
+        int smallTop = (FooterHeight - SmallButton) / 2;
+        int bigTop = (FooterHeight - BigButton) / 2;
+
         var donate = new RoundedButton
         {
             Text = Words.ButtonSupport,
-            Size = new Size(186, 32),
-            Location = new Point(20, 17),
+            Size = new Size(186, SmallButton),
+            Location = new Point(20, smallTop),
             Font = Theme.BodySemi,
             Image = AppIcon.Heart(16, Color.White),
             IconGap = 8,
@@ -1932,8 +1949,8 @@ public sealed class SettingsForm : Form
         var bug = new FlatButton
         {
             Text = Words.ReportBug,
-            Size = new Size(142, 32),
-            Location = new Point(donate.Right + 10, 18),
+            Size = new Size(142, SmallButton),
+            Location = new Point(donate.Right + 10, smallTop),
             Icon = AppIcon.Bug(16, Theme.Text),
             IconGap = 8,
         };
@@ -1946,29 +1963,40 @@ public sealed class SettingsForm : Form
         // Close was redundant: the title bar X does the same thing, and settings save
         // themselves, so the button confirmed nothing and dismissed nothing. Reset is the one
         // action in this window with no other route to it.
-        var reset = new FlatButton { Text = Words.ButtonReset, Size = new Size(150, 38) };
+        // The primary button's control is bigger than the button drawn in it.
+        //
+        // FlatButton.Emphasis lays a glow under the pill, a Control cannot paint outside its own
+        // bounds, so the glow needs FlatButton.Bleed of transparent room on every side.
+        //
+        // [BUG] That room was first taken back out with a negative Margin, on the reasoning that the
+        // flow panel would simply add it. It does not — FlowLayoutPanel clamps a negative margin to
+        // zero — so nothing was subtracted and the pill landed nine pixels below and left of where
+        // the old rectangular button had been, out of line with Reset beside it and with its glow
+        // sliced off by the bottom of the window.
+        //
+        // The room is now made instead of borrowed: the panel starts a bleed higher, and Reset gets
+        // a matching top margin to put it back on the same line. Both written against the constant,
+        // so changing the bleed cannot knock the footer out of alignment again.
+        var reset = new FlatButton
+        {
+            Text = Words.ButtonReset,
+            Size = new Size(150, BigButton),
+            Margin = new Padding(0, FlatButton.Bleed, 3, 3),
+        };
+
         reset.Click += (_, _) => ResetEverything();
         _tips.SetToolTip(reset, Wrapped(Words.TipReset));
 
         // The one button this window exists for, so the one button drawn as a primary action.
-        //
-        // The control is bigger than the button. FlatButton.Emphasis lays a glow under the pill, and
-        // a Control cannot paint outside its own bounds, so the glow needs FlatButton.Bleed of
-        // transparent room on every side. The negative margin takes that room straight back out of
-        // the layout: the panel gaps stay what they were, and the pill lands where the old
-        // rectangular button did instead of nine pixels down and to the left of it.
-        //
-        // Written as arithmetic against the default margin of 3 rather than as the numbers it works
-        // out to, so changing Bleed cannot silently knock the footer out of alignment.
-        const int Flow = 3;
-        int pull = Flow - FlatButton.Bleed;
-
         _action = new FlatButton
         {
             Emphasis = true,
             IconGap = 10,
-            Size = new Size(186 + FlatButton.Bleed * 2, 38 + FlatButton.Bleed * 2),
-            Margin = new Padding(pull, pull, pull, Flow),
+            Size = new Size(186 + FlatButton.Bleed * 2, BigButton + FlatButton.Bleed * 2),
+
+            // No margin of its own: the bleed already holds it clear of Reset, and adding to that
+            // would open a gap wider than the one between any other pair of buttons in the window.
+            Margin = new Padding(0),
         };
 
         _action.Click += (_, _) => OnActionButton();
@@ -1980,9 +2008,12 @@ public sealed class SettingsForm : Form
             Dock = DockStyle.Right,
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
-            Width = 380,
+
+            // Wide enough for both controls, the bleed and the right inset, with room to spare. It
+            // was 380, which the wider primary control filled to within three pixels.
+            Width = 420,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 16, 20, 0),
+            Padding = new Padding(0, bigTop - FlatButton.Bleed, 20, 0),
         };
         right.Controls.AddRange([reset, _action]);
 
@@ -2006,7 +2037,9 @@ public sealed class SettingsForm : Form
             // bug moved into the footer beside Support — at which point the label landed on top of
             // it and swallowed the clicks, because a Label added later is above the button in the
             // z-order and still takes the mouse even with nothing written in it.
-            Location = new Point(bug.Right + 14, 26),
+            // Centred on the bar like the buttons either side of it, rather than at a Y that only
+            // happened to line up at the old footer height.
+            Location = new Point(bug.Right + 14, (FooterHeight - Theme.Small.Height) / 2),
         };
         bar.Controls.Add(_saveNote);
 
