@@ -13,7 +13,7 @@
 
 ---
 
-You want to play on the television. That means changing your display, moving the sound, setting the
+You want to play on the television connected to your PC? That means changing your display, moving the sound, setting the
 right resolution, turning HDR on, opening Big Picture — and then undoing all of it when you're done,
 usually while wondering which window went where.
 
