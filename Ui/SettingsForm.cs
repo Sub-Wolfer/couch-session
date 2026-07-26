@@ -215,6 +215,7 @@ public sealed class SettingsForm : Form
     private readonly System.Windows.Forms.Timer _autoSave = new() { Interval = 400 };
     private FlatButton _action = null!;
     private FlatButton? _closeGame;
+    private FlowLayoutPanel? _footerButtons;
     private Label _deviceNote = null!;
 
     private Panel _pageHost = null!;
@@ -2078,8 +2079,8 @@ public sealed class SettingsForm : Form
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
 
-            // Wide enough for both controls, the bleed and the right inset, with room to spare. It
-            // was 380, which the wider primary control filled to within three pixels.
+            // A starting value only. The real width is worked out from what is actually in the row
+            // — see SizeFooterButtons, and the bug it was written for.
             Width = 420,
             BackColor = Color.Transparent,
 
@@ -2096,6 +2097,9 @@ public sealed class SettingsForm : Form
         // the hand already is, and it puts the most-used button furthest from Reset, which is the one
         // in this pair worth never hitting by accident.
         right.Controls.AddRange([_action, _closeGame, reset]);
+
+        _footerButtons = right;
+        SizeFooterButtons();
 
         // Settings save themselves, so there is nothing to press. This only confirms it
         // happened — an interface that saves silently and says nothing invites the user to
@@ -6455,6 +6459,31 @@ public sealed class SettingsForm : Form
         if (_closeGame.Visible == wanted) return;
 
         _closeGame.Visible = wanted;
+        SizeFooterButtons();
+    }
+
+    /// <summary>
+    /// Make the button strip exactly as wide as the buttons in it.
+    ///
+    /// [BUG] It was a hard-coded 420, chosen when the row held two buttons and noted at the time as
+    /// having "room to spare". Adding Close Game put 513 pixels of button into it, and a docked
+    /// panel does not push back — it simply clipped, so the leftmost button read "…ttings" instead
+    /// of "Reset all settings". A fixed width for a row whose contents come and go was always going
+    /// to end here; the arithmetic is three lines and cannot go out of date.
+    ///
+    /// Hidden controls are skipped, so the strip shrinks again the moment Close Game goes away and
+    /// the save-confirmation label beside it gets its room back.
+    /// </summary>
+    private void SizeFooterButtons()
+    {
+        if (_footerButtons is null) return;
+
+        int wide = _footerButtons.Padding.Horizontal;
+
+        foreach (Control child in _footerButtons.Controls)
+            if (child.Visible) wide += child.Width + child.Margin.Horizontal;
+
+        if (_footerButtons.Width != wide) _footerButtons.Width = wide;
     }
 
     private void OnCloseGameButton()
