@@ -1039,7 +1039,7 @@ internal sealed class SessionEndPrompt : Form
 
         if ((live && up && !_pUp) || stickUp || repeatUp) MoveSelection(-1);
         if ((live && down && !_pDown) || stickDown || repeatDown) MoveSelection(+1);
-        if (live && a && !_pA) Decide(_options[_selected].Choice);
+        if (live && a && !_pA) Commit();
 
         // Acted on the press, like A and unlike B. B waits for the release because its press has to
         // not fall through to whatever is behind this window; Square is not a button any game menu
@@ -1181,10 +1181,42 @@ internal sealed class SessionEndPrompt : Form
         return y;
     }
 
+    /// <summary>
+    /// How many things the stick can land on: the answers, plus the tick box when there is one.
+    ///
+    /// The tick has to be in this list rather than being mouse-only. Both prompts that carry one are
+    /// answered from a sofa with a controller — the confirmation in front of closing a game is on
+    /// the television by definition — so a tick reachable only with a mouse would be a switch the
+    /// person it is aimed at cannot press.
+    /// </summary>
+    private int Rows => _options.Length + (ShowsDontAsk ? 1 : 0);
+
+    /// <summary>True when the highlight is on the tick box rather than on an answer.</summary>
+    private bool OnDontAsk => ShowsDontAsk && _selected == _options.Length;
+
     private void MoveSelection(int delta)
     {
-        _selected = (_selected + delta + _options.Length) % _options.Length;
+        _selected = (_selected + delta + Rows) % Rows;
         Redraw();
+    }
+
+    /// <summary>
+    /// What the confirm button does, which is not always "decide".
+    ///
+    /// On the tick box it toggles and stays put. Deliberately not "toggle and then act": a control
+    /// that both changes a setting and dismisses the window in one press gives no chance to see
+    /// what the press did, on the one row where seeing it is the entire point.
+    /// </summary>
+    private void Commit()
+    {
+        if (OnDontAsk)
+        {
+            DontAskAgain = !DontAskAgain;
+            Redraw();
+            return;
+        }
+
+        Decide(_options[_selected].Choice);
     }
 
     private void Decide(Choice choice)
@@ -1302,7 +1334,8 @@ internal sealed class SessionEndPrompt : Form
         {
             case Keys.Up: MoveSelection(-1); return true;
             case Keys.Down: MoveSelection(+1); return true;
-            case Keys.Enter: Decide(_options[_selected].Choice); return true;
+            case Keys.Enter: Commit(); return true;
+            case Keys.Space: Commit(); return true;
             case Keys.Escape: Decide(Choice.Stay); return true;
         }
         return base.ProcessCmdKey(ref msg, keyData);
@@ -1663,7 +1696,20 @@ internal sealed class SessionEndPrompt : Form
                                 _dontAskRect.Top + (_dontAskRect.Height - side) / 2,
                                 side, side);
 
-        var line = _dontAskHover || DontAskAgain ? Theme.Accent : Theme.InputLine;
+        bool focused = OnDontAsk;
+
+        // A ring around the whole row when the highlight is on it, matching the answers above. Not
+        // just a brighter box: from a sofa the box is 16 pixels, and the thing that has to be
+        // findable at that distance is which row the stick is on.
+        if (focused)
+        {
+            var ring = Rectangle.Inflate(_dontAskRect, S(4), S(2));
+
+            Theme.FillRounded(g, ring, S(8), Theme.Mix(Theme.Accent, Theme.Surface, 0.82f));
+            Theme.DrawRounded(g, ring, S(8), Theme.Accent);
+        }
+
+        var line = focused || _dontAskHover || DontAskAgain ? Theme.Accent : Theme.InputLine;
 
         Theme.FillRounded(g, box, S(4), DontAskAgain ? Theme.Accent : Theme.Input);
         Theme.DrawRounded(g, box, S(4), line);
@@ -1697,7 +1743,7 @@ internal sealed class SessionEndPrompt : Form
         TextRenderer.DrawText(g, DontAskText, _detailFont,
                               new Rectangle(textLeft, _dontAskRect.Top,
                                             _dontAskRect.Right - textLeft, _dontAskRect.Height),
-                              _dontAskHover || DontAskAgain ? Theme.Text : Theme.TextDim,
+                              focused || _dontAskHover || DontAskAgain ? Theme.Text : Theme.TextDim,
                               TextFormatFlags.Left | TextFormatFlags.VerticalCenter
                             | TextFormatFlags.NoPrefix);
     }

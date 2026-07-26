@@ -226,7 +226,9 @@ internal static class Words
     public const string ConfirmClosingGame = "Double-check before closing a running game";
     public const string ConfirmClosingGameWhy =
         "Puts one more question in the way of anything that would close the game you are playing, "
-            + "naming it and saying what you lose. Off makes the first answer final — quicker, and with "
+            + "naming it and saying what you lose. That question carries a **stop double-checking** "
+            + "tick you can reach with the controller, which switches this off from the sofa; here is "
+            + "where you turn it back on. Off makes the first answer final — quicker, and with "
             + "nothing between a mis-pressed button and a closed game.";
 
     public const string SectionEndingSession = "Ending a session";
@@ -577,6 +579,10 @@ internal static class Words
 
     // Named for what it does rather than "Don't show this again", which does not say whether the
     // coming-back stops too. It does not: the setting drops one step, to "Come back to the desktop".
+    // The tick on the "are you sure" prompt. Named for the setting it switches off rather than
+    // "don't show this again", so it is clear the check is going away and not just this one window.
+    public const string SureCloseDontAsk = "Stop double-checking before closing a game";
+
     public const string DisconnectDontAsk = "Stop asking me this — just come back to the desktop";
 
     public const string StartOnController = "Start a session when a controller connects";

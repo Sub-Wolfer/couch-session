@@ -800,6 +800,15 @@ public sealed class TrayApp : IDisposable
         {
             KeepHint = Words.SureCloseStay,
 
+            // A way out of being asked, on the window doing the asking.
+            //
+            // The setting behind this lives on the General page, which is a thing you cannot reach
+            // from a sofa without ending the session first — so somebody who finds this prompt
+            // tiresome has no route to switching it off at the moment they are thinking about it.
+            // Reachable with the stick and the A button like everything else here; see
+            // SessionEndPrompt.Rows for why it could not simply be a mouse target.
+            DontAskText = Words.SureCloseDontAsk,
+
             // No Square shortcut. This window exists because a one-press answer was too easy to reach;
             // giving it one of its own would hand back exactly what it was put here to take.
             GameWindow = () => _hdr.RunningGameWindow(),
@@ -812,6 +821,22 @@ public sealed class TrayApp : IDisposable
         // already gone, so there is nothing to return to and nothing left to do.
         sure.Chosen += answer =>
         {
+            // Honoured whichever way the question was answered, including backing out. Someone who
+            // ticks this and then keeps playing has still said they do not want to be asked again —
+            // and making the tick conditional on confirming would mean the only way to switch off a
+            // warning was to go through with the thing it warns about.
+            if (sure.DontAskAgain && _session.Config.ConfirmClosingGame)
+            {
+                _session.Config.ConfirmClosingGame = false;
+
+                // Applied first, saved second: what matters is the next time a game is closed, and a
+                // failed write must not be what decides whether the question comes back.
+                try { _session.Config.Save(); }
+                catch (Exception ex) { Log.Warn($"Could not save the confirm-close setting: {ex.Message}"); }
+
+                Log.Info("Asked not to confirm closing a game again; the check is now off.");
+            }
+
             if (answer == SessionEndPrompt.Choice.Close) act(wanted);
             else if (answer is not SessionEndPrompt.Choice.Stay) HandleNavigationChoice(answer);
         };
