@@ -1,0 +1,63 @@
+# Builds and publishes a release when a version tag is pushed.
+#
+# Tagging is the only action needed:
+#
+#     git tag v1.1.0 && git push origin v1.1.0
+#
+# The version in the tag is written into the assembly, so the number the app reports and the
+# number people downloaded always agree — which matters here because the update check compares
+# exactly those two.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+  # Runnable by hand as well, for testing the workflow without publishing a tag.
+  workflow_dispatch:
+
+permissions:
+  contents: write        # needed to create the release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Work out the version
+        id: version
+        shell: bash
+        run: |
+          # Tag pushes carry the number; a manual run gets a placeholder so it still builds.
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "number=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        run: >
+          dotnet publish CouchModeGaming.csproj
+          -c Release
+          -p:Version=${{ steps.version.outputs.number }}
+          -o publish
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CouchModeGaming
+          path: publish/CouchModeGaming.exe
+
+      - name: Create the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/CouchModeGaming.exe
+          generate_release_notes: true      # from the commits since the last tag

@@ -1,0 +1,528 @@
+using System.Diagnostics;
+using Microsoft.Win32;
+using CouchMode.Display;
+using CouchMode.Games;
+using CouchMode.Ui;
+
+namespace CouchMode.Session;
+
+/// <summary>
+/// Turns HDR on for the primary display while a chosen game runs, and puts it back afterwards.
+///
+/// "Primary" is resolved at the moment the game starts, not configured in advance: during a
+/// couch session the TV is primary, and if someone launches a game at their desk the monitor
+/// is. Either way exactly one display is touched — see <see cref="HdrControl.SetPrimaryHdr"/>.
+/// </summary>
+public sealed class HdrCoordinator : IDisposable
+{
+    private readonly GameWatcher _watcher = new();
+    private AppConfig _config;
+
+    /// <summary>Whether this feature turned HDR on, so it only ever turns off what it started.</summary>
+    private bool _weTurnedItOn;
+
+    /// <summary>
+    /// The user turned HDR on by hotkey with no game running, so the next game to launch is the one
+    /// they turned it on for. It is remembered (and its HDR held until it closes) whether or not it
+    /// was already on the list — which is the right order for HDR, since most games read the display
+    /// state at launch and need it on beforehand. A short poll and a deadline back it up.
+    /// </summary>
+    private bool _hdrArmed;
+    private DateTime _armUntil;
+    private System.Threading.Timer? _armTimer;
+
+    /// <summary>
+    /// The games that could be the one that launches, taken once when arming.
+    ///
+    /// Not rebuilt on every poll: reading every launcher's catalogue six hundred milliseconds apart
+    /// would be pure waste, and a game installed inside the forty-five seconds this waits is not a
+    /// case worth paying for.
+    /// </summary>
+    private IReadOnlyList<GameEntry> _armCandidates = [];
+
+    /// <summary>What was already running when HDR was armed, so only something new counts.</summary>
+    private string? _armBaselineKey;
+
+    /// <summary>
+    /// How many watched games are running, and a signal when that crosses zero.
+    ///
+    /// The watcher spots a game by its process — including a pre-game launcher like DOOM's, which
+    /// Steam's RunningAppID does not always cover — so this is the reliable "something is playing"
+    /// signal. Big Picture's front guard listens to it to step off the top layer, which RunningAppID
+    /// alone was missing for exactly those launchers.
+    /// </summary>
+    private int _running;
+
+    /// <summary>Fires true when the first watched game starts, false when the last one stops.</summary>
+    public event Action<bool>? GameActivityChanged;
+
+    /// <summary>
+    /// Close the running game as a session ends — whether or not it was on the Auto-HDR list, and
+    /// whether or not HDR is even in use. A game the watcher was following is ended from the tracked
+    /// set; a game it was not (never ticked, or the whole watcher idle) is found through Steam's
+    /// RunningAppID and closed by its install folder.
+    /// </summary>
+    public bool CloseRunningGame()
+    {
+        // Precise first: a tracked game (any window state), then a Steam game by its install folder —
+        // this reaches a game that is minimised or sitting behind Big Picture.
+        bool closed = _watcher.CloseRunning();
+
+        int appId = SteamRunningAppId();
+        if (appId != 0 && GameLibrary.SteamInstallDir(appId) is { } dir)
+            closed |= _watcher.CloseGamesInside([dir]);
+
+        // The window fallback catches a non-Steam title whose folder could not be found — but only
+        // when Steam actually reports something running (RunningAppID set). Without that gate, a
+        // session that ended with no game ever launched would fall through to here and close whatever
+        // the user happened to have full-screen on the TV. No game running means nothing to close.
+        if (!closed && appId != 0)
+            closed = RunningGames.CloseForegroundOnPrimary() > 0;
+
+        return closed;
+    }
+
+    /// <summary>
+    /// Remember the HDR choice for the game running right now, so Auto HDR applies it by itself next
+    /// time. On adds it to the list (and makes sure Auto HDR is switched on, or the choice would
+    /// never fire); off drops it. Returns the game's name, or null when no game is running — or when
+    /// one is, but it belongs to no library and no folder on the list, so there is nothing to name it.
+    /// </summary>
+    public string? RememberHdrForRunningGame(bool on)
+        => RunningGame() is { } game ? Remember(game, on) : null;
+
+    /// <summary>
+    /// The game running right now, however it was launched, or null when nothing identifiable is.
+    ///
+    /// Three routes, most exact first. Steam names its own game outright through RunningAppID. A
+    /// game the watcher is already following is equally exact and costs nothing. Everything else —
+    /// Epic, GOG, or a folder added by Browse — has no id to ask about, so it is found the only way
+    /// it can be: by matching a running process back to an install folder.
+    ///
+    /// That third route is what the games list has always promised and the code could not do. Until
+    /// it existed, turning HDR on during an Epic game remembered nothing and said so with silence.
+    /// </summary>
+    /// <summary>
+    /// Whichever game is running right now, if one is. Public because the session-end confirmation
+    /// names it: "Close Elden Ring?" is a question about a specific thing the user is doing, and
+    /// "Close the game?" is a question about a category.
+    /// </summary>
+    public GameEntry? RunningGame(IReadOnlyList<GameEntry>? candidates = null)
+    {
+        int appId = SteamRunningAppId();
+        if (appId != 0 && GameLibrary.SteamGameByAppId(appId) is { } steam) return steam;
+
+        if (_watcher.Current is { } tracked) return tracked;
+
+        return GameWatcher.MatchRunning(candidates ?? Candidates());
+    }
+
+    /// <summary>
+    /// Every game that could be the one running: the installed library, plus whatever is already on
+    /// the HDR list. The second is not redundant — Browse accepts a folder no launcher knows about,
+    /// and that game still has to be recognisable to be dropped from the list again.
+    /// </summary>
+    private IReadOnlyList<GameEntry> Candidates()
+    {
+        var found = new List<GameEntry>();
+
+        try { found.AddRange(GameLibrary.DiscoverAll()); }
+        catch (Exception ex) { Log.Warn($"Could not read the game library: {ex.Message}"); }
+
+        found.AddRange(_config.HdrGames
+            .Where(g => !string.IsNullOrWhiteSpace(g.InstallDir))
+            .Select(g => new GameEntry(g.Name, g.InstallDir, GameSource.Manual)));
+
+        return found;
+    }
+
+    private string Remember(GameEntry game, bool on)
+    {
+        string key = game.Key;
+        bool present = _config.HdrGames.Any(g => g.InstallDir.TrimEnd('\\').ToLowerInvariant() == key);
+
+        if (on)
+        {
+            if (!present)
+                _config.HdrGames.Add(new HdrGame { Name = game.Name, InstallDir = game.InstallDir });
+
+            // Otherwise the remembered choice sits in a list nothing reads.
+            _config.AutoHdrEnabled = true;
+            Log.Info($"Remembered HDR on for {game.Name}; it will come on automatically next time.");
+        }
+        else
+        {
+            _config.HdrGames.RemoveAll(g => g.InstallDir.TrimEnd('\\').ToLowerInvariant() == key);
+            Log.Info($"Forgot HDR for {game.Name}; it will no longer come on by itself.");
+        }
+
+        try { _config.Save(); }
+        catch (Exception ex) { Log.Warn($"Saving the HDR choice failed: {ex.Message}"); }
+
+        Reconfigure(_config);
+
+        // Make the running game behave exactly like one Auto HDR caught for itself, so it turns HDR
+        // off when it closes. The hotkey flipped HDR directly — which the coordinator would not
+        // otherwise know to undo — and the game was already running, so the watcher never saw it
+        // "start". Adopting it means its close is noticed; claiming _weTurnedItOn means that close
+        // switches HDR back off. Skipped when HDR is on for the whole session, which is the one case
+        // the user asked to leave holding it on until the session itself ends.
+        if (on && !_config.HdrForWholeSession)
+        {
+            _watcher.AdoptRunning();
+            _weTurnedItOn = true;
+        }
+        else if (!on)
+        {
+            _weTurnedItOn = false;   // the hotkey just turned HDR off; nothing is holding it on now
+        }
+
+        return game.Name;
+    }
+
+    /// <summary>
+    /// Arm HDR for the next game to launch — called when the hotkey turned HDR on with no game
+    /// running, i.e. the user set HDR up before launching, the order HDR actually needs. A watched
+    /// game is caught by the coordinator's own launch handling; anything else is caught by the short
+    /// poll here, which watches Steam's RunningAppID for something new.
+    /// </summary>
+    public void ArmHdrForNextGame()
+    {
+        if (_config.HdrForWholeSession) return;   // the session already holds HDR; nothing to arm
+
+        _hdrArmed = true;
+        _armCandidates = Candidates();
+        _armBaselineKey = RunningGame(_armCandidates)?.Key;
+        _armUntil = DateTime.UtcNow + TimeSpan.FromSeconds(45);
+        _armTimer ??= new System.Threading.Timer(_ => PollArmed(), null, 600, 600);
+        Log.Info("HDR armed by hotkey: the next game to launch will hold HDR and be remembered.");
+    }
+
+    private void PollArmed()
+    {
+        try
+        {
+            if (!_hdrArmed || DateTime.UtcNow > _armUntil) { Disarm(); return; }
+
+            // Changed their mind — HDR is back off — so stop waiting.
+            try { if (!HdrControl.PrimaryStatus().Enabled) { Disarm(); return; } } catch { }
+
+            // Nothing new has launched yet. Matched against the list taken when arming, so an Epic
+            // or GOG title counts here exactly as a Steam one does.
+            if (RunningGame(_armCandidates) is not { } game || game.Key == _armBaselineKey) return;
+
+            // A game launched with HDR already on. Remembering it also tracks it and claims the HDR,
+            // so it switches back off when the game closes. Under the same setting as the hotkey —
+            // it means "remember when HDR is turned on", and this is one of the ways it gets turned on.
+            if (_config.HdrHotkeyRemembersGame)
+            {
+                Remember(game, true);
+                Log.Info($"HDR armed: {game.Name} launched; remembered and holding its HDR.");
+            }
+
+            Disarm();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"HDR arm poll failed: {ex.Message}");
+            Disarm();
+        }
+    }
+
+    private void Disarm()
+    {
+        _hdrArmed = false;
+        _armCandidates = [];
+        _armBaselineKey = null;
+        _armTimer?.Dispose();
+        _armTimer = null;
+    }
+
+    private static int SteamRunningAppId()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+            return key?.GetValue("RunningAppID") is int id ? id : 0;
+        }
+        catch { return 0; }
+    }
+
+    /// <summary>
+    /// Pick up a game that was already running when the session began, so it is tracked — for the
+    /// close-on-end option and for turning HDR/priority on for it — even though the watcher never
+    /// saw it launch. Big Picture, not this, is what the user drives to get back into the game.
+    /// </summary>
+    public bool AdoptRunningGame() => _watcher.AdoptRunning();
+
+    /// <summary>
+    /// The main window of the game (or launcher) currently tracked, or zero when there is none or it
+    /// has not drawn a window yet. For handing the foreground to a launcher that opened behind Big
+    /// Picture.
+    /// </summary>
+    public IntPtr RunningGameWindow()
+    {
+        var p = _watcher.RunningProcess;
+        if (p is not null)
+        {
+            try
+            {
+                p.Refresh();
+                if (!p.HasExited && p.MainWindowHandle != IntPtr.Zero) return p.MainWindowHandle;
+            }
+            catch { /* stale handle — fall through */ }
+        }
+
+        // Not a watched (HDR-checked) game, or its window is not up yet — fall back to whatever Steam
+        // reports running, so an unchecked game is still recognised and returned to.
+        return CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow();
+    }
+
+    public HdrCoordinator(AppConfig config)
+    {
+        _config = config;
+
+        _watcher.GameStarted += OnGameStarted;
+        _watcher.GameAdopted += OnGameAdopted;
+        _watcher.GameStopped += OnGameStopped;
+
+        Reconfigure(config);
+    }
+
+    /// <summary>
+    /// Turn HDR on for the session, before anything has launched.
+    ///
+    /// This is the belt-and-braces path. Per-game switching has to notice a launch and then
+    /// wait for the display to apply the change, and a game that starts rendering quickly can
+    /// still read the old state. Nothing is racing anything here: the session begins, HDR goes
+    /// on, and every game launched afterwards sees an HDR display from the outset.
+    /// </summary>
+    public void ArmForSession()
+    {
+        // Its own feature now, not a mode of the per-game switch. Someone can run HDR for the
+        // whole session with no game list at all.
+        if (!_config.HdrForWholeSession) return;
+
+        try
+        {
+            var status = HdrControl.PrimaryStatus();
+
+            if (!status.Found || !status.Supported)
+            {
+                Log.Info("Auto HDR: the session display reports no HDR support; leaving it alone.");
+                return;
+            }
+
+            if (status.Enabled) return;
+
+            if (!HdrControl.SetPrimaryHdr(true)) return;
+
+            _weTurnedItOn = true;
+            Notify(Words.NoticeHdrOn, Words.NoticeHdrSessionReady, Theme.Good);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Auto HDR could not be armed for the session", ex);
+        }
+    }
+
+    /// <summary>Drop session HDR on the way back to the desktop.</summary>
+    public void DisarmAfterSession()
+    {
+        Disarm();   // stop waiting for a game to arm HDR — the session is over
+
+        if (!_weTurnedItOn) return;
+
+        // A game still running has a better claim on it than the session does.
+        if (_watcher.Current is not null) return;
+
+        _weTurnedItOn = false;
+
+        try
+        {
+            if (HdrControl.SetPrimaryHdr(false))
+                Notify(Words.NoticeHdrOff, Words.NoticeHdrDesktop, Theme.TextDim);
+        }
+        catch (Exception ex) { Log.Warn($"Auto HDR could not be turned off: {ex.Message}"); }
+    }
+
+    /// <summary>Rebuild the watch list from config. Called at startup and after every save.</summary>
+    public void Reconfigure(AppConfig config)
+    {
+        _config = config;
+
+        // Either feature is reason enough to watch.
+        //
+        // The watcher is shared: Auto HDR and the priority boost both act on "a game from the
+        // list started", so gating it on Auto HDR alone meant turning that off silently
+        // disabled the priority boost too.
+        bool wanted = config.AutoHdrEnabled || config.GamePriorityEnabled;
+
+        if (!wanted || config.HdrGames.Count == 0)
+        {
+            _watcher.SetWatchList([]);
+            return;
+        }
+
+        // Only the folders matter at runtime; names are for the settings list.
+        var watched = config.HdrGames
+            .Select(g => new GameEntry(g.Name, g.InstallDir, GameSource.Manual))
+            .ToList();
+
+        _watcher.SetWatchList(watched);
+        _watcher.Rescan();
+        Log.Info($"Auto HDR is watching {watched.Count} game(s).");
+    }
+
+    private void OnGameStarted(GameEntry game)
+    {
+        // A launch seen this session. Raise the running signal before any of the HDR/priority
+        // early-returns below, so Big Picture drops off the top for the launcher whatever those
+        // settings are.
+        if (++_running == 1) GameActivityChanged?.Invoke(true);
+
+        EngageFor(game);
+    }
+
+    /// <summary>
+    /// A game that was already running when the session began. Give it HDR and the priority boost
+    /// exactly as a launch would, but do NOT raise the running signal — Big Picture has to stay on
+    /// top so the user can reach the library and pick this game back up. It steps aside on its own
+    /// once that game is the window in front.
+    /// </summary>
+    private void OnGameAdopted(GameEntry game) => EngageFor(game);
+
+    private void EngageFor(GameEntry game)
+    {
+        if (_config.GamePriorityEnabled && _watcher.RunningProcess is { } process)
+            GamePriority.Raise(process);
+
+        if (!_config.AutoHdrEnabled) return;
+
+        // Whole-session HDR overrides the game list: the display is already in HDR for the entire
+        // session, so there is nothing for a per-game switch to add. This is also why _weTurnedItOn
+        // being set by the session arm below makes the rest a no-op — but the check is stated
+        // outright so the intent survives a future refactor of that flag.
+        if (_config.HdrForWholeSession) return;
+
+        // Already holding it on from the launcher, or from the session. Nothing to do, and
+        // saying so again would be a second notification for one launch.
+        if (_weTurnedItOn) return;
+
+        try
+        {
+            var status = HdrControl.PrimaryStatus();
+            var display = HdrControl.PrimaryId();
+
+            Log.Info($"Auto HDR: {game.Name} started. Primary display '{display}' — "
+                   + $"resolved: {status.Found}, HDR supported: {status.Supported}, "
+                   + $"currently on: {status.Enabled}.");
+
+            if (!status.Found)
+            {
+                Log.Warn("Auto HDR: could not work out which display is primary, so nothing was "
+                       + "changed. This is not the same as the display lacking HDR.");
+                return;
+            }
+
+            if (!status.Supported)
+            {
+                Log.Info($"Auto HDR: '{display}' reports no HDR support; leaving it alone.");
+                return;
+            }
+
+            if (status.Enabled)
+            {
+                // HDR is already on. If the user armed it by hotkey just before launching — the right
+                // order for HDR — claim it so this game's close still switches it back off, and say so.
+                // Otherwise it is HDR they run for other reasons, and is left strictly alone.
+                if (_hdrArmed)
+                {
+                    _weTurnedItOn = true;
+                    _hdrArmed = false;
+                    Log.Info($"Auto HDR: {game.Name} started with HDR already on from the hotkey; holding it.");
+                    Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
+                }
+                else
+                {
+                    Log.Info($"Auto HDR: '{display}' already has HDR on; nothing to do.");
+                }
+                return;
+            }
+
+            if (!HdrControl.SetPrimaryHdr(true)) return;
+
+            _weTurnedItOn = true;
+            Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Auto HDR failed to turn on for {game.Name}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Turn HDR off when the game ends.
+    ///
+    /// Always off, never "back to how it was".
+    ///
+    /// Restoring the previous state sounds careful but is wrong for what this feature is: it is
+    /// only ever asked to turn HDR *on* for a game. If HDR happened to be on beforehand, the
+    /// restore left it on afterwards and nothing appeared to switch off — the reported bug. And
+    /// leaving HDR on at the desktop is the thing worth avoiding, since SDR content on an HDR
+    /// desktop looks washed out.
+    ///
+    /// The one thing it will not do is switch off HDR it never switched on, so someone who runs
+    /// their desktop in HDR permanently is left alone.
+    /// </summary>
+    private void OnGameStopped(GameEntry game)
+    {
+        if (_running > 0 && --_running == 0) GameActivityChanged?.Invoke(false);
+
+        GamePriority.Restore();
+
+        // Straight off. The watcher only reports a stop once nothing belonging to the game is
+        // running at all, so there is nothing left to wait for.
+        if (!_weTurnedItOn) return;
+        _weTurnedItOn = false;
+
+        try
+        {
+            if (HdrControl.SetPrimaryHdr(false))
+                Notify(Words.NoticeHdrOff, $"{game.Name} {Words.NoticeHdrClosed}", Theme.TextDim);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Auto HDR failed to turn off after {game.Name}", ex);
+        }
+    }
+
+    /// <summary>A short toast, only when the user asked for notifications.</summary>
+    private void Notify(string title, string detail, Color accent)
+    {
+        if (!_config.ShowNotifications || !_config.ShowHdrNotifications) return;
+
+        // No settle delay: nothing is being switched between displays here, so the message can
+        // appear straight away rather than after the pause a display change needs.
+        Toast.Show(title, detail, accent,
+                   delay: TimeSpan.FromMilliseconds(250),
+                   duration: TimeSpan.FromSeconds(7));
+    }
+
+    /// <summary>Put HDR back if we are still holding it on — used when the app exits.</summary>
+    public void RestoreNow()
+    {
+        if (!_weTurnedItOn) return;
+        _weTurnedItOn = false;
+
+        try { HdrControl.SetPrimaryHdr(false); }
+        catch (Exception ex) { Log.Warn($"Auto HDR could not be turned off on exit: {ex.Message}"); }
+    }
+
+    public void Dispose()
+    {
+        Disarm();
+        RestoreNow();
+        _watcher.Dispose();
+    }
+}

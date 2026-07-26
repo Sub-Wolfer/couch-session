@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <AssemblyName>CouchSession</AssemblyName>
+    <RootNamespace>CouchMode</RootNamespace>
+    <Version>0.9.0</Version>
+    <Product>Couch Session</Product>
+    <Description>Steam Big Picture on your TV — one click there and back.</Description>
+    <Company>Couch Session</Company>
+    <AssemblyTitle>Couch Session</AssemblyTitle>
+    <ApplicationIcon>CouchPotato.ico</ApplicationIcon>
+
+    <!-- Single portable exe, no runtime install required -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+    <!-- No trimming: the SDK hard-blocks it for WinForms (NETSDK1175), because the framework
+         relies on reflection the trimmer can't follow. Costs binary size, nothing else.
+         NativeAOT is also out: it cannot do built-in COM, which IPolicyConfig needs. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embedded so the tray icon and window icon come from the same file as the exe icon,
+         with no loose asset to ship alongside the single-file build. -->
+    <EmbeddedResource Include="CouchPotato.ico" LogicalName="CouchPotato.ico" />
+
+    <!-- The easter egg, baked in so it cannot be found, swapped or deleted from the data folder.
+         Condition so a missing file is not a build error: drop easteregg.gif beside the csproj to
+         arm it, remove it and the app simply has no easter egg. -->
+    <EmbeddedResource Include="easteregg.gif" LogicalName="easteregg.gif" Condition="Exists('easteregg.gif')" />
+    <EmbeddedResource Include="easteregg.wav" LogicalName="easteregg.wav" Condition="Exists('easteregg.wav')" />
+
+    <!-- The real console button artwork, if you have supplied it. Optional: both marks are trademarks
+         and cannot be shipped in the repository, so the app draws its own when these are absent. Square
+         PNGs with transparency, 128px or larger. -->
+    <EmbeddedResource Include="ps-button.png" LogicalName="ps-button.png" Condition="Exists('ps-button.png')" />
+    <EmbeddedResource Include="xbox-button.png" LogicalName="xbox-button.png" Condition="Exists('xbox-button.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Backup snapshots live inside the project folder (the working tree is all the sandbox can
+         reach), and the SDK's default globbing would compile every .cs in them — defining the whole
+         app twice. Anything under a folder starting with _backup is source to keep, not source to
+         build. -->
+    <Compile Remove="_backup*/**/*.cs" />
+    <EmbeddedResource Remove="_backup*/**/*" />
+    <None Remove="_backup*/**/*" />
+    <Content Remove="_backup*/**/*" />
+  </ItemGroup>
+
+</Project>
