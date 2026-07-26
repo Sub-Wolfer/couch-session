@@ -593,15 +593,23 @@ internal static class Words
     // once before and had to be rescued from. Neither of these depends on the other; both are always
     // live, and each says which event it is about in its own title.
     public const string DisconnectOff = "When you switch it off";
+    // The wired case is claimed here and deliberately not mentioned under "on its own", where an
+    // earlier draft listed a knocked cable — the two together promised something the app cannot do.
+    // A cable coming out looks identical whoever pulled it, so it has to belong to one of these
+    // questions and it belongs to this one: a wired controller has no battery to go flat and no
+    // radio to lose, so somebody pulling the cable is very nearly the only thing it can be.
     public const string DisconnectOffWhy =
         "Holding the guide button to power a controller down is how most people say they have "
-            + "finished, so it is worth acting on. Unplugging a wired controller counts too.";
+            + "finished, so it is worth acting on.\n\n"
+            + "**Unplugging a wired controller counts as switching it off**, including a cable "
+            + "knocked out by accident — nothing can tell those apart, and a wired controller has no "
+            + "battery to go flat.";
 
     public const string DisconnectLost = "If it disconnects on its own";
     public const string DisconnectLostWhy =
-        "A flat battery, a knocked cable, or a wireless adapter dropping the link. **Left alone by "
-            + "default** — you may still be sitting there. Set this if you would rather not be "
-            + "stranded looking at a television nothing can drive.";
+        "A flat battery, or a wireless adapter dropping the link. **Left alone by default** — you "
+            + "may still be sitting there. Set this if you would rather not be stranded looking at a "
+            + "television nothing can drive.";
     // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
     // adds, and when to pick neither. It was one dense block that answered all three at once and had
     // to be read twice — on a setting somebody meets on their first run.

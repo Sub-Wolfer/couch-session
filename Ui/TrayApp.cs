@@ -2639,8 +2639,13 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private bool WasPoweredOff(ControllerDevice device)
     {
-        // A cable coming out is deliberate by definition. Nothing unplugs itself, and a wired pad has
-        // no battery to go flat.
+        // A cable coming out belongs here, and it is a choice rather than a certainty.
+        //
+        // Nothing distinguishes a cable pulled on purpose from one knocked out by a foot, so the
+        // event has to belong to one of the two settings and this is the better home for it: a wired
+        // controller has no battery to go flat and no radio to lose, so a person is very nearly the
+        // only thing that can end its connection. Filing it under "on its own" instead would leave
+        // the deliberate setting permanently inert for anyone who plays wired.
         if (!device.Wireless)
         {
             Log.Info($"{device.Name} was on a cable, so unplugging it counts as switching it off.");
