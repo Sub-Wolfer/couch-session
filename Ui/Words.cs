@@ -547,17 +547,18 @@ internal static class Words
         ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
 
     public const string DisconnectPick = "If your controller disconnects mid-session";
+    // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
+    // adds, and when to pick neither. It was one dense block that answered all three at once and had
+    // to be read twice — on a setting somebody meets on their first run.
     public const string DisconnectPickWhy =
-        "**Nothing here ever closes anything.** Coming back moves your display and sound to the desk "
-            + "while the game and Big Picture keep running behind it, so **switching the controller "
-            + "back on takes you straight back into the game**. It is here because a flat battery on "
-            + "the sofa otherwise leaves a television showing a game nothing can drive.\n\n"
-            + "**Come back and ask** adds a prompt on your desk screen offering to go back, close the "
-            + "game, or leave it — shown only when a game is actually running, since putting the pad "
-            + "down in Big Picture has nothing to answer. That prompt has a **stop asking me this** "
-            + "tick on it, which drops this setting to the middle option; this is where you turn it "
-            + "back on. **Ignore it** suits a controller that sleeps on its own, or an adapter that "
-            + "drops the link now and then.";
+        "**Nothing here ever closes anything.** Your display and sound come back to the desk with the "
+            + "game still running behind them, so **switching the controller on again drops you "
+            + "straight back into it**.\n\n"
+            + "**Come back and ask** also puts a prompt on your desk screen: go back, close the game, "
+            + "or leave it. It only appears when a game is running, and it has a **stop asking me "
+            + "this** tick that switches you to the middle option.\n\n"
+            + "**Ignore it** if your controller sleeps by itself and you would rather nothing "
+            + "happened.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
@@ -1016,10 +1017,10 @@ internal static class Words
 
     /// <summary>Shown in light blue under the controller settings. ** ** marks the bold part.</summary>
     public const string ControllerTriggerNote =
-        "Responds to a controller connecting or disconnecting, not to one already switched on. "
-            + "**Paused while you are on this page or the Hotkeys page**, so switching a controller on "
-            + "to set it up does not also start a session. Not paused during a session, where a pad "
-            + "going quiet still has to be noticed.";
+        "These watch for a controller **switching on or off** — not for one that is already on.\n\n"
+            + "**They are paused while you are on this page or the Hotkeys page**, so turning a pad on "
+            + "to set it up will not also start a session. During a session they stay awake, because a "
+            + "pad going quiet still has to be noticed.";
 
     // Live state at the top of the card. Nielsen's first heuristic, and the one thing this page could
     // not answer: whether the app can see your controller right now.

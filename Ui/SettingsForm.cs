@@ -2414,6 +2414,14 @@ public sealed class SettingsForm : Form
         NewSection(page, Words.SectionController);
         var pad = NewCard(page);
 
+        // The caveat that applies to everything below it, said before any of it rather than after.
+        //
+        // It was at the foot of the card, where it read as a footnote to the last setting instead of
+        // as the rule for the whole group — and its most useful line, that the triggers are paused
+        // while you are on this page, only helps somebody who reads it *before* wondering why
+        // switching their pad on did nothing.
+        AddNote(pad, Words.ControllerTriggerNote);
+
         AddToggle(pad, Words.StartOnController, _startOnController, Words.StartOnControllerWhy,
                   setting: nameof(AppConfig.StartOnControllerConnect));
 
@@ -2451,11 +2459,6 @@ public sealed class SettingsForm : Form
         SetOptions(_onDisconnect, Words.DisconnectOptions);
         AddPick(pad, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
                 Words.DisconnectOptions[(int)DisconnectAction.ComeBackAndAsk]);
-
-        // ControllerDisconnectNote used to sit here, saying "a disconnect never closes anything" under
-        // the setting whose own description opens with exactly that. It went with the two switches:
-        // the note existed to explain a combination, and there is no combination left to explain.
-        AddNote(pad, Words.ControllerTriggerNote);
 
         // Named for the state the switches are already in. Every later change comes through
         // UpdateDependentStates, which runs on any toggle on this form.

@@ -684,6 +684,32 @@ internal sealed class SessionEndPrompt : Form
         _shimmer.Start();
     }
 
+    /// <summary>
+    /// Lay the window out again, now that the caller's init properties actually exist.
+    ///
+    /// [BUG] The constructor ends with a LayoutContent() call, and for most of this class's life that
+    /// was fine. It stopped being fine the moment layout started depending on init-only properties:
+    /// C# runs an object initializer *after* the constructor returns, so at the point the constructor
+    /// measured this window, AtTheDesk was still false, PadHints still true and DontAskText still
+    /// empty — whatever the caller had written two lines below.
+    ///
+    /// The visible symptom was the "stop asking me this" tick simply not being there. It is drawn
+    /// into _dontAskRect, and _dontAskRect had been worked out under the belief that there was no
+    /// tick, so it was Rectangle.Empty: painted at the top-left corner with no width, and untouchable
+    /// by the mouse. The same ordering also reserved an empty hint row on the desk prompt, and had
+    /// been quietly measuring the hint strip against the *default* KeepHint rather than the caller's
+    /// for far longer than that.
+    ///
+    /// Handle creation is the first moment that is guaranteed to be after the initializer and before
+    /// anything is drawn — a layered window has no content until UpdateLayeredWindow, which happens
+    /// on the first Redraw below.
+    /// </summary>
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        LayoutContent();
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
