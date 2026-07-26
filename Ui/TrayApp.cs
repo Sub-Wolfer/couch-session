@@ -2631,6 +2631,10 @@ public sealed class TrayApp : IDisposable
     /// ordinary explanation. A flat battery or a lost link produces a disconnect with no button held
     /// at all, which is the difference this reads.
     ///
+    /// One rule for every controller, wired or wireless. How a controller is attached says nothing
+    /// about why it left, and a cable pulled out looks exactly like a battery dying — no button held
+    /// in either case, which is what this reads.
+    ///
     /// This is a judgement, not a fact, and it is deliberately used only for a choice between two
     /// harmless answers — neither closes a game. The awkward cases are honest ones: a controller
     /// with no hold-to-power-off never looks deliberate, and a battery dying during the seconds
@@ -2639,19 +2643,13 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private bool WasPoweredOff(ControllerDevice device)
     {
-        // A cable coming out belongs here, and it is a choice rather than a certainty.
-        //
-        // Nothing distinguishes a cable pulled on purpose from one knocked out by a foot, so the
-        // event has to belong to one of the two settings and this is the better home for it: a wired
-        // controller has no battery to go flat and no radio to lose, so a person is very nearly the
-        // only thing that can end its connection. Filing it under "on its own" instead would leave
-        // the deliberate setting permanently inert for anyone who plays wired.
-        if (!device.Wireless)
-        {
-            Log.Info($"{device.Name} was on a cable, so unplugging it counts as switching it off.");
-            return true;
-        }
 
+        // No special case for a cable, and there were two of them here in turn — first claiming an
+        // unplug as always deliberate, then as always an accident. Both were wrong in the same way:
+        // they answered from how the controller was attached, which says nothing about intent, when
+        // the evidence was already sitting right here. A cable pulled out produces a disconnect with
+        // no button held, which is exactly what a flat battery produces, and the test below reads
+        // both as what they are. One rule, applied to every controller, and nothing to keep in step.
         var now = DateTime.UtcNow;
 
         bool held = _guideHeldFor >= PowerOffHold && now - _guideLastDown <= PowerOffWindow;
