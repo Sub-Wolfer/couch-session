@@ -462,8 +462,9 @@ public sealed class TrayApp : IDisposable
         // onto the UI thread, then given a moment for the machine to finish waking before switching.
         Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
-        // Held for as long as the app runs, not just a session — see GameBarControl.
-        GameBarControl.Apply(config);
+        // The Game Bar is not applied at launch any more. It is a Windows setting the user changes
+        // in our window and Windows keeps — see GameBarControl — so imposing our stored copy of it
+        // on every start would overwrite whatever they had done in Windows since.
 
         // Undo any mute left behind by a run that was killed rather than closed. Nothing else on the
         // machine would ever put it back, so a crash would otherwise leave someone with a game that
@@ -2002,7 +2003,6 @@ public sealed class TrayApp : IDisposable
 
     private void ApplyConfig(AppConfig config)
     {
-        GameBarControl.Apply(config);
         ApplyShortcuts(config);
         _pointer.Configure(config);
         _front.Enabled = config.BigPictureAlwaysOnTop;
@@ -2921,9 +2921,6 @@ public sealed class TrayApp : IDisposable
         try { _front.Dispose(); } catch (Exception ex) { Log.Warn($"Big Picture front guard release failed: {ex.Message}"); }
 
         SafeRevert();
-
-        try { GameBarControl.Enable(); }
-        catch (Exception ex) { Log.Warn($"Game Bar restore failed: {ex.Message}"); }
 
         // The sound goes back before this process does. Same reasoning as the displays above it: a
         // change this app made to the machine must not outlive the app that made it.

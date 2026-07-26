@@ -3,34 +3,33 @@ using Microsoft.Win32;
 namespace CouchMode.Session;
 
 /// <summary>
-/// Switches the Xbox Game Bar off while Couch Session is running, and puts it back on the
-/// way out.
+/// Reads and sets whether the Xbox Game Bar is switched on — the same thing as Windows Settings ▸
+/// Gaming ▸ Xbox Game Bar, plus the capture half that lives beside it.
 ///
-/// The narrower version of this only cleared UseNexusForGameBarEnabled, the "open Game Bar with
-/// the controller button" switch. That was not enough in practice: the overlay still appeared
-/// and then dismissed itself a moment later, because the shell reads that value when the button
-/// is pressed but the Game Bar has already begun opening by then. A flash of overlay over a
-/// game is the thing being complained about, so half-preventing it is no use.
+/// Why this app cares: the Xbox Guide button opens the Game Bar over whatever is on the television,
+/// and dismissing an overlay nobody asked for is awkward from a sofa.
 ///
-/// Disabling the feature outright is both simpler and complete. Three values, all per-user, none
-/// needing administrator rights:
+/// Three values, all per-user, none needing administrator rights:
 ///
-///   AppCaptureEnabled       background recording and the capture overlay
-///   GameDVR_Enabled         the game-DVR half of the same feature
+///   AppCaptureEnabled           background recording and the capture overlay
+///   GameDVR_Enabled             the game-DVR half of the same feature
 ///   UseNexusForGameBarEnabled   the controller button binding
 ///
-/// Held for the lifetime of the app rather than the session. The button has to do nothing at the
-/// instant it is pressed, and a setting applied when a session starts is applied too late to be
-/// certain of that. It also means one restore point instead of one per session, which is the
-/// safer shape for something that edits a user's Windows settings.
+/// All three, because clearing only the button binding was tried and is not enough: the overlay
+/// still appeared and then dismissed itself a moment later, since the shell reads that value when
+/// the button is pressed but the Game Bar has already begun opening by then. A flash of overlay
+/// over a game is the thing being complained about, so half-preventing it is no use.
+///
+/// [BUG] This used to hold the setting for the lifetime of the app and put it back on the way out,
+/// remembering each previous value. That shape was wrong for what this is. It is a Windows-wide
+/// preference, like Game Mode beside it — somebody's answer to "do I want the Game Bar" does not
+/// stop being their answer when they quit this app, and restoring it meant the setting silently
+/// reverted every time. It also meant the switch showed what this app last wrote rather than what
+/// Windows actually says, so changing it in Windows left the toggle lying. It is a plain mirror
+/// now: read the real state, write it on the press, and leave it alone afterwards.
 /// </summary>
 public static class GameBarControl
 {
-    private sealed record Saved(string Key, string Value, int? Previous);
-
-    private static readonly List<Saved> Restore = [];
-    private static bool _applied;
-
     private static readonly (string Key, string Value)[] Switches =
     [
         (@"Software\Microsoft\Windows\CurrentVersion\GameDVR", "AppCaptureEnabled"),
@@ -38,71 +37,60 @@ public static class GameBarControl
         (@"Software\Microsoft\GameBar",                        "UseNexusForGameBarEnabled"),
     ];
 
-    /// <summary>Switch it off, remembering what each value was. Safe to call twice.</summary>
-    public static void Disable()
+    /// <summary>
+    /// Whether the Game Bar is on right now.
+    ///
+    /// On unless something has switched it off: an absent value means Windows' own default, which is
+    /// enabled. Any one of the three being zero counts as off, because any one of them being zero is
+    /// enough to change what the Guide button does.
+    /// </summary>
+    public static bool IsEnabled()
     {
-        if (_applied) return;
-        _applied = true;
-
-        foreach (var (key, value) in Switches)
+        try
         {
-            try
+            foreach (var (key, value) in Switches)
+            {
+                using var registry = Registry.CurrentUser.OpenSubKey(key);
+
+                if (registry?.GetValue(value) is int set && set == 0) return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not read the Xbox Game Bar setting: {ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>Turn the Game Bar on or off. Returns false when Windows would not have it.</summary>
+    public static bool Set(bool on)
+    {
+        int wanted = on ? 1 : 0;
+
+        try
+        {
+            foreach (var (key, value) in Switches)
             {
                 using var registry = Registry.CurrentUser.CreateSubKey(key);
-                if (registry is null) continue;
+                registry?.SetValue(value, wanted, RegistryValueKind.DWord);
+            }
 
-                // Null previous means the value was absent, which is different from it being
-                // zero: putting a 0 back where nothing was would leave the machine changed.
-                Restore.Add(new Saved(key, value, registry.GetValue(value) as int?));
-                registry.SetValue(value, 0, RegistryValueKind.DWord);
-            }
-            catch (Exception ex)
-            {
-                Log.Warn($"Could not switch off {value}: {ex.Message}");
-            }
+            // Read back rather than trusting the write, for the same reason Game Mode does: this is a
+            // setting the user is standing in front of, and "it said it worked" is not good enough.
+            bool now = IsEnabled();
+
+            Log.Info(now == on
+                ? $"Xbox Game Bar turned {(on ? "on" : "off")}."
+                : $"Xbox Game Bar would not turn {(on ? "on" : "off")}; it is still {(now ? "on" : "off")}.");
+
+            return now == on;
         }
-
-        Log.Info($"Xbox Game Bar disabled ({Restore.Count} setting(s) changed).");
-    }
-
-    /// <summary>
-    /// Put every value back exactly as it was found.
-    ///
-    /// Called from the app's exit paths, including the process-exit handler, so a crash or a
-    /// sign-out still hands the machine back in the state it was borrowed in. Anything that
-    /// turns a Windows feature off has to be more careful about the way back than the way in.
-    /// </summary>
-    public static void Enable()
-    {
-        if (!_applied) return;
-        _applied = false;
-
-        foreach (var saved in Restore)
+        catch (Exception ex)
         {
-            try
-            {
-                using var registry = Registry.CurrentUser.CreateSubKey(saved.Key);
-                if (registry is null) continue;
-
-                if (saved.Previous is { } previous)
-                    registry.SetValue(saved.Value, previous, RegistryValueKind.DWord);
-                else
-                    registry.DeleteValue(saved.Value, throwOnMissingValue: false);
-            }
-            catch (Exception ex)
-            {
-                Log.Warn($"Could not restore {saved.Value}: {ex.Message}");
-            }
+            Log.Warn($"Could not set the Xbox Game Bar: {ex.Message}");
+            return false;
         }
-
-        Log.Info("Xbox Game Bar settings put back.");
-        Restore.Clear();
-    }
-
-    /// <summary>Follow the setting, whichever way it was just changed.</summary>
-    public static void Apply(AppConfig config)
-    {
-        if (config.DisableGameBarButton) Disable();
-        else Enable();
     }
 }

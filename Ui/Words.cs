@@ -103,10 +103,18 @@ internal static class Words
     // moved into this card: coming back to the desktop is ending one. A heading that names half of
     // what is under it is worse than a vague one, because the reader stops looking at the half it
     // does not mention.
-    public const string SectionController = "Starting and ending a session";
-    public const string SectionPointer = "Pointer";
+    // The controller page, reorganised into one question per card.
+    //
+    // It was two headings over five settings, with "Starting a session" sitting above a card that
+    // also decided what happens when a controller is lost. Grouping by the question each card
+    // answers is the whole of the improvement: a reader looking for one of these can find the right
+    // card without reading the one above it, and every heading is now true of everything under it.
+    public const string SectionYourController = "Your controller";
+    public const string SectionController = "Starting a session";
+    public const string SectionDisconnect = "If it disconnects";
+    public const string SectionPointer = "How the pointer moves";
     public const string SectionPointerWhen = "When the pointer works";
-    public const string SectionMouse = "Mouse control";
+    public const string SectionMouse = "Using it as a mouse";
     public const string SectionShortcutKeyboard = "Keyboard";
     public const string SectionShortcutController = "Controller";
     public const string SectionAbout = "About";
@@ -467,15 +475,10 @@ internal static class Words
             + "Windows Settings under Gaming ▸ Game Mode.";
     public const string GamePriority = "Raise the game's priority";
     public const string GamePriorityWhy =
-        "Gives the running game more processor time, and ends when that game closes. **It only acts "
-            + "on games ticked in the HDR Switching list** — that list is what the app watches, and "
-            + "it starts empty, so tick a game there or this does nothing. Some games block it (often "
-            + "anti-cheat) and it is skipped quietly.";
-
-    // Shown under the priority toggle while the list it depends on has nothing in it.
-    public const string GamePriorityNoGames =
-        "**No games are ticked yet**, so this is not acting on anything. Tick the games you want it "
-            + "for on the HDR Switching page.";
+        "Gives whichever game is running more processor time, and gives it back when that game "
+            + "closes. Applies to **any game the app can find** — Steam, Epic and GOG libraries — "
+            + "not just the ones ticked for HDR. Some games block it (often anti-cheat) and it is "
+            + "skipped quietly.";
 
     // ── General ───────────────────────────────────────────────────────────────────
 
@@ -558,11 +561,17 @@ internal static class Words
     // it is off the whole time Couch Session is running, and "when you quit" read as quitting the game.
     // And it clears AppCaptureEnabled and GameDVR_Enabled as well, which is background clip recording:
     // someone who records their play would have lost it with nothing here to say so.
+    public const string NoticeGameBarOn = "Xbox Game Bar is on";
+    public const string NoticeGameBarOff = "Xbox Game Bar is off";
+    public const string WarnGameBarFailed =
+        "Windows would not change the Game Bar setting. Nothing has been altered. You can set it in "
+            + "Windows Settings under Gaming ▸ Xbox Game Bar.";
+
     public const string DisableGameBarButtonWhy =
-        "The Xbox Guide button opens the Game Bar over your game, awkward from the couch. This switches "
-            + "the Game Bar off for the whole time Couch Session is running — not just during a session "
-            + "— and **puts it back when you close the app**. Background clip recording goes off with "
-            + "it. PlayStation pads don't trigger it.";
+        "The Xbox Guide button opens the Game Bar over your game, which is awkward from the couch. "
+            + "**This is the same switch as Windows Settings ▸ Gaming ▸ Xbox Game Bar**, changed as "
+            + "soon as you press it and left that way — closing this app does not put it back. "
+            + "Background clip recording goes off with it. PlayStation pads do not trigger it.";
 
     // One three-way choice, replacing two switches where the second only meant anything while the
     // first was on — and where one of the three states was reachable two ways, since the prompt's own
@@ -608,10 +617,10 @@ internal static class Words
 
     public const string DisconnectDontAsk = "Stop asking me this — just come back to the desktop";
 
-    public const string StartOnController = "Start a session when a controller connects";
+    public const string StartOnController = "Start a session when it connects";
     public const string StartOnControllerWhy =
-        "Switching a controller on is usually the moment you sit down to play, so this treats it as "
-            + "the cue to move everything to the TV.";
+        "Switching a controller on is usually the moment you sit down to play, so this moves "
+            + "everything to the TV and opens Big Picture.";
 
     // ── About ─────────────────────────────────────────────────────────────────────
 
@@ -944,11 +953,12 @@ internal static class Words
 
     // ── Which controller ───────────────────────────────────────────────────────────
 
-    public const string MouseControl = "Use your controller as a mouse";
+    public const string MouseControl = "Move the pointer with your controller";
     public const string MouseControlWhy =
         "For launchers and windows that ignore a controller. **R1 / RB left-clicks, L1 / LB "
-            + "right-clicks.** If Steam Input is emulating a mouse on the same pad, turn one off — "
-            + "otherwise the pointer moves twice as far.";
+            + "right-clicks.**\n\n"
+            + "If Steam Input is already emulating a mouse on the same controller, switch one of them "
+            + "off or the pointer moves twice as far as you push it.";
 
     public const string CursorStick = "Stick that moves the pointer";
     public const string CursorStickWhy =
@@ -964,7 +974,7 @@ internal static class Words
         "For PlayStation controllers. One finger moves the pointer and **two fingers scroll**; press "
             + "it to left-click, press and hold to right-click. Does nothing on a pad without one.";
 
-    public const string MouseHold = "Only while holding a button";
+    public const string MouseHold = "Only while a button is held";
     public const string MouseInGames = "Let the pointer work over a game";
     public const string MouseInGamesWhy =
         "Normally the pointer switches itself off once a game fills the screen, so it cannot fight "
@@ -980,19 +990,19 @@ internal static class Words
             + "drives itself. It also stops a resting stick nudging the pointer, which is what keeps "
             + "a screen from going to sleep on you.";
 
-    public const string MouseHoldButton = "Hold button";
+    public const string MouseHoldButton = "Button to hold";
     public const string MouseHoldButtonWhy =
-        "The button that turns the mouse on while held. Chosen by position, so it is the same "
-            + "physical button on any controller.";
+        "Chosen by position rather than by name, so it is the same physical button whichever "
+            + "controller is in your hands.";
 
     public const string MouseSpeed = "Pointer speed";
     public const string MouseSpeedWhy =
-        "How far the cursor travels for the same push. Left places it exactly; right crosses a big "
+        "How far the pointer travels for the same push. Left places it exactly; right crosses a big "
             + "screen in one flick.";
     public const string MouseDeadzone = "Stick dead zone";
     public const string MouseDeadzoneWhy =
-        "How far a stick must move before the pointer does. If the cursor creeps on its own, drag "
-            + "right until it stops. Sticks only, not the touchpad.";
+        "How far a stick must move before the pointer does. **If the pointer creeps on its own, drag "
+            + "this right until it stops.** Sticks only, not the touchpad.";
     public const string MouseDeadzoneLow = "Smallest";
     public const string MouseDeadzoneHigh = "Largest";
 
@@ -1074,11 +1084,14 @@ internal static class Words
         "Drops the name you gave this controller and goes back to the model it reports.";
 
     /// <summary>Shown in light blue under the controller settings. ** ** marks the bold part.</summary>
+    // Shortened from five sentences to two, and moved next to the picker it qualifies. The line
+    // people actually need is that the triggers are paused while you are on this page, and it was
+    // third in a paragraph nobody was going to finish.
     public const string ControllerTriggerNote =
-        "These watch for a controller **switching on or off** — not for one that is already on.\n\n"
-            + "**They are paused while you are on this page or the Hotkeys page**, so turning a pad on "
-            + "to set it up will not also start a session. During a session they stay awake, because a "
-            + "pad going quiet still has to be noticed.";
+        "**Paused while you are on this page or the Hotkeys page**, so switching a controller on to "
+            + "set it up will not also start a session.\n\n"
+            + "Only Windows seeing a controller arrive or leave counts. Putting one down changes "
+            + "nothing, however long it sits there.";
 
     // Live state at the top of the card. Nielsen's first heuristic, and the one thing this page could
     // not answer: whether the app can see your controller right now.
@@ -1126,21 +1139,22 @@ internal static class Words
         "Only over Bluetooth",
     ];
 
-    public const string TriggerPad = "Controller that starts a session";
-    // Shown in place of TriggerPad when starting on connect is off, where the picker is only
-    // deciding whose disconnect counts. Named TriggerPadEnds for a version of this that said
-    // "...that ends a session"; renamed to match what it actually says, because the name on the left
-    // is how anyone editing this file finds the line.
-    public const string TriggerPadWatch = "Controller to watch";
-
-    // Neither end switched on, so the choice decides nothing. The picker is greyed out to match.
-    public const string TriggerPadIdle = "Controller (nothing is watching for one)";
+    // One stable title, where there were three that swapped as other switches moved.
+    //
+    // A label that rewrites itself when you touch a different control is a label you have to watch
+    // rather than read — and it was rewriting itself to say what the row *governs*, which is what
+    // the description underneath it is for. The description says that; the title names the thing.
+    public const string TriggerPad = "Controller to use";
+    // Shown under the picker when neither of the cards below it is switched on, so the choice is
+    // not deciding anything at all. A greyed-out control with no explanation reads as a fault.
+    public const string TriggerPadIdle =
+        "Nothing below is switched on, so this is not deciding anything at the moment.";
 
     public const string TriggerPadWhy =
-        "Pick one if you have several pads and only want a particular one to control the session. "
-            + "**It governs both ends**: only that controller starts a session, and only that "
-            + "controller going quiet counts as a disconnect. Two of the same model are told apart "
-            + "by the code after the name.";
+        "Leave this on **Any controller** unless you have several and only want one of them to "
+            + "matter. Whatever is chosen here governs both cards below: only that controller starts "
+            + "a session, and only that controller counts as the one that disconnected. Two of the "
+            + "same model are told apart by the code after the name.";
 
     // ── Checking the performance settings — removed ────────────────────────────────
     //

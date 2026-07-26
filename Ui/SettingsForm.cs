@@ -186,7 +186,6 @@ public sealed class SettingsForm : Form
     private RichNote? _videoModeNote;
 
     /// <summary>The controller picker's heading, which is reworded as its two switches change.</summary>
-    private RichNote? _triggerPadTitle;
 
     /// <summary>Connected controllers in the title bar. Hides itself when there are none.</summary>
     private ControllerStrip? _controllers;
@@ -1467,8 +1466,10 @@ public sealed class SettingsForm : Form
         // Named for the whole feature, not the button. Switching this on also stops background clip
         // recording, and "Game Bar: off" is what someone reads before going to hunt through Windows for
         // why Win+G stopped working at their desk.
-        Tile("Game Bar", _disableGameBarButton.Checked ? "off while the app runs" : "unchanged",
-             _disableGameBarButton.Checked, page: PerformancePage, anchor: _disableGameBarButton);
+        // "off" rather than "off while the app runs": it is a Windows setting now and stays however
+        // it is left, so describing it in terms of this app's lifetime would be a plain untruth.
+        Tile("Game Bar", _disableGameBarButton.Checked ? "off" : "on",
+             !_disableGameBarButton.Checked, page: PerformancePage, anchor: _disableGameBarButton);
 
         // ── the two that decide what the app says and asks ──
         Tile("Before closing a game", _confirmClosingGame.Checked ? "asks first" : "no warning",
@@ -2430,24 +2431,19 @@ public sealed class SettingsForm : Form
     /// on, calling it "starts and ends a session" describes something that is not happening. The
     /// title is the only place that can say so — the dropdown itself looks identical either way.
     /// </summary>
-    private void UpdateTriggerPadTitle()
-    {
-        if (_triggerPadTitle is not { IsDisposed: false } title) return;
-
-        // Three states, because there are three.
-        //
-        // [BUG] This assumed "the disconnect half is always on now", which was true for the hour
-        // between that behaviour being made unconditional and it becoming a setting again. It is a
-        // three-way pick whose first option is Ignore it — so with starting on connect switched off
-        // *and* disconnects ignored, the picker was titled "Controller to watch" while watching for
-        // nothing, which is the exact thing retitling it was meant to prevent.
-        bool starts = _startOnController.Checked;
-        bool ends = DisconnectOf(_onDisconnect) != DisconnectAction.Ignore;
-
-        title.SetMarkup(starts ? Words.TriggerPad
-                      : ends ? Words.TriggerPadWatch
-                             : Words.TriggerPadIdle);
-    }
+    /// <summary>
+    /// Nothing to update any more — the picker's title is fixed.
+    ///
+    /// It used to be rewritten from two other controls' states, and got that wrong twice: once by
+    /// assuming disconnect handling was always on, and once by titling the picker "Controller to
+    /// watch" while nothing was watching. A title kept in step with settings elsewhere on the page
+    /// is a title with a bug waiting in it. The note under the picker carries the "this is deciding
+    /// nothing" case now, where it can say so in a sentence rather than by implication.
+    ///
+    /// Kept as a no-op method because several places call it after changing a switch, and the call
+    /// sites are the reminder that this used to need doing.
+    /// </summary>
+    private static void UpdateTriggerPadTitle() { }
 
     /// <summary>
     /// The hold button is stored as a PadControl; the picker is a short fixed list. These two map
@@ -2521,9 +2517,20 @@ public sealed class SettingsForm : Form
         var page = NewPage(Words.PageController, Words.PageControllerWhy);
         _controllerPage = page;
 
-        // ── what is connected, before any setting ──
+        // ── one question per card ──
         //
-        // Its own card, above the first heading, so it reads as the state of things rather than as a
+        // The page used to be a status line, then one card holding five settings under a heading
+        // that named two of them, then the mouse. Reorganised so each card answers a single question
+        // a reader might arrive with — which controller, what starts a session, what happens if it
+        // goes away, and using it as a mouse — because a card you can identify from its heading is a
+        // card you can skip, and skipping is most of what anyone does on a settings page.
+        //
+        // The order is the order the questions occur: what the app can see, then which of those you
+        // mean, then what it does. Every card below the first is about the controller chosen in it.
+
+        // ── what is connected ──
+        //
+        // First, and above every heading, so it reads as the state of things rather than as a
         // footnote to whatever setting happens to be nearest. Visibility of system status is the
         // oldest heuristic there is and this page had none: the only answer to "can the app see my
         // controller?" was the title-bar strip vanishing, and an absent element is indistinguishable
@@ -2531,24 +2538,13 @@ public sealed class SettingsForm : Form
         var status = NewCard(page);
         _padPresence = AddNote(status, Words.PadsNone, tight: true);
 
-        // ── starting a session ──
+        // ── which controller ──
         //
-        // Named for the question it answers rather than for the hardware. "Controller" as a heading on
-        // the Controller page said nothing; every card here is about a controller, and what separates
-        // them is what they decide.
-        NewSection(page, Words.SectionController);
-        var pad = NewCard(page);
-
-        // The caveat that applies to everything below it, said before any of it rather than after.
-        //
-        // It was at the foot of the card, where it read as a footnote to the last setting instead of
-        // as the rule for the whole group — and its most useful line, that the triggers are paused
-        // while you are on this page, only helps somebody who reads it *before* wondering why
-        // switching their pad on did nothing.
-        AddNote(pad, Words.ControllerTriggerNote);
-
-        AddToggle(pad, Words.StartOnController, _startOnController, Words.StartOnControllerWhy,
-                  setting: nameof(AppConfig.StartOnControllerConnect));
+        // Its own card now, ahead of everything it governs. It used to sit in the middle of the
+        // starting-a-session card, below a switch it is not part of, which is a strange place for
+        // the one control that decides what every other row on the page is talking about.
+        NewSection(page, Words.SectionYourController);
+        var whose = NewCard(page);
 
         // Controllers that are switched off are shown dimmed, and stay selectable — see
         // Dropdown.IsMuted. An empty Path is what marks one as not currently here.
@@ -2560,41 +2556,45 @@ public sealed class SettingsForm : Form
 
         RefreshControllers();
 
-        // Which connection counts. Only about starting, so it is only there while starting is.
-        //
-        // Directly under the switch it belongs to, which is where it now sits and where it did not
-        // before. An indented row says "I am part of the row above me", and this one used to appear
-        // *below* the controller picker — which is not indented, because it governs both ends — so
-        // the reader was asked to attach a nested row to a parent two rows up. Nesting that has to be
-        // worked out is worse than no nesting.
-        WhenOn(() => _startOnController.Checked, pad, () =>
+        AddPick(whose, Words.TriggerPad, _triggerPad, Words.TriggerPadWhy,
+                Words.AnyController, action: MakeControllerButtons());
+
+        // Only when the choice is genuinely deciding nothing, which is a state the page can be left
+        // in and gave no account of.
+        WhenOn(() => !_startOnController.Checked
+                  && DisconnectOf(_onDisconnect) == DisconnectAction.Ignore,
+               whose, () => AddNote(whose, Words.TriggerPadIdle));
+
+        AddNote(whose, Words.ControllerTriggerNote);
+
+        // ── starting a session ──
+        NewSection(page, Words.SectionController);
+        var starting = NewCard(page);
+
+        AddToggle(starting, Words.StartOnController, _startOnController, Words.StartOnControllerWhy,
+                  setting: nameof(AppConfig.StartOnControllerConnect));
+
+        // Which connection counts, directly under the switch it belongs to. An indented row says
+        // "I am part of the row above me", and this one used to appear below the controller picker
+        // — a nested row whose parent was two rows up.
+        WhenOn(() => _startOnController.Checked, starting, () =>
         {
             SetOptions(_padLink, Words.PadLinkOptions);
-            AddPick(pad, Words.PadLinkPick, _padLink, Words.PadLinkPickWhy,
+            AddPick(starting, Words.PadLinkPick, _padLink, Words.PadLinkPickWhy,
                     Words.PadLinkOptions[(int)PadLink.Either], indent: Indent);
         });
 
-        // Not nested under the switch above: the chosen controller gates the connect *and* the
-        // disconnect — see ControllerWatcher.Wanted — so hiding it with the start switch would take
-        // away a setting that is still doing something. Full width for the same reason: it belongs
-        // to the card, not to any one row in it.
-        _triggerPadTitle = AddPick(pad, Words.TriggerPad, _triggerPad, Words.TriggerPadWhy,
-                                   Words.AnyController, action: MakeControllerButtons());
-
-        // What happens when the pad drops out mid-session.
+        // ── losing it mid-session ──
         //
-        // Three states, said in one control. It was a pair of switches for about an hour and they
-        // could not say those states out loud — the second only meant anything while the first was
-        // on, so the reader had to work out what a combination meant, and one of the three was
-        // reachable two ways because the prompt's own "leave it for now" answer does exactly what
-        // turning the second switch off did. Same objection and same fix as the HDR mode pick.
-        SetOptions(_onDisconnect, Words.DisconnectOptions);
-        AddPick(pad, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
-                Words.DisconnectOptions[(int)DisconnectAction.ComeBackAndAsk]);
+        // Its own card, because it is its own question. Under "Starting a session" it was the one
+        // row the heading did not describe, and renaming the heading to cover both only made the
+        // heading vaguer.
+        NewSection(page, Words.SectionDisconnect);
+        var losing = NewCard(page);
 
-        // Named for the state the switches are already in. Every later change comes through
-        // UpdateDependentStates, which runs on any toggle on this form.
-        UpdateTriggerPadTitle();
+        SetOptions(_onDisconnect, Words.DisconnectOptions);
+        AddPick(losing, Words.DisconnectPick, _onDisconnect, Words.DisconnectPickWhy,
+                Words.DisconnectOptions[(int)DisconnectAction.ComeBackAndAsk]);
 
         // ── the mouse ──
         //
@@ -3066,11 +3066,14 @@ public sealed class SettingsForm : Form
         _enableGameMode.CheckedChanged -= OnGameModeToggled;
         _enableGameMode.CheckedChanged += OnGameModeToggled;
 
+        // No "Default:" line. A default is what this app ships a setting as, and this is not this
+        // app's setting — Windows decides what it ships as, and saying "Default: On" underneath a
+        // mirror of somebody else's switch claims an authorship we do not have.
         AddToggle(windows, Words.EnableGameMode + Words.BadgeRecommended, _enableGameMode,
-                  Words.EnableGameModeWhy, setting: nameof(AppConfig.EnableGameMode),
+                  Words.EnableGameModeWhy,
                   titleEmphasis: Theme.Good, check: PerformanceCheck.CheckGameMode);
 
-        SetGameModeQuietly(GameModeControl.IsEnabled());
+        SetQuietly(_enableGameMode, GameModeControl.IsEnabled());
 
         // Priority sits here rather than under a heading of its own.
         //
@@ -3081,19 +3084,16 @@ public sealed class SettingsForm : Form
         AddToggle(windows, Words.GamePriority, _gamePriority, Words.GamePriorityWhy, setting: nameof(AppConfig.GamePriorityEnabled),
                   check: PerformanceCheck.CheckPriority);
 
-        // Said out loud when it is true, rather than left to be worked out.
-        //
-        // This setting acts on the games ticked on the HDR page, and that list now starts empty —
-        // nothing pre-ticks it any more. So the commonest state for a new install is a switch that
-        // is on, reports itself as fine, and is watching nothing. The description says the list
-        // matters; this says whether it is currently a problem.
-        WhenOn(() => _gamePriority.Checked && _checkedGames.Count == 0, windows,
-               () => AddNote(windows, Words.GamePriorityNoGames));
 
         // The Game Bar toggle lives here, not on the Controller page: it is an Xbox-controller
         // quirk — the Guide button opening the overlay — and belongs with the rest of the Windows
         // behaviour Couch Mode tames, next to Game Mode and notifications.
-        AddToggle(windows, Words.DisableGameBarButton, _disableGameBarButton, Words.DisableGameBarButtonWhy, setting: nameof(AppConfig.DisableGameBarButton),
+        // Live mirror, like Game Mode and the two security switches. No "Default:" line either:
+        // this is Windows' setting and Windows' default, not one this app ships.
+        _disableGameBarButton.CheckedChanged -= OnGameBarToggled;
+        _disableGameBarButton.CheckedChanged += OnGameBarToggled;
+
+        AddToggle(windows, Words.DisableGameBarButton, _disableGameBarButton, Words.DisableGameBarButtonWhy,
                   check: PerformanceCheck.CheckGameBar);
 
         // Re-read the two live system switches every time the page is opened, so they always show
@@ -3320,7 +3320,9 @@ public sealed class SettingsForm : Form
 
         NewSection(page, Words.SectionStartup);
         var start = NewCard(page);
-        AddToggle(start, Words.StartWithWindows, _startWithWindows, Words.StartWithWindowsWhy, setting: nameof(AppConfig.StartWithWindows));
+        // No "Default:" line: this one lives in Task Scheduler and is read back from there, so what
+        // it ships as is Windows' business rather than a default this app can claim.
+        AddToggle(start, Words.StartWithWindows, _startWithWindows, Words.StartWithWindowsWhy);
         AddToggle(start, Words.StartOnLaunch, _startOnLaunch, Words.StartOnLaunchWhy, setting: nameof(AppConfig.StartSessionOnLaunch));
         AddToggle(start, Words.StartOnWake, _startOnWake, Words.StartOnWakeWhy, setting: nameof(AppConfig.StartSessionOnWake));
         AddToggle(start, Words.StartOnWakeControllerOnly, _startOnWakeControllerOnly, Words.StartOnWakeControllerOnlyWhy, Indent, setting: nameof(AppConfig.StartOnWakeControllerOnly));
@@ -3883,10 +3885,27 @@ public sealed class SettingsForm : Form
     /// otherwise. Safe to call before the page exists: the switches always do, and the notes are
     /// looked up and skipped if not built yet.
     /// </summary>
+    /// <summary>
+    /// Put every switch that mirrors a Windows setting back in step with Windows.
+    ///
+    /// [BUG] Only UAC and the firewall were re-read here, because for a long time they were the only
+    /// two switches that mirrored anything. Game Mode and the Game Bar became mirrors as well and
+    /// were not added, so each read the real state exactly once — when the window was built — and
+    /// then held that answer for as long as the window lived. Changing Game Mode in Windows and
+    /// coming back to this page showed the old state with complete confidence, which is worse than
+    /// showing nothing: the entire argument for reading these live is that they cannot be wrong.
+    ///
+    /// Named for what it does now rather than for security, since half of what it reconciles is not
+    /// a security setting.
+    /// </summary>
     private void RefreshSecurityState()
     {
         SetUacQuietly(!UacControl.IsEnabled());
         SetFirewallQuietly(!FirewallControl.IsEnabled());
+
+        SetQuietly(_enableGameMode, GameModeControl.IsEnabled());
+        SetQuietly(_disableGameBarButton, !GameBarControl.IsEnabled());
+
         RefreshSecurityNote(Words.DisableUac, PerformanceCheck.CheckUac);
         RefreshSecurityNote(Words.DisableFirewall, PerformanceCheck.CheckFirewall);
     }
@@ -3955,6 +3974,34 @@ public sealed class SettingsForm : Form
         _settingUac = false;
     }
 
+    private void OnGameBarToggled(object? sender, EventArgs e)
+    {
+        if (_loading) return;
+
+        // The switch says "switch the Game Bar off", so its on state is the Game Bar's off state.
+        bool wantsBarOn = !_disableGameBarButton.Checked;
+
+        if (GameBarControl.Set(wantsBarOn))
+        {
+            MarkDirty();
+            ShowFooterNote(wantsBarOn ? Words.NoticeGameBarOn : Words.NoticeGameBarOff);
+            return;
+        }
+
+        SetQuietly(_disableGameBarButton, !GameBarControl.IsEnabled());
+        Warn(Words.WarnGameBarFailed);
+    }
+
+    /// <summary>Set a switch without its handler firing — these reconcile, they do not act.</summary>
+    private void SetQuietly(ToggleSwitch toggle, bool on)
+    {
+        bool was = _loading;
+        _loading = true;
+
+        try { toggle.Checked = on; }
+        finally { _loading = was; }
+    }
+
     /// <summary>Writing this to Windows is the whole action; there is nothing to save later.</summary>
     private void OnGameModeToggled(object? sender, EventArgs e)
     {
@@ -3971,17 +4018,8 @@ public sealed class SettingsForm : Form
 
         // Windows would not have it. Put the switch back rather than leaving it claiming something
         // that is not so — the whole point of reading this setting live is that it cannot lie.
-        SetGameModeQuietly(GameModeControl.IsEnabled());
+        SetQuietly(_enableGameMode, GameModeControl.IsEnabled());
         Warn(Words.WarnGameModeFailed);
-    }
-
-    private void SetGameModeQuietly(bool on)
-    {
-        bool was = _loading;
-        _loading = true;
-
-        try { _enableGameMode.Checked = on; }
-        finally { _loading = was; }
     }
 
     private void OnUacToggled(object? sender, EventArgs e)
@@ -6050,7 +6088,7 @@ public sealed class SettingsForm : Form
                 : 0;
 
             _turnOffTvOnExit.Checked = Config.TurnOffTvOnExit;
-            _disableGameBarButton.Checked = Config.DisableGameBarButton;
+            _disableGameBarButton.Checked = !GameBarControl.IsEnabled();
             _keepDisplayAwake.Checked = Config.KeepDisplayAwake;
             _silenceNotifications.Checked = Config.SilenceNotifications;
             // Windows is the truth here, not the config — the same rule as Start with Windows below.
@@ -6180,6 +6218,7 @@ public sealed class SettingsForm : Form
                                 ? plan.Id.ToString()
                                 : AppConfig.Automatic;
         Config.TurnOffTvOnExit = _turnOffTvOnExit.Checked;
+        // Recorded only; the switch wrote it to Windows when it was pressed.
         Config.DisableGameBarButton = _disableGameBarButton.Checked;
         // Forced off while the setting is not offered — see the note where its toggle used to be.
         Config.KeepDisplayAwake = false;
@@ -6825,6 +6864,12 @@ public sealed class SettingsForm : Form
         _deviceWatch.Tick += (_, _) =>
         {
             RefreshDevicesIfChanged();
+
+            // Windows can change these from outside this window at any moment, and the tiles below
+            // read the switches rather than the registry — so without this the home page reports a
+            // Game Mode state that stopped being true minutes ago.
+            RefreshSecurityState();
+
             RefreshHomeGlance();
             RefreshActionButton();
             RefreshPadGlyphs();

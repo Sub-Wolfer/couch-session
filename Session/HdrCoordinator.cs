@@ -375,20 +375,56 @@ public sealed class HdrCoordinator : IDisposable
         // disabled the priority boost too.
         bool wanted = config.AutoHdrEnabled || config.GamePriorityEnabled;
 
-        if (!wanted || config.HdrGames.Count == 0)
+        if (!wanted)
         {
             _watcher.SetWatchList([]);
             return;
         }
 
-        // Only the folders matter at runtime; names are for the settings list.
+        // Two different lists, watched together.
+        //
+        // [BUG] The watch list was the ticked HDR games and nothing else, and the priority boost
+        // rode along on it — so raising a game's priority silently required that game to be ticked
+        // for HDR, which is a completely unrelated decision. Nothing said so, and with the HDR list
+        // now empty by default the setting did nothing at all for most people.
+        //
+        // Priority is about any game, so when it is on the whole discovered library is watched.
+        // HDR is about the ticked ones, and EngageFor checks membership before touching the
+        // display — see IsHdrGame. One watcher, two questions.
         var watched = config.HdrGames
             .Select(g => new GameEntry(g.Name, g.InstallDir, GameSource.Manual))
             .ToList();
 
+        int ticked = watched.Count;
+
+        if (config.GamePriorityEnabled)
+        {
+            var already = new HashSet<string>(watched.Select(Key), StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                foreach (var found in Games.GameLibrary.DiscoverAll())
+                    if (already.Add(Key(found))) watched.Add(found);
+            }
+            catch (Exception ex)
+            {
+                // The ticked games are still watched. Losing discovery costs the priority boost on
+                // unticked games and nothing else.
+                Log.Warn($"Could not list installed games for the priority boost: {ex.Message}");
+            }
+        }
+
+        if (watched.Count == 0)
+        {
+            _watcher.SetWatchList([]);
+            return;
+        }
+
         _watcher.SetWatchList(watched);
         _watcher.Rescan();
-        Log.Info($"Auto HDR is watching {watched.Count} game(s).");
+
+        Log.Info($"Watching {watched.Count} game(s): {ticked} for HDR"
+               + (config.GamePriorityEnabled ? $", all of them for the priority boost." : "."));
     }
 
     private void OnGameStarted(GameEntry game)
@@ -409,12 +445,38 @@ public sealed class HdrCoordinator : IDisposable
     /// </summary>
     private void OnGameAdopted(GameEntry game) => EngageFor(game);
 
+    /// <summary>The install folder, normalised, which is what identifies a game everywhere here.</summary>
+    private static string Key(GameEntry game) => game.InstallDir.TrimEnd('\\').ToLowerInvariant();
+
+    /// <summary>
+    /// Whether this game is one the user ticked for HDR.
+    ///
+    /// Needed since the watch list stopped being the HDR list. Priority watches everything installed
+    /// when it is on, and without this check every game that started would switch the display into
+    /// HDR — which is the opposite of the per-game promise the HDR page makes.
+    /// </summary>
+    private bool IsHdrGame(GameEntry game)
+    {
+        string key = Key(game);
+
+        foreach (var ticked in _config.HdrGames)
+            if (string.Equals(ticked.InstallDir.TrimEnd('\\').ToLowerInvariant(), key,
+                              StringComparison.OrdinalIgnoreCase))
+                return true;
+
+        return false;
+    }
+
     private void EngageFor(GameEntry game)
     {
+        // Any game, ticked or not. That is the whole point of the setting.
         if (_config.GamePriorityEnabled && _watcher.RunningProcess is { } process)
             GamePriority.Raise(process);
 
         if (!_config.AutoHdrEnabled) return;
+
+        // HDR only for the games chosen for it.
+        if (!_config.HdrForWholeSession && !IsHdrGame(game)) return;
 
         // Whole-session HDR overrides the game list: the display is already in HDR for the entire
         // session, so there is nothing for a per-game switch to add. This is also why _weTurnedItOn
