@@ -552,8 +552,9 @@ internal static class Words
     public const string PromptAfterDisconnectWhy =
         "**Recommended.** Puts a prompt on your desk screen offering to go back to the session, close "
             + "the game, or leave everything as it is. It appears where there is a mouse to answer "
-            + "it, which the television no longer has. Off, you simply arrive at your desktop with "
-            + "the game still running.";
+            + "it, which the television no longer has. **Only ever shown when a game is running** — "
+            + "putting the pad down in Big Picture just brings you back, with nothing to answer. Off, "
+            + "you simply arrive at your desktop with the game still running.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";

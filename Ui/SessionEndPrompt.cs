@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Drawing.Imaging;
@@ -218,6 +219,9 @@ internal sealed class SessionEndPrompt : Form
 
     /// <summary>The monitor this prompt will appear on — decided before anything is sized for it.</summary>
     private readonly Screen? _target;
+
+    /// <summary>Which monitor that was, by name, so it can be found again after a mode change.</summary>
+    private readonly string _targetDevice = "";
 
     private readonly float _scale;
     private int S(int v) => (int)Math.Round(v * _scale);
@@ -581,6 +585,12 @@ internal sealed class SessionEndPrompt : Form
         // come back small and off-centre: measured for one monitor, placed on another, and rescaled
         // again by Windows on arrival for the DPI difference between them.
         _target = on ?? ScreenForPrompt();
+
+        // The name, not just the object. A Screen carries a snapshot of the bounds it had when it was
+        // fetched, and those go stale the moment a resolution changes — which on this app happens
+        // constantly, since moving between the desk and the television is what it does. Re-centring
+        // has to look the monitor up again, and the device name is what survives that.
+        _targetDevice = _target?.DeviceName ?? "";
         _scale = UiScale.ForNotifications(_target);
 
         FormBorderStyle = FormBorderStyle.None;
@@ -665,6 +675,15 @@ internal sealed class SessionEndPrompt : Form
         // Take the foreground off the game while we are deciding, so the pad drives this and not the
         // game behind it. Steam Input follows focus, so this is what actually blocks it.
         _previousForeground = GetForegroundWindow();
+
+        // Re-centre when the screens change under us.
+        //
+        // [BUG] The window was placed once, at construction, and left there. This app's entire job is
+        // moving displays about, so a prompt that is up while a resolution changes — which is exactly
+        // what the disconnect prompt is, since the swap is still settling as it appears — was centred
+        // for a screen size that no longer existed by the time anyone looked at it. On a drop from a
+        // 4K television to a 1440p monitor it ended up hanging off the bottom right corner.
+        SystemEvents.DisplaySettingsChanged += OnDisplaysChanged;
         // No Alt-Tab emulation, even once. It is the one call here that actively asks Windows to put
         // the window behind us away, and against an exclusive-fullscreen game that is the last thing
         // wanted. The ordinary foreground grab is enough.
@@ -741,6 +760,69 @@ internal sealed class SessionEndPrompt : Form
         public string lfFaceName = "";
     }
 
+    private void OnDisplaysChanged(object? sender, EventArgs e)
+    {
+        // Arrives on whatever thread Windows felt like, and can arrive several times as a mode change
+        // settles. Marshalled, guarded, and cheap enough that repeats do not matter.
+        if (IsDisposed || _decided || !IsHandleCreated) return;
+
+        try { BeginInvoke(Recentre); } catch { /* closing underneath us */ }
+    }
+
+    /// <summary>
+    /// Put the window back in the middle of the monitor it belongs to, at whatever size that is now.
+    ///
+    /// Looked up by name rather than reusing the Screen from construction, whose bounds are a snapshot
+    /// from before the mode change. Falls back to primary when the monitor it wanted has gone
+    /// altogether — which is not hypothetical here, since disconnecting the couch display is one of
+    /// the things that raises this event.
+    /// </summary>
+    private void Recentre()
+    {
+        if (IsDisposed || _decided) return;
+
+        // At the desk, follow primary rather than a remembered name. The desk prompt exists because a
+        // session was just handed back to the desktop, and "primary" is the thing that swap restored.
+        var screen = AtTheDesk
+            ? Screen.PrimaryScreen
+            : Array.Find(Screen.AllScreens, s => s.DeviceName == _targetDevice) ?? Screen.PrimaryScreen;
+
+        var area = screen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+
+        var where = new Point(area.Left + (area.Width - Width) / 2,
+                              area.Top + (area.Height - Height) / 2);
+
+        if (where == Location) return;
+
+        Location = where;
+        Log.Info($"Session prompt re-centred after a display change, to {where.X},{where.Y}.");
+    }
+
+    /// <summary>Body text wraps; everything else on this window is short enough not to.</summary>
+    private const TextFormatFlags Wrapped =
+        TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak;
+
+    /// <summary>
+    /// How tall the sentence under the title needs to be at the given window width.
+    ///
+    /// [BUG] It used to be measured with no width at all — <c>MeasureText(_body, _bodyFont)</c> — which
+    /// reports the height of a single line however long the string is, and then drawn into a one-line
+    /// rectangle with WordEllipsis. So the second half of the sentence was simply replaced by "…".
+    /// The disconnect prompt read "Switch the controller back on to go …", losing the half that says
+    /// what happens, on the window whose whole job is to explain an unexpected situation.
+    ///
+    /// The width has to be passed in because this is needed twice at different moments: during layout,
+    /// where the window does not exist yet and the width is still being worked out, and during paint,
+    /// where it is Width. Measuring against the wrong one is how the two disagree by a line.
+    /// </summary>
+    private int BodyHeight(Graphics? g, int width)
+    {
+        var box = new Size(width - _pad * 2, 0);
+
+        return g is null ? TextRenderer.MeasureText(_body, _bodyFont, box, Wrapped).Height
+                         : TextRenderer.MeasureText(g, _body, _bodyFont, box, Wrapped).Height;
+    }
+
     private void LayoutContent()
     {
         // Wide enough for the longest line on it, within reason.
@@ -769,7 +851,7 @@ internal sealed class SessionEndPrompt : Form
         _headerBottom = _pad + _logoSize;
 
         int titleH = TextRenderer.MeasureText(_title, _titleFont).Height;
-        int bodyH = TextRenderer.MeasureText(_body, _bodyFont).Height;
+        int bodyH = BodyHeight(null, width);
 
         int top = _headerBottom + S(16) + titleH + S(6) + bodyH + S(16);
         _optionRects = new Rectangle[_options.Length];
@@ -1153,6 +1235,10 @@ internal sealed class SessionEndPrompt : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        // A static event holding a reference to a closed window is a leak with a long fuse: it would
+        // keep every prompt this app ever showed alive, and each one would still try to move itself.
+        SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
+
         _poll.Stop();
         _shimmer.Stop();
         RevealCursor();   // never leave the machine without a pointer
@@ -1422,9 +1508,9 @@ internal sealed class SessionEndPrompt : Form
                               new Rectangle(_pad, titleY, Width - _pad * 2, titleH), Theme.Text, Left);
 
         int bodyY = titleY + titleH + S(6);
-        int bodyH = TextRenderer.MeasureText(g, _body, _bodyFont).Height;
+        int bodyH = BodyHeight(g, Width);
         TextRenderer.DrawText(g, _body, _bodyFont,
-                              new Rectangle(_pad, bodyY, Width - _pad * 2, bodyH), Theme.TextDim, Left);
+                              new Rectangle(_pad, bodyY, Width - _pad * 2, bodyH), Theme.TextDim, Wrapped);
 
         for (int i = 0; i < _options.Length; i++)
         {

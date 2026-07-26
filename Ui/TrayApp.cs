@@ -187,9 +187,26 @@ public sealed class TrayApp : IDisposable
             _leftRunning = true;
             _swappedOnDisconnect = true;
 
+            // Whether there is anything worth asking about, decided before the swap rather than after
+            // it — MinimizeToDesktop minimizes the game, and a minimized window is harder to find.
+            bool gameUp = _hdr.RunningGameWindow() != IntPtr.Zero;
+
             RunBackground("Coming back to the desktop", () =>
             {
                 _session.MinimizeToDesktop(closeBigPicture: false);
+
+                // Only when a game is actually running.
+                //
+                // Sitting in Big Picture and putting the pad down is not a situation that needs a
+                // window about it: nothing is mid-save, nothing is lost, and every answer the prompt
+                // offers is either meaningless ("close the game" with no game) or already true. The
+                // swap on its own is the whole of what is wanted there, and switching the pad back on
+                // still takes you straight back — that part is unchanged.
+                if (!gameUp)
+                {
+                    Log.Info("No game was running, so no prompt; Big Picture is waiting on the desktop.");
+                    return;
+                }
 
                 if (_session.Config.PromptAfterDisconnect) OnUi(RaiseDisconnectPrompt);
             });
