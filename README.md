@@ -20,6 +20,20 @@ usually while wondering which window went where.
 Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
 it.
 
+> ### 👥 Who this is for
+>
+> **One PC doing two jobs** — a machine you work and play at on a desk, that you also want to game on
+> from the sofa. That's the whole reason this exists: the going-to-the-TV part is easy enough to do by
+> hand, and it's *coming back* that nobody wants to do twice a day.
+>
+> If you have a dedicated living-room PC that never leaves the television, most of this is solving a
+> problem you don't have.
+>
+> **And you don't have to use all of it.** The HDR features work on their own at the desk, with no
+> session involved — switch HDR on and off with a hotkey, or have it come on automatically for the
+> games you choose and go off when they close. Whichever display is primary at that moment is the one
+> it touches, so at your desk that's your monitor. Plenty of people will want the app for that alone.
+
 <div align="center">
   <img src="docs/session-prompt.png" width="480" alt="The session prompt over a running game, asking what to do with it — driven entirely by the controller.">
   <br>
