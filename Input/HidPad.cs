@@ -39,10 +39,14 @@ namespace CouchMode.Input;
 public static class HidPad
 {
     /// <summary>What each device last reported, and when.</summary>
+    /// <param name="ReportId">
+    /// The first byte of the last report. Kept because a Sony pad's report id is what says which
+    /// layout it is sending, and vendor id alone does not — see SonyLayoutKnown.
+    /// </param>
     private sealed record State(uint Buttons, ushort Vendor, ushort Product, DateTime At,
                                 PadPower Power = PadPower.Unknown, PadTouch Touch = default,
                                 float LX = 0, float LY = 0, float RX = 0, float RY = 0,
-                                PadTouch Touch2 = default);
+                                PadTouch Touch2 = default, byte ReportId = 0);
 
     private static readonly Dictionary<IntPtr, State> Live = [];
     private static readonly Dictionary<IntPtr, IntPtr> Preparsed = [];
@@ -136,6 +140,32 @@ public static class HidPad
     }
 
     /// <summary>Vendor and product of the pad heard from most recently, for naming its buttons.</summary>
+    /// <summary>
+    /// Whether the newest pad is a Sony one whose report layout this class actually understands.
+    ///
+    /// Vendor id alone is not enough, and treating it as enough is a real defect. Every Sony reader
+    /// here — the sticks, the touches — decodes the DualSense's report shape: id 0x01 over USB and
+    /// 0x31 over Bluetooth. A DualShock 4 on Bluetooth sends 0x11, so every one of those readers
+    /// returns nothing for it. The caller that matters, PointerControl.DriveFromTrackpad, used to
+    /// claim any Sony pad on vendor id and return true, which meant a DualShock 4 never fell through
+    /// to the generic stick path either: the pointer was not merely worse for it, it was dead.
+    /// </summary>
+    public static bool SonyLayoutKnown()
+    {
+        lock (Gate)
+        {
+            Sweep();
+
+            State? newest = null;
+            foreach (var state in Live.Values)
+                if (newest is null || state.At > newest.At) newest = state;
+
+            if (newest is null || newest.Vendor != 0x054C) return false;
+
+            return newest.ReportId is 0x01 or 0x31;
+        }
+    }
+
     public static (ushort Vendor, ushort Product) FirstIds()
     {
         lock (Gate)
@@ -280,7 +310,8 @@ public static class HidPad
                 else _lastActivity = DateTime.UtcNow;   // a pad appearing is itself an event
 
                 Live[device] = new State(mask, vendor, product, DateTime.UtcNow, power, touch,
-                                         lx, ly, rx, ry, touch2);
+                                         lx, ly, rx, ry, touch2,
+                                         report.Length > 0 ? report[0] : (byte)0);
             }
         }
         catch (Exception ex)

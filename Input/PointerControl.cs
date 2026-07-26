@@ -161,8 +161,12 @@ public sealed class PointerControl : IDisposable
     /// </summary>
     private bool DriveFromTrackpad()
     {
-        var (vendor, _) = HidPad.FirstIds();
-        if (vendor != SonyVendor) return false;
+        // [BUG] This asked the vendor id alone. Every Sony reader in HidPad decodes the DualSense
+        // report shape, and a DualShock 4 over Bluetooth sends a different one — so for that pad the
+        // sticks read as centred and the touchpad as untouched, while this still returned true and
+        // stopped the caller falling through to the generic stick path. The pointer was not worse on
+        // a DualShock 4; it did nothing at all. Claim the pad only when its layout is readable.
+        if (!HidPad.SonyLayoutKnown()) return false;
 
         // Trackpad, when it is switched on: one finger moves the pointer, two fingers scroll.
         if (_useTrackpad)

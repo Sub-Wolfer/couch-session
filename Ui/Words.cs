@@ -41,7 +41,8 @@ internal static class Words
     public const string PageSteam = "Steam";
     public const string PageSteamWhy = "How couch mode and Steam Big Picture work together.";
     public const string PageController = "Controller";
-    public const string PageControllerWhy = "Which controller starts a session, and using one as a mouse.";
+    public const string PageControllerWhy =
+        "Which controller starts a session, what happens if it disconnects, and using one as a mouse.";
 
     public const string PageShortcuts = "Hotkeys";
     public const string PageShortcutsWhy = "Key and button combinations that work anywhere, including over a game.";
@@ -98,7 +99,11 @@ internal static class Words
     public const string SectionWindows = "Windows";
     public const string SectionStartup = "Startup";
     public const string SectionNotifications = "Notifications";
-    public const string SectionController = "Starting a session";
+    // Was "Starting a session", which stopped being the whole truth when the disconnect setting
+    // moved into this card: coming back to the desktop is ending one. A heading that names half of
+    // what is under it is worse than a vague one, because the reader stops looking at the half it
+    // does not mention.
+    public const string SectionController = "Starting and ending a session";
     public const string SectionPointer = "Pointer";
     public const string SectionPointerWhen = "When the pointer works";
     public const string SectionMouse = "Mouse control";
@@ -445,14 +450,32 @@ internal static class Words
     public const string SilenceNotificationsWhy =
         "Hides Windows notifications until the session ends — a corner card becomes a TV-sized "
             + "banner you can't dismiss with a pad.";
-    public const string EnableGameMode = "Turn on Windows Game Mode";
+    public const string EnableGameMode = "Windows Game Mode";
+    // Was "Turn on Windows Game Mode", described as something that "stays on afterwards". Both were
+    // written for a switch that only ever turned it on, and only did so when a session started —
+    // which is why pressing it appeared to do nothing at all. It is the Windows setting now, read
+    // and written directly, so the title is the name of the thing rather than an instruction.
     public const string EnableGameModeWhy =
-        "Asks Windows to prioritise the game and hold back background work. Stays on afterwards — "
-            + "it's a Windows-wide preference.";
+        "Asks Windows to prioritise whichever game is running and hold back background work. **This "
+            + "is the same switch as Windows Settings ▸ Gaming ▸ Game Mode**, changed here as soon as "
+            + "you press it — it is not tied to a session and nothing puts it back afterwards.";
+
+    public const string NoticeGameModeOn = "Windows Game Mode is on";
+    public const string NoticeGameModeOff = "Windows Game Mode is off";
+    public const string WarnGameModeFailed =
+        "Windows would not change the Game Mode setting. Nothing has been altered. You can set it in "
+            + "Windows Settings under Gaming ▸ Game Mode.";
     public const string GamePriority = "Raise the game's priority";
     public const string GamePriorityWhy =
-        "Gives the running game more processor time, and ends when that game closes. Applies to games in "
-            + "the HDR Switching list. Some block it (often anti-cheat) and it's skipped quietly.";
+        "Gives the running game more processor time, and ends when that game closes. **It only acts "
+            + "on games ticked in the HDR Switching list** — that list is what the app watches, and "
+            + "it starts empty, so tick a game there or this does nothing. Some games block it (often "
+            + "anti-cheat) and it is skipped quietly.";
+
+    // Shown under the priority toggle while the list it depends on has nothing in it.
+    public const string GamePriorityNoGames =
+        "**No games are ticked yet**, so this is not acting on anything. Tick the games you want it "
+            + "for on the HDR Switching page.";
 
     // ── General ───────────────────────────────────────────────────────────────────
 
@@ -587,7 +610,7 @@ internal static class Words
 
     public const string StartOnController = "Start a session when a controller connects";
     public const string StartOnControllerWhy =
-        "Switching a pad on is usually the moment you sit down to play, so this treats it as "
+        "Switching a controller on is usually the moment you sit down to play, so this treats it as "
             + "the cue to move everything to the TV.";
 
     // ── About ─────────────────────────────────────────────────────────────────────
@@ -892,7 +915,8 @@ internal static class Words
 
     public const string ResetPageLosesController =
         "\n\nThe controller chosen to start a session is cleared, so any connected controller can "
-            + "start one again.";
+            + "start one again — and any names you have given your controllers go back to what "
+            + "Windows calls them.";
 
     // The session keyboard shortcut has no default — AppConfig.ShortcutKeyboard is 0, meaning unset —
     // so for that one "goes back to its original buttons" would have been a promise to restore
@@ -931,13 +955,17 @@ internal static class Words
         "The **other stick scrolls** — push it up or down to roll the wheel.";
     public static readonly string[] CursorStickOptions = ["Left stick", "Right stick"];
 
-    public const string UseTrackpad = "Also use the trackpad (PS5 DualSense)";
+    // Was "Also use the trackpad (PS5 DualSense)". Two things wrong with that. The code accepts any
+    // Sony pad, not just the DualSense — a DualShock 4 works — so naming one model told half the
+    // owners it was not for them. And every other part of this app calls that surface a touchpad,
+    // which is also what Sony calls it: PadControl.Touchpad, and the hold-button list.
+    public const string UseTrackpad = "Also use the touchpad";
     public const string UseTrackpadWhy =
-        "A finger on the trackpad moves the pointer and **two fingers scroll**. Press it to "
-            + "left-click, press and hold to right-click. Does nothing on pads without one.";
+        "For PlayStation controllers. One finger moves the pointer and **two fingers scroll**; press "
+            + "it to left-click, press and hold to right-click. Does nothing on a pad without one.";
 
     public const string MouseHold = "Only while holding a button";
-    public const string MouseInGames = "Allow pointers while in game";
+    public const string MouseInGames = "Let the pointer work over a game";
     public const string MouseInGamesWhy =
         "Normally the pointer switches itself off once a game fills the screen, so it cannot fight "
             + "the game's own controls. Turn this on for games that expect a mouse and ignore a "
@@ -945,12 +973,12 @@ internal static class Words
             + "leaving it on all the time.";
 
     public const string MouseHoldWhy =
-        "The pointer responds only while the button below is held — and while it is held it works "
-            + "**over a game too**, though not inside Big Picture, which always drives itself. "
-            + "**Try this if the pointer is dead in a launcher, "
-            + "or moves in a game when you did not want it to**: nothing is guessed about the window "
-            + "in front, you say when you want it. It also stops a resting stick nudging the pointer, "
-            + "which is what keeps a screen from going to sleep.";
+        "The pointer only responds while the button below is held. **Worth trying if the pointer is "
+            + "dead in a launcher, or moves in a game when you did not want it to** — nothing is "
+            + "guessed about the window in front, you say when you want it.\n\n"
+            + "While held it works over a game too, though never inside Big Picture, which always "
+            + "drives itself. It also stops a resting stick nudging the pointer, which is what keeps "
+            + "a screen from going to sleep on you.";
 
     public const string MouseHoldButton = "Hold button";
     public const string MouseHoldButtonWhy =
@@ -964,7 +992,7 @@ internal static class Words
     public const string MouseDeadzone = "Stick dead zone";
     public const string MouseDeadzoneWhy =
         "How far a stick must move before the pointer does. If the cursor creeps on its own, drag "
-            + "right until it stops. Sticks only, not the trackpad.";
+            + "right until it stops. Sticks only, not the touchpad.";
     public const string MouseDeadzoneLow = "Smallest";
     public const string MouseDeadzoneHigh = "Largest";
 
@@ -1057,9 +1085,17 @@ internal static class Words
     public const string PadsNone = "No controller connected. Switch one on and it appears here.";
     /// <summary>{0} is the list of connected controllers.</summary>
     public const string PadsConnected = "Connected: {0}";
+    // {0} is the list of controllers that *are* connected, or the "nothing" line below.
+    //
+    // The names used to be dropped entirely in this state, which is backwards: the card exists to
+    // answer "can the app see my controller?", and it fell silent on exactly the occasion when the
+    // answer was interesting. It also only mentioned starting, though the chosen controller governs
+    // the disconnect as well.
     public const string PadsChosenAway =
-        "**Your chosen controller is not connected right now.** Anything else connecting will not "
-            + "start a session.";
+        "**Your chosen controller is not connected right now**, so nothing else will start or end a "
+            + "session. {0}";
+
+    public const string PadsChosenAwayNothing = "Nothing else is connected either.";
     /// <summary>
     /// What happens on a disconnect. Worth stating outright rather than leaving to be discovered:
     /// the fear is that a controller going flat mid-game drops the television back to the desktop,
@@ -1068,9 +1104,12 @@ internal static class Words
     public const string PadOnBattery = "on battery";
     public const string PadCharging = "charging";
 
+    // "above" was wrong — these buttons sit on the same line as the picker, to its right — and
+    // "Use original name" is not on this page at all; it is a link inside the Rename box, and only
+    // when a custom name exists.
     public const string ClearControllersWhy =
-        "Forgets the controller picked above; if it was the chosen one, any controller works again. "
-            + "Its name is kept — **Use original name** drops that too.";
+        "Forgets the controller chosen beside this, so any controller works again. A name you have "
+            + "given it is kept; clear that from **Rename**.";
     // The picker's heading follows its two switches, so it never names something that is
     // switched off — see SettingsForm.UpdateTriggerPadTitle. TriggerPad covers both on, and also
     // neither, where it reads as a description of what the setting is for.
@@ -1083,16 +1122,25 @@ internal static class Words
     public static readonly string[] PadLinkOptions =
     [
         "Wired or wireless",
-        "Only when plugged in",
+        "Only when plugged in (or on a dongle)",
         "Only over Bluetooth",
     ];
 
     public const string TriggerPad = "Controller that starts a session";
-    public const string TriggerPadEnds = "Controller to watch";
+    // Shown in place of TriggerPad when starting on connect is off, where the picker is only
+    // deciding whose disconnect counts. Named TriggerPadEnds for a version of this that said
+    // "...that ends a session"; renamed to match what it actually says, because the name on the left
+    // is how anyone editing this file finds the line.
+    public const string TriggerPadWatch = "Controller to watch";
+
+    // Neither end switched on, so the choice decides nothing. The picker is greyed out to match.
+    public const string TriggerPadIdle = "Controller (nothing is watching for one)";
 
     public const string TriggerPadWhy =
-        "Pick one if you have several pads and only want a particular one to control the "
-            + "session. Two of the same model are told apart by the code after the name.";
+        "Pick one if you have several pads and only want a particular one to control the session. "
+            + "**It governs both ends**: only that controller starts a session, and only that "
+            + "controller going quiet counts as a disconnect. Two of the same model are told apart "
+            + "by the code after the name.";
 
     // ── Checking the performance settings — removed ────────────────────────────────
     //

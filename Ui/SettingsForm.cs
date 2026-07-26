@@ -1356,12 +1356,22 @@ public sealed class SettingsForm : Form
         // start: the pad in your hand is connected, the trigger is switched on, and nothing happens
         // because the app is waiting for a different one. The tile above cannot say that — it reports
         // what is plugged in, not what is allowed to start anything.
-        Tile("Pad that starts it", Config.TriggerControllerId.Length == 0
+        Tile("Controller that starts it", Config.TriggerControllerId.Length == 0
                                        ? "any controller"
                                        : Config.TriggerControllerName.Length > 0
                                              ? Config.TriggerControllerName
                                              : "a specific one",
              true, page: ControllerPage, anchor: _triggerPad);
+        // The third thing that can quietly stop a session starting, alongside the two above. Set to
+        // Bluetooth only, plug the controller in, and nothing happens with no clue why — which is the
+        // argument written above the tile before it, and applies here word for word.
+        Tile("Connection that counts", Config.StartOnControllerLink switch
+        {
+            PadLink.WiredOnly => "cable or dongle only",
+            PadLink.WirelessOnly => "Bluetooth only",
+            _ => "wired or wireless",
+        }, Config.StartOnControllerLink == PadLink.Either, page: ControllerPage, anchor: _padLink);
+
         Tile("Session hotkey (pad)", padCombo != 0 ? PadText(padCombo) : "not set", padCombo != 0,
              page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
         Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
@@ -1426,15 +1436,18 @@ public sealed class SettingsForm : Form
              _changePowerPlan.Checked, page: PerformancePage, anchor: _changePowerPlan);
         Tile("Game priority", _gamePriority.Checked ? "raised" : "normal", _gamePriority.Checked, page: PerformancePage,
              anchor: _gamePriority);
-        Tile("Game Mode", _enableGameMode.Checked ? "on" : "unchanged", _enableGameMode.Checked, page: PerformancePage,
-             anchor: _enableGameMode);
+        // "on" or "off", not "on" or "unchanged". Unchanged was true when this only ever switched
+        // Game Mode on for a session; the toggle turns it off now, so the tile has to be able to say
+        // that Windows Game Mode is off — which is a fact about the machine, not about this app.
+        Tile("Game Mode", _enableGameMode.Checked ? "on" : "off", _enableGameMode.Checked,
+             page: PerformancePage, anchor: _enableGameMode);
         // "on" was not the whole answer.
         //
         // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
         // will not move" is the commonest thing to come back about. A tile that says "on" while the
         // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
         // here answers it without opening anything.
-        Tile("Pad as mouse", !_mouseControl.Checked ? "off"
+        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
                            : _mouseHold.Checked ? $"hold {HoldButtonName()}"
                                                 : "on, always",
              _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
@@ -2421,9 +2434,19 @@ public sealed class SettingsForm : Form
     {
         if (_triggerPadTitle is not { IsDisposed: false } title) return;
 
-        // The disconnect half is always on now, so the only question left is whether the connect half
-        // is: with it on the picker governs both events, with it off only the disconnect.
-        title.SetMarkup(_startOnController.Checked ? Words.TriggerPad : Words.TriggerPadEnds);
+        // Three states, because there are three.
+        //
+        // [BUG] This assumed "the disconnect half is always on now", which was true for the hour
+        // between that behaviour being made unconditional and it becoming a setting again. It is a
+        // three-way pick whose first option is Ignore it — so with starting on connect switched off
+        // *and* disconnects ignored, the picker was titled "Controller to watch" while watching for
+        // nothing, which is the exact thing retitling it was meant to prevent.
+        bool starts = _startOnController.Checked;
+        bool ends = DisconnectOf(_onDisconnect) != DisconnectAction.Ignore;
+
+        title.SetMarkup(starts ? Words.TriggerPad
+                      : ends ? Words.TriggerPadWatch
+                             : Words.TriggerPadIdle);
     }
 
     /// <summary>
@@ -2537,19 +2560,26 @@ public sealed class SettingsForm : Form
 
         RefreshControllers();
 
-        // Not nested under the switch above: the chosen controller gates the connect *and* the
-        // disconnect — see ControllerWatcher.Wanted — so hiding it with the start switch would take
-        // away a setting that is still doing something.
-        _triggerPadTitle = AddPick(pad, Words.TriggerPad, _triggerPad, Words.TriggerPadWhy,
-                                   Words.AnyController, action: MakeControllerButtons());
-
         // Which connection counts. Only about starting, so it is only there while starting is.
+        //
+        // Directly under the switch it belongs to, which is where it now sits and where it did not
+        // before. An indented row says "I am part of the row above me", and this one used to appear
+        // *below* the controller picker — which is not indented, because it governs both ends — so
+        // the reader was asked to attach a nested row to a parent two rows up. Nesting that has to be
+        // worked out is worse than no nesting.
         WhenOn(() => _startOnController.Checked, pad, () =>
         {
             SetOptions(_padLink, Words.PadLinkOptions);
             AddPick(pad, Words.PadLinkPick, _padLink, Words.PadLinkPickWhy,
                     Words.PadLinkOptions[(int)PadLink.Either], indent: Indent);
         });
+
+        // Not nested under the switch above: the chosen controller gates the connect *and* the
+        // disconnect — see ControllerWatcher.Wanted — so hiding it with the start switch would take
+        // away a setting that is still doing something. Full width for the same reason: it belongs
+        // to the card, not to any one row in it.
+        _triggerPadTitle = AddPick(pad, Words.TriggerPad, _triggerPad, Words.TriggerPadWhy,
+                                   Words.AnyController, action: MakeControllerButtons());
 
         // What happens when the pad drops out mid-session.
         //
@@ -3029,9 +3059,18 @@ public sealed class SettingsForm : Form
         // Badged, because it is the one setting on this page that is a plain recommendation. The rest
         // are trades — security for reach, or a Windows-wide preference for a quieter session — and
         // sitting unlabelled among them made a switch worth having look like another thing to weigh up.
+        // Applied the instant it is pressed, and read back from Windows rather than from our own
+        // config — the same treatment UAC and the firewall get above, and for the same reason: this
+        // is a Windows setting that anything on the machine can change, so a toggle showing what we
+        // last wrote is a toggle that can be wrong.
+        _enableGameMode.CheckedChanged -= OnGameModeToggled;
+        _enableGameMode.CheckedChanged += OnGameModeToggled;
+
         AddToggle(windows, Words.EnableGameMode + Words.BadgeRecommended, _enableGameMode,
                   Words.EnableGameModeWhy, setting: nameof(AppConfig.EnableGameMode),
                   titleEmphasis: Theme.Good, check: PerformanceCheck.CheckGameMode);
+
+        SetGameModeQuietly(GameModeControl.IsEnabled());
 
         // Priority sits here rather than under a heading of its own.
         //
@@ -3041,6 +3080,15 @@ public sealed class SettingsForm : Form
         // belongs with the rest of the Windows tuning anyway.
         AddToggle(windows, Words.GamePriority, _gamePriority, Words.GamePriorityWhy, setting: nameof(AppConfig.GamePriorityEnabled),
                   check: PerformanceCheck.CheckPriority);
+
+        // Said out loud when it is true, rather than left to be worked out.
+        //
+        // This setting acts on the games ticked on the HDR page, and that list now starts empty —
+        // nothing pre-ticks it any more. So the commonest state for a new install is a switch that
+        // is on, reports itself as fine, and is watching nothing. The description says the list
+        // matters; this says whether it is currently a problem.
+        WhenOn(() => _gamePriority.Checked && _checkedGames.Count == 0, windows,
+               () => AddNote(windows, Words.GamePriorityNoGames));
 
         // The Game Bar toggle lives here, not on the Controller page: it is an Xbox-controller
         // quirk — the Guide button opening the overlay — and belongs with the rest of the Windows
@@ -3905,6 +3953,35 @@ public sealed class SettingsForm : Form
         _settingUac = true;
         _disableUac.Checked = disabled;
         _settingUac = false;
+    }
+
+    /// <summary>Writing this to Windows is the whole action; there is nothing to save later.</summary>
+    private void OnGameModeToggled(object? sender, EventArgs e)
+    {
+        if (_loading) return;
+
+        bool wanted = _enableGameMode.Checked;
+
+        if (GameModeControl.Set(wanted))
+        {
+            MarkDirty();
+            ShowFooterNote(wanted ? Words.NoticeGameModeOn : Words.NoticeGameModeOff);
+            return;
+        }
+
+        // Windows would not have it. Put the switch back rather than leaving it claiming something
+        // that is not so — the whole point of reading this setting live is that it cannot lie.
+        SetGameModeQuietly(GameModeControl.IsEnabled());
+        Warn(Words.WarnGameModeFailed);
+    }
+
+    private void SetGameModeQuietly(bool on)
+    {
+        bool was = _loading;
+        _loading = true;
+
+        try { _enableGameMode.Checked = on; }
+        finally { _loading = was; }
     }
 
     private void OnUacToggled(object? sender, EventArgs e)
@@ -5475,9 +5552,14 @@ public sealed class SettingsForm : Form
         // and nothing else connecting will do what the page says.
         bool chosenAway = chosenId.Length > 0 && attached.All(d => d.Id != chosenId);
 
+        string list = string.Join(", ", named);
+
         _padPresence.SetMarkup(chosenAway
-                                   ? Words.PadsChosenAway
-                                   : string.Format(Words.PadsConnected, string.Join(", ", named)));
+                                   ? string.Format(Words.PadsChosenAway,
+                                                   list.Length > 0
+                                                       ? string.Format(Words.PadsConnected, list)
+                                                       : Words.PadsChosenAwayNothing)
+                                   : string.Format(Words.PadsConnected, list));
 
         _padPresence.ForeColor = chosenAway ? Theme.Warn : Theme.TextDim;
     }
@@ -5787,6 +5869,16 @@ public sealed class SettingsForm : Form
             Config.HdrGames = [];
             _checkedGames.Clear();
         }
+        else if (page == ControllerPage)
+        {
+            // The names given to controllers by hand, which nothing else clears.
+            //
+            // [BUG] These are edited only on this page, through the Rename button beside the picker,
+            // and they are a collection rather than a property — so the reflection loop above never
+            // saw them and "Reset this page" left every custom name in place. A reset that visibly
+            // leaves something behind reads as a reset that failed.
+            Config.ControllerNames = [];
+        }
         else if (page == DisplayPage)
         {
             // The remembered video mode per display goes with the chosen display: leaving it would
@@ -5961,7 +6053,8 @@ public sealed class SettingsForm : Form
             _disableGameBarButton.Checked = Config.DisableGameBarButton;
             _keepDisplayAwake.Checked = Config.KeepDisplayAwake;
             _silenceNotifications.Checked = Config.SilenceNotifications;
-            _enableGameMode.Checked = Config.EnableGameMode;
+            // Windows is the truth here, not the config — the same rule as Start with Windows below.
+            _enableGameMode.Checked = GameModeControl.IsEnabled();
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
             _onDisconnect.SelectedIndex = (int)Config.OnDisconnect;
@@ -6091,6 +6184,9 @@ public sealed class SettingsForm : Form
         // Forced off while the setting is not offered — see the note where its toggle used to be.
         Config.KeepDisplayAwake = false;
         Config.SilenceNotifications = _silenceNotifications.Checked;
+        // Recorded rather than applied: the switch already wrote it to Windows when it was pressed.
+        // Kept in the config so the bug report and the home page can say what it is without reading
+        // the registry on every refresh.
         Config.EnableGameMode = _enableGameMode.Checked;
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
@@ -6360,10 +6456,10 @@ public sealed class SettingsForm : Form
         if (_scanButton is not null) _scanButton.Enabled = perGame;
 
 
-        // Both read the same pair of switches: one decides whether the picker can be used at
-        // all, the other what it should be called.
-        // Always live: the disconnect prompt uses it whatever else is switched on.
-        _triggerPad.Enabled = true;
+        // Live only while something reads it. With neither end switched on, the choice of controller
+        // decides nothing — see UpdateTriggerPadTitle for the same three states in words.
+        _triggerPad.Enabled = _startOnController.Checked
+                           || DisconnectOf(_onDisconnect) != DisconnectAction.Ignore;
 
         // Only about starting, so it follows only that switch.
         _padLink.Enabled = _startOnController.Checked;
@@ -6374,7 +6470,14 @@ public sealed class SettingsForm : Form
         _mouseSpeed.Enabled = mouse;
         _mouseDeadzone.Enabled = mouse;
         _mouseHold.Enabled = mouse;
-        _mouseInGames.Enabled = mouse;
+        // Dead while hold-to-activate is on, because it genuinely is.
+        //
+        // With holding switched on, the pointer stands down whenever the button is not held and
+        // works over a game whenever it is — the in-games setting is never consulted either way.
+        // Its own description says as much ("while held it works over a game too"). Leaving it live
+        // is the same fault this file argues against for the HDR game list: a control that does
+        // nothing is worse than a dead one, because nothing on screen says it does nothing.
+        _mouseInGames.Enabled = mouse && !_mouseHold.Checked;
         _mouseHoldButton.Enabled = mouse && _mouseHold.Checked;
         _cursorStick.Enabled = mouse;
         _useTrackpad.Enabled = mouse;

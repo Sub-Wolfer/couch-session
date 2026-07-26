@@ -35,7 +35,11 @@ public sealed class PerformanceTuning
         // reports are about a display refusing to sleep than one sleeping mid-cutscene.
         // if (config.KeepDisplayAwake) HoldAwake();
         if (config.SilenceNotifications) SilenceWindows();
-        if (config.EnableGameMode) SetGameMode(true);
+
+        // Game Mode is no longer touched here. It is a Windows-wide preference that this class never
+        // undid, which made it the one thing in a session-scoped tuner that was not session-scoped —
+        // and the visible cost was a toggle that appeared to do nothing, because it did nothing until
+        // the next session began. It is applied the moment it is pressed now. See GameModeControl.
     }
 
     /// <summary>Put everything back. Safe to call when nothing was applied.</summary>
@@ -49,9 +53,7 @@ public sealed class PerformanceTuning
         ReleaseAwake();
         RestoreNotifications();
 
-        // Game Mode is deliberately not restored: it is a Windows-wide preference the user is
-        // as likely to want left on, and flipping it back would fight anyone who turned it on
-        // themselves. It is only ever switched on, never off.
+        // Game Mode is not here either, and no longer applied above. See GameModeControl.
     }
 
     // ---------------------------------------------------------------- power
@@ -342,21 +344,6 @@ public sealed class PerformanceTuning
         }
         catch (Exception ex) { Log.Warn($"Performance: notifications not restored: {ex.Message}"); }
         finally { _previousQuietHours = null; }
-    }
-
-    // ----------------------------------------------------------- game mode
-
-    private static void SetGameMode(bool on)
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\GameBar");
-            key?.SetValue("AllowAutoGameMode", on ? 1 : 0, RegistryValueKind.DWord);
-            key?.SetValue("AutoGameModeEnabled", on ? 1 : 0, RegistryValueKind.DWord);
-
-            Log.Info("Performance: Windows Game Mode is on.");
-        }
-        catch (Exception ex) { Log.Warn($"Performance: could not set Game Mode: {ex.Message}"); }
     }
 
     // ------------------------------------------------------------- interop

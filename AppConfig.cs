@@ -366,8 +366,8 @@ public sealed class AppConfig
     /// <summary>
     /// Which button turns the mouse on while held, as a <see cref="Input.PadControl"/>.
     ///
-    /// Stored as a position, not a device button number, so the same choice means L2 on a
-    /// DualSense and LT on an Xbox pad — see PadControl. Left trigger by default: the bumpers are
+    /// Stored as a position, not a device button number, so the same choice means R2 on a
+    /// DualSense and RT on an Xbox pad — see PadControl. Right trigger by default: the bumpers are
     /// the click buttons now, so a trigger keeps the hold modifier clear of them while still being
     /// easy to hold with a thumb free for the pad.
     /// </summary>
