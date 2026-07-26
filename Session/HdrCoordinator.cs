@@ -260,6 +260,23 @@ public sealed class HdrCoordinator : IDisposable
     /// has not drawn a window yet. For handing the foreground to a launcher that opened behind Big
     /// Picture.
     /// </summary>
+    /// <summary>
+    /// The process behind that window, when the running game is one this app is watching.
+    ///
+    /// Null for a game Steam is running that is not on the HDR list — the window can still be found
+    /// (see below), but the process cannot, and anything needing a process id has to cope with that.
+    /// </summary>
+    public System.Diagnostics.Process? RunningGameProcess
+    {
+        get
+        {
+            var p = _watcher.RunningProcess;
+
+            try { return p is not null && !p.HasExited ? p : null; }
+            catch { return null; }
+        }
+    }
+
     public IntPtr RunningGameWindow()
     {
         var p = _watcher.RunningProcess;

@@ -202,6 +202,8 @@ public sealed class TrayApp : IDisposable
                 // offers is either meaningless ("close the game" with no game) or already true. The
                 // swap on its own is the whole of what is wanted there, and switching the pad back on
                 // still takes you straight back — that part is unchanged.
+                MuteIfWanted();
+
                 if (!gameUp)
                 {
                     Log.Info("No game was running, so no prompt; Big Picture is waiting on the desktop.");
@@ -325,6 +327,11 @@ public sealed class TrayApp : IDisposable
                 // Nothing is left behind on the desktop any more, whatever was before.
                 _leftRunning = false;
                 _swappedOnDisconnect = false;
+
+                // Sound back on, whether or not this session is the one that muted it. Restore only
+                // touches sessions this app muted itself, so calling it unconditionally here cannot
+                // undo a mute the user set by hand in the volume mixer.
+                CouchMode.Audio.GameAudio.Restore();
 
                 if (_resumeWhenBack)
                 {
@@ -457,6 +464,11 @@ public sealed class TrayApp : IDisposable
 
         // Held for as long as the app runs, not just a session — see GameBarControl.
         GameBarControl.Apply(config);
+
+        // Undo any mute left behind by a run that was killed rather than closed. Nothing else on the
+        // machine would ever put it back, so a crash would otherwise leave someone with a game that
+        // is silent for good and no idea why. See GameAudio.RecoverFromCrash.
+        CouchMode.Audio.GameAudio.RecoverFromCrash();
 
         // Look for a new version shortly after launch, and once a day after that.
         //
@@ -732,7 +744,11 @@ public sealed class TrayApp : IDisposable
                     // The game is still there behind the desktop, so the PS button means "back to it".
                     _leftRunning = true;
 
-                    RunBackground("Minimizing to the desktop", () => _session.MinimizeToDesktop());
+                    RunBackground("Minimizing to the desktop", () =>
+                    {
+                        _session.MinimizeToDesktop();
+                        MuteIfWanted();
+                    });
                     break;
 
                 case SessionEndPrompt.Choice.CloseToBigPicture:
@@ -881,6 +897,27 @@ public sealed class TrayApp : IDisposable
         new(_session.Config.MouseControlEnabled ? Words.PromptMouseOff : Words.PromptMouseOn,
             SessionEndPrompt.Choice.ToggleMouse, Theme.TextDim),
     ];
+
+    /// <summary>
+    /// Silence the game we have just walked away from, if the user wants that.
+    ///
+    /// Called after the swap rather than before it. The swap moves audio back to the desk device,
+    /// and a session only exists on the device it is playing to — muting first would find the
+    /// session on the television endpoint and lose it a moment later.
+    ///
+    /// Only ever for a game this app is watching. A game Steam is running that is not on the HDR
+    /// list has a findable window but no findable process, and there is no honest way to guess which
+    /// audio session is its.
+    /// </summary>
+    private void MuteIfWanted()
+    {
+        if (!_session.Config.MuteGameOnDesktop) return;
+
+        var game = _hdr.RunningGameProcess;
+        if (game is null) return;
+
+        CouchMode.Audio.GameAudio.MuteGame(game);
+    }
 
     /// <summary>
     /// Go back into a session that is waiting behind the desktop.
@@ -1089,6 +1126,11 @@ public sealed class TrayApp : IDisposable
                         {
                             _hdr.CloseRunningGame();
                             BigPictureLauncher.Close();
+
+                            // Nothing is left to unmute — the sessions died with the process — but
+                            // the record of what was muted has to go, or it outlives the thing it
+                            // describes and the next launch spends a moment looking for ghosts.
+                            CouchMode.Audio.GameAudio.Restore();
                         });
                     });
                     break;
@@ -2748,6 +2790,11 @@ public sealed class TrayApp : IDisposable
 
         try { GameBarControl.Enable(); }
         catch (Exception ex) { Log.Warn($"Game Bar restore failed: {ex.Message}"); }
+
+        // The sound goes back before this process does. Same reasoning as the displays above it: a
+        // change this app made to the machine must not outlive the app that made it.
+        try { CouchMode.Audio.GameAudio.Restore(); }
+        catch (Exception ex) { Log.Warn($"Unmuting the game failed: {ex.Message}"); }
     }
 
     private void SafeRevert()

@@ -718,6 +718,14 @@ internal static class Words
     // Appended to audio devices that are remembered but not switched on right now.
     public const string AudioDeviceOff = "— off";
 
+    public const string MuteOnDesktop = "Mute a game left running on the desktop";
+    public const string MuteOnDesktopWhy =
+        "**Recommended.** A game does not know you have put it down. When you go back to the desk "
+            + "with it still running — from **Swap to desktop**, or because your controller "
+            + "disconnected — this silences it until you return, then puts the sound back exactly as "
+            + "it was. Nothing else on your PC is affected. Turn it off if you leave a game running "
+            + "on purpose to listen to it.";
+
     public const string DesktopAudio = "Desktop audio";
     public const string DesktopAudioWhy = "The device to return to when you finish.";
     public const string SteamAfter = "Steam window on exit";

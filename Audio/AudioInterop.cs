@@ -91,6 +91,87 @@ internal static class AudioCom
         int Commit();
     }
 
+    // --- Per-application volume, for muting a game left running on the desktop ---
+    //
+    // This is the same surface the Windows volume mixer is built on. Nothing is injected into the
+    // game and nothing about the game's own process is touched: a session belongs to the audio
+    // engine, not to the application, so muting one is exactly as external as dragging that
+    // application's slider down in the mixer. Worth stating plainly because "mute the game" sounds
+    // like something that would need to reach inside it, and anything that did would be a problem.
+
+    [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioSessionManager2
+    {
+        // The first four slots belong to IAudioSessionManager, which this derives from. Declared as
+        // opaque placeholders purely so the vtable offsets line up — the same reason IPolicyConfig
+        // below carries eleven methods nothing calls.
+        int GetAudioSessionControl(IntPtr sessionGuid, uint flags, IntPtr sessionControl);
+        int GetSimpleAudioVolume(IntPtr sessionGuid, uint flags, IntPtr audioVolume);
+
+        int GetSessionEnumerator(out IAudioSessionEnumerator sessions);
+        int RegisterSessionNotification(IntPtr notification);
+        int UnregisterSessionNotification(IntPtr notification);
+        int RegisterDuckNotification([MarshalAs(UnmanagedType.LPWStr)] string sessionId, IntPtr duck);
+        int UnregisterDuckNotification(IntPtr duck);
+    }
+
+    [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioSessionEnumerator
+    {
+        int GetCount(out int count);
+        int GetSession(int index, out IAudioSessionControl session);
+    }
+
+    [ComImport, Guid("F4B1A599-7266-4319-A8CA-E70ACB11E8CD"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioSessionControl
+    {
+        int GetState(out int state);
+        int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string name);
+        int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string value, IntPtr eventContext);
+        int GetIconPath([MarshalAs(UnmanagedType.LPWStr)] out string path);
+        int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string value, IntPtr eventContext);
+        int GetGroupingParam(out Guid grouping);
+        int SetGroupingParam(ref Guid grouping, IntPtr eventContext);
+        int RegisterAudioSessionNotification(IntPtr notification);
+        int UnregisterAudioSessionNotification(IntPtr notification);
+    }
+
+    /// <summary>The one that knows which process a session belongs to.</summary>
+    [ComImport, Guid("BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioSessionControl2
+    {
+        // IAudioSessionControl's nine methods first — see the note on IAudioSessionManager2.
+        int GetState(out int state);
+        int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string name);
+        int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string value, IntPtr eventContext);
+        int GetIconPath([MarshalAs(UnmanagedType.LPWStr)] out string path);
+        int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string value, IntPtr eventContext);
+        int GetGroupingParam(out Guid grouping);
+        int SetGroupingParam(ref Guid grouping, IntPtr eventContext);
+        int RegisterAudioSessionNotification(IntPtr notification);
+        int UnregisterAudioSessionNotification(IntPtr notification);
+
+        int GetSessionIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        int GetSessionInstanceIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        int GetProcessId(out uint pid);
+        int IsSystemSoundsSession();
+        int SetDuckingPreference(bool optOut);
+    }
+
+    [ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface ISimpleAudioVolume
+    {
+        int SetMasterVolume(float level, ref Guid eventContext);
+        int GetMasterVolume(out float level);
+        int SetMute(bool mute, ref Guid eventContext);
+        int GetMute(out bool mute);
+    }
+
     // --- Undocumented: the only way to set the system default endpoint ---
 
     [ComImport, Guid("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9")]

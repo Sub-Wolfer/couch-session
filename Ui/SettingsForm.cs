@@ -155,6 +155,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _gamePriority = new();
     private readonly ToggleSwitch _startOnController = new();
     private readonly Dropdown _onDisconnect = new();
+    private readonly ToggleSwitch _muteOnDesktop = new();
 
     private readonly GameIcons _icons = new();
     private readonly HashSet<string> _checkedGames = new(StringComparer.OrdinalIgnoreCase);
@@ -1295,6 +1296,8 @@ public sealed class SettingsForm : Form
              page: DisplayPage, anchor: _tvAudio);
         Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
              anchor: _desktopAudio);
+        Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
+             _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
 
         Tile("Steam after Big Picture", SteamAfterText(), true, page: GeneralPage, anchor: _steamAfter);
 
@@ -2175,6 +2178,15 @@ public sealed class SettingsForm : Form
             BackColor = Color.Transparent,
         };
         Stack(page).Controls.Add(_deviceNote);
+
+        // On this page rather than with the settings that cause it.
+        //
+        // Leaving a game running on the desktop happens two ways — the prompt's "swap to desktop"
+        // and a controller dropping out — which are on two different pages, so putting it beside
+        // either would hide it from the other. It is a question about sound, and somebody hunting
+        // for "why is my game still making noise" comes looking under Audio.
+        AddToggle(audio, Words.MuteOnDesktop, _muteOnDesktop, Words.MuteOnDesktopWhy,
+                  titleEmphasis: Theme.Good, setting: nameof(AppConfig.MuteGameOnDesktop));
 
         AddPageReset(page, DisplayPage);
 
@@ -5566,6 +5578,7 @@ public sealed class SettingsForm : Form
             nameof(AppConfig.SwitchAudio),
             nameof(AppConfig.TvAudioDeviceId), nameof(AppConfig.TvAudioDeviceName),
             nameof(AppConfig.DesktopAudioDeviceId), nameof(AppConfig.DesktopAudioDeviceName),
+            nameof(AppConfig.MuteGameOnDesktop),
         ],
 
         // HdrTags is deliberately kept, and is not a setting: it is looked-up data about which
@@ -5862,6 +5875,7 @@ public sealed class SettingsForm : Form
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
             _onDisconnect.SelectedIndex = (int)Config.OnDisconnect;
+            _muteOnDesktop.Checked = Config.MuteGameOnDesktop;
 
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
@@ -5991,6 +6005,7 @@ public sealed class SettingsForm : Form
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
         Config.OnDisconnect = DisconnectOf(_onDisconnect);
+        Config.MuteGameOnDesktop = _muteOnDesktop.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
         if (_triggerPad.SelectedItem is ControllerDevice pad)

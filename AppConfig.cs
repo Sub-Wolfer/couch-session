@@ -417,6 +417,19 @@ public sealed class AppConfig
     public bool StartOnControllerConnect { get; set; }
 
     /// <summary>
+    /// Mute a game that has been left running while you are back at the desktop.
+    ///
+    /// On by default. A game does not know it has been put down: dropping to the desktop with it
+    /// still running — from the prompt's "swap to desktop", or because a controller dropped out —
+    /// leaves its music and its gunfire playing into whatever speakers are now in front of the
+    /// person trying to answer an email. It is unmuted the moment the session comes back.
+    ///
+    /// Off for anyone who leaves a game running on purpose to listen to it, which is a real thing
+    /// people do with a soundtrack they like.
+    /// </summary>
+    public bool MuteGameOnDesktop { get; set; } = true;
+
+    /// <summary>
     /// What happens when the last controller disconnects mid-session.
     ///
     /// One three-way choice rather than two switches, and it was two switches for about an hour.
