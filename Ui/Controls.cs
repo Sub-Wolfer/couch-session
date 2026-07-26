@@ -937,16 +937,31 @@ internal sealed class GuideBanner : Control
     public string Line1
     {
         get => _line1;
-        set { if (_line1 == value) return; _line1 = value; Relayout(); Invalidate(); }
+        set { value = Plain(value); if (_line1 == value) return; _line1 = value; Relayout(); Invalidate(); }
     }
 
     public string Line2
     {
         get => _line2;
-        set { if (_line2 == value) return; _line2 = value; Relayout(); Invalidate(); }
+        set { value = Plain(value); if (_line2 == value) return; _line2 = value; Relayout(); Invalidate(); }
     }
 
     private string _line1 = "", _line2 = "";
+
+    /// <summary>
+    /// Drop the ** emphasis markers, which this control cannot render.
+    ///
+    /// [BUG] Everything else that shows prose here goes through RichNote, which turns **like this**
+    /// into bold blue. This banner paints its own text with TextRenderer, which knows nothing about
+    /// the convention, so it drew the asterisks — "the **PS button** on a PlayStation one" — on the
+    /// home page, in the one paragraph a first-time user is most likely to read.
+    ///
+    /// Stripping them here rather than only fixing the wording, because the wording lives in Words.cs
+    /// with a hundred other strings that all use ** freely. Whoever edits that file next should not
+    /// have to know that these two entries are special; if they use the marker it simply has no
+    /// effect, which is a great deal better than it appearing on screen.
+    /// </summary>
+    private static string Plain(string text) => text.Replace("**", string.Empty);
 
     public GuideBanner()
     {
@@ -967,7 +982,7 @@ internal sealed class GuideBanner : Control
     private const int BeforeText = 18, RightPad = 16;
 
     /// <summary>
-    /// Where the sentence starts: past both discs and the "or" between them.
+    /// Where the sentence starts: past the mark and the air after it.
     ///
     /// Worked out rather than guessed, and worked out in one place, because both the measuring pass
     /// and the painting pass have to agree about it — a banner measured for one text width and drawn
@@ -1032,11 +1047,11 @@ internal sealed class GuideBanner : Control
         int cy = Height / 2;
         int x = 20;
 
-        // One diagram, not two logos joined by "or".
+        // One mark, not two logos joined by "or".
         //
         // The logos were trademarks the app had to draw lookalikes of, and they named two brands while
-        // the app supports anything Windows recognises. A pad with its centre button lit says the same
-        // thing without naming anyone, and says the useful half of it: *where* the button is.
+        // the app supports anything Windows recognises. See GuideMark for what replaced them and why
+        // the first attempt at replacing them — a whole gamepad — was worse than either.
         GuideMark.Draw(g, new RectangleF(x, cy - MarkWidth / 2f, MarkWidth, MarkWidth), Theme.Accent);
 
         x += MarkWidth + BeforeText;

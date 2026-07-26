@@ -15,14 +15,6 @@ _backup*/
 _to_delete/
 *.bak
 
-# Optional embedded assets, deliberately not in the repository.
-#
-# The console button artwork is trademarked and cannot be redistributed here — the app draws its own
-# marks when these are absent, which is the shipping behaviour. Drop your own copies beside the csproj
-# if you have the rights to them.
-ps-button.png
-xbox-button.png
-
 # The landing page, kept out of the code repository.
 #
 # It is a separate deliverable with its own life — nobody cloning this to build the app needs it, and

@@ -183,20 +183,6 @@ dotnet publish -c Release
 ```
 
 <details>
-<summary><strong>A note on the console button artwork</strong></summary>
-
-<br>
-
-The PlayStation and Xbox button images aren't in this repository. Both marks are trademarks and can't
-be redistributed here, so the app draws its own approximations instead. That's the shipping behaviour
-and nothing is missing without them.
-
-If you have the rights to real artwork, drop `ps-button.png` and `xbox-button.png` beside the `.csproj`
-as square transparent PNGs, 128px or larger, and they'll be embedded automatically.
-
-</details>
-
-<details>
 <summary><strong>Regenerating the app icon</strong></summary>
 
 <br>

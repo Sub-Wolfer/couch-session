@@ -102,7 +102,6 @@ internal sealed class WelcomeDialog : Form
             ForeColor = Color.White,
             Line = Color.Empty,
         };
-        go.Location = new Point(Wide - Pad - go.Width, y);
         go.Click += (_, _) => { GoToSetup = true; DialogResult = DialogResult.OK; };
         Controls.Add(go);
 
@@ -113,9 +112,23 @@ internal sealed class WelcomeDialog : Form
             Fill = Theme.SurfaceHi,
             Line = Theme.Line,
         };
-        skip.Location = new Point(go.Left - 12 - skip.Width, y);
         skip.Click += (_, _) => DialogResult = DialogResult.Cancel;
         Controls.Add(skip);
+
+        // Centred as a pair, rather than pushed against the right edge.
+        //
+        // Right alignment is the convention for a dialog that interrupts you with a question, where
+        // the answer you are least likely to regret should sit under the hand. This window asks
+        // nothing and undoes nothing: both buttons retire it and one of them just opens a page. With
+        // no risky answer to protect, the pair reads as a choice between two equals, and a centred
+        // pair under centred-ish prose is the calmer arrangement of that.
+        const int Between = 12;
+
+        int pair = skip.Width + Between + go.Width;
+        int left = (Wide - pair) / 2;
+
+        skip.Location = new Point(left, y);
+        go.Location = new Point(left + skip.Width + Between, y);
 
         Height = y + 40 + Pad;
 

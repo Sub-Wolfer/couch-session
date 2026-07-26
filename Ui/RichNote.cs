@@ -132,14 +132,30 @@ internal sealed class RichNote : Control
     /// Measuring is the expensive part of laying this out, and it now happens once per distinct
     /// piece of text rather than once per word, so the cache is smaller and the hit rate higher.
     /// </summary>
-    private static readonly Dictionary<(string Text, bool Strong), int> Widths = [];
+    private static readonly Dictionary<(string Text, string Font), int> Widths = [];
 
-    private static readonly Dictionary<bool, int> LineHeights = [];
+    private static readonly Dictionary<string, int> LineHeights = [];
 
-    private static int WidthOf(string text, bool strong, Font font)
+    /// <summary>
+    /// A cache key that actually identifies the font.
+    ///
+    /// [BUG] The cache used to be keyed on the text and a <c>bool strong</c> flag, on the assumption
+    /// that "strong" meant one specific font. It does not: this control takes its fonts as
+    /// constructor arguments, so the notes under a setting use Small/SmallBold while the welcome
+    /// window uses Body/BodySemi. The cache is static and lives for the process, so whichever window
+    /// measured a given word first won, and every later window at a different size was laid out
+    /// against those wrong numbers. A single space measured at Small and reused at Body is the
+    /// visible version of that: the gap before an emphasised phrase collapsed to almost nothing.
+    /// </summary>
+    private static string Key(Font font)
+        => $"{font.Name}|{font.SizeInPoints}|{(int)font.Style}|{(int)font.Unit}";
+
+    private static int WidthOf(string text, Font font)
     {
         if (text.Length == 0) return 0;
-        if (Widths.TryGetValue((text, strong), out int cached)) return cached;
+
+        var key = (text, Key(font));
+        if (Widths.TryGetValue(key, out int cached)) return cached;
 
         // Measured with a trailing marker and then subtracted.
         //
@@ -156,7 +172,7 @@ internal sealed class RichNote : Control
 
         int measured = Math.Max(0, withMark - markOnly);
 
-        Widths[(text, strong)] = measured;
+        Widths[key] = measured;
         return measured;
     }
 
@@ -176,21 +192,37 @@ internal sealed class RichNote : Control
     /// Now the words that share a line and a style are drawn as one string and the font decides
     /// the spacing inside it, which is what fonts are for. Only a style change or a line break
     /// starts a new piece.
+    ///
+    /// The gap either side of an emphasised phrase is carried *inside* the next piece rather than
+    /// added to x as a separate measurement.
+    ///
+    /// [BUG] It used to be added on its own: <c>x += WidthOf(" ")</c>. Two things go wrong with
+    /// that. A lone space is the one string a text measurement is least reliable about, since the
+    /// whole point of DT_CALCRECT is to report ink rather than advance — so the figure it produced
+    /// was small and, once the stale cache above is in play, sometimes near zero. And whatever
+    /// number it did produce was never checked against what actually gets drawn, because nothing
+    /// draws a bare space. "Start on **Display &amp; Audio**" rendered as "Start onDisplay &amp; Audio".
+    ///
+    /// Folding the space into the piece removes the guesswork: the exact string that is measured is
+    /// the string that is drawn, so the gap on screen is the gap the layout was told about.
     /// </summary>
     private int Reflow()
     {
         _laid.Clear();
 
-        bool bold = _strong == Theme.SmallBold;
+        var lineKey = Key(_base);
 
-        if (!LineHeights.TryGetValue(bold, out int lineHeight))
+        if (!LineHeights.TryGetValue(lineKey, out int lineHeight))
         {
             lineHeight = TextRenderer.MeasureText("Agy", _base, Size.Empty, Flags).Height + 2;
-            LineHeights[bold] = lineHeight;
+            LineHeights[lineKey] = lineHeight;
         }
 
         int x = 0, y = 0;
+
         var piece = new System.Text.StringBuilder();
+        int words = 0;          // words in the piece; a piece holding only a leading space has none
+        string lead = "";       // a space owed to the front of the next piece
 
         void Flush(bool strong)
         {
@@ -199,21 +231,21 @@ internal sealed class RichNote : Control
             var text = piece.ToString();
             _laid.Add(new Placed(text, strong, new Point(x, y)));
 
-            x += WidthOf(text, strong, strong ? _strong : _base);
+            x += WidthOf(text, strong ? _strong : _base);
+
             piece.Clear();
+            words = 0;
         }
 
         foreach (var run in _runs)
         {
             var font = run.Strong ? _strong : _base;
 
-            // A run that *starts* on a space keeps that gap.
-            //
-            // The mirror of the trailing case below, and the one that showed: emphasis written
-            // as "**...closed.** Couch Mode" puts the space at the front of the plain run, and
-            // splitting on spaces discards a leading empty piece just as readily as a trailing
-            // one. The result was "closed.Couch".
-            if (x > 0 && run.Text.StartsWith(' ')) x += WidthOf(" ", run.Strong, font);
+            // A run that *starts* on a space keeps that gap — the mirror of the trailing case at
+            // the bottom of the loop. Emphasis written as "**...closed.** Couch Mode" puts the
+            // space at the front of the plain run, and splitting on spaces discards a leading
+            // empty piece just as readily as a trailing one. The result was "closed.Couch".
+            if (x > 0 && run.Text.StartsWith(' ')) lead = " ";
 
             foreach (var word in Tokens(run.Text))
             {
@@ -228,34 +260,40 @@ internal sealed class RichNote : Control
                     Flush(run.Strong);
                     x = 0;
                     y += lineHeight;
+                    lead = "";
                     continue;
                 }
 
                 if (word.Length == 0) continue;   // collapses any accidental double space
 
-                // What this line would measure with the word appended.
-                var candidate = piece.Length == 0 ? word : piece + " " + word;
-                int width = WidthOf(candidate, run.Strong, font);
+                // What this line would measure with the word appended. A gap owed from the
+                // previous run rides along at the front, so it is measured and drawn as one
+                // string with the word rather than estimated separately.
+                var candidate = words == 0 ? lead + word : piece.ToString() + " " + word;
 
-                if (x + width > _wrapWidth && (x > 0 || piece.Length > 0))
+                if (x + WidthOf(candidate, font) > _wrapWidth && (x > 0 || words > 0))
                 {
                     Flush(run.Strong);
                     x = 0;
                     y += lineHeight;
+
+                    // A gap owed at the end of a line is not owed at the start of the next one.
+                    candidate = word;
                 }
 
-                if (piece.Length > 0) piece.Append(' ');
-                piece.Append(word);
+                lead = "";
+
+                piece.Clear();
+                piece.Append(candidate);
+                words++;
             }
 
             Flush(run.Strong);
 
-            // A run ending on a space keeps that gap explicitly.
-            //
-            // Splitting on spaces throws the trailing one away, and the next run is a different
-            // style so it cannot share a piece with this one — without this the emphasised text
-            // would butt straight against the word before it.
-            if (run.Text.EndsWith(' ')) x += WidthOf(" ", run.Strong, font);
+            // A run ending on a space keeps that gap. Splitting on spaces throws the trailing one
+            // away, and the next run is a different style so it cannot share a piece with this
+            // one — without this the emphasised text would butt straight against the word before.
+            if (x > 0 && run.Text.EndsWith(' ')) lead = " ";
         }
 
         return y + lineHeight;

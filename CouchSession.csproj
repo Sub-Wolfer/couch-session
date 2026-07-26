@@ -48,11 +48,9 @@
          the finished executable, on a download people are asked to take on trust from an unsigned
          beta. A joke nobody can find is not worth doubling what everyone downloads. -->
 
-    <!-- The real console button artwork, if you have supplied it. Optional: both marks are trademarks
-         and cannot be shipped in the repository, so the app draws its own when these are absent. Square
-         PNGs with transparency, 128px or larger. -->
-    <EmbeddedResource Include="ps-button.png" LogicalName="ps-button.png" Condition="Exists('ps-button.png')" />
-    <EmbeddedResource Include="xbox-button.png" LogicalName="xbox-button.png" Condition="Exists('xbox-button.png')" />
+    <!-- The console button artwork hook is gone along with the marks themselves. The app no longer
+         draws anything brand-specific: one generic guide-button mark serves every controller, so
+         there is nothing left for a licensed image to replace. See Ui/GuideMark.cs. -->
   </ItemGroup>
 
   <ItemGroup>

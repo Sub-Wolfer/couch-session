@@ -30,7 +30,6 @@ internal sealed class ControllerStrip : Control
     private const int PollMs = 5000;
 
     private const int BoltWidth = 10;
-    private const int MarkWidth = 18;   // the PS / Xbox mark before each name
     private const int Gap = 5;        // between a name and its cable mark
     private const int Spacing = 16;   // between one pad and the next
 
@@ -121,10 +120,6 @@ internal sealed class ControllerStrip : Control
         {
             if (i > 0) total += Spacing;
 
-            // The console mark is drawn before every name, so it has to be measured with them or the
-            // strip sizes itself too narrow and clips the last pad.
-            total += MarkWidth + Gap;
-
             total += TextRenderer.MeasureText(g, Label(i), Font, new Size(240, Height),
                                               TextFormatFlags.NoPrefix).Width;
 
@@ -180,18 +175,18 @@ internal sealed class ControllerStrip : Control
             var pad = _pads[i];
             string label = Label(i);
 
-            // The console's own mark, then the name in green.
+            // The name in green, and nothing before it.
             //
             // This replaces the "Connected: …" line that used to sit on the home page: same meaning,
-            // same colour, but in the title bar where it is true of every page rather than one. The mark
-            // is what makes it readable at a glance — the shape says which family of pad before the
-            // words are read at all.
-            // The family comes from the device's vendor id, carried on PadStatus. It used to be read
-            // out of the name, which broke the moment anyone renamed their pad: "PS5 Wireless" contains
-            // none of the words that test looked for, so a DualSense was drawn with an Xbox mark.
-            ConsoleMarks.Draw(g, new Rectangle(x, mid - 9, MarkWidth, MarkWidth), pad.PlayStation);
-            x += MarkWidth + Gap;
-
+            // same colour, but in the title bar where it is true of every page rather than one.
+            //
+            // There used to be a console mark in front of each name. It has gone. Every version of it
+            // was wrong in the same way: the real PlayStation and Xbox marks are registered trademarks
+            // that cannot ship here, so the app drew lookalikes, which is the same problem wearing a
+            // hat — and a lookalike of two brands is no help at all to the Switch Pro, 8BitDo or Steam
+            // Deck owner the app supports just as well. It was also answering a question nobody asked.
+            // What the strip is for is whether the app can see a pad; the pad's own name is already
+            // sitting right there saying which one it is, in the green that says it is connected.
             int textWidth = TextRenderer.MeasureText(g, label, Font, new Size(240, Height),
                                                      TextFormatFlags.NoPrefix).Width;
 

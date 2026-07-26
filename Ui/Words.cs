@@ -284,22 +284,41 @@ internal static class Words
 
     // Names the destination the button actually goes to. The previous wording pointed at a setup
     // checklist on the Home page, and that checklist had been deleted — see the note in BuildHomePage.
+    //
+    // The second paragraph exists because the first sentence of this window describes a television,
+    // and someone who does not game on one will decide in that sentence that the app is not for
+    // them. HDR switching is worth having on its own — Windows leaves it on all the time or makes
+    // you dig through Settings before and after every game — and it needs nothing to do with a TV.
+    // Saying so here, rather than leaving it to be discovered, is the difference between a niche
+    // tool and one with a second reason to keep it.
     public const string WelcomeSteps =
         "Start on **Display & Audio** and pick your television and your speakers. That is the whole "
             + "setup; everything else already has a sensible default. The Home page will say so if "
-            + "anything essential is still missing.";
+            + "anything essential is still missing.\n\n"
+            + "Not gaming on a TV? You can use this for **HDR alone**. Have it switch HDR on when a "
+            + "game launches and off again when you quit, so the desktop never sits there looking "
+            + "washed out. Just leave the television side switched off.";
 
     public const string WelcomeGo = "Set up my TV";
     public const string WelcomeSkip = "I'll look around myself";
 
     // ── Home page guidance ────────────────────────────────────────────────────────
-    public const string HomeGuideBannerTitle = "The big button in the middle starts and ends a session";
+    // No ** in either of these, unlike every other string in this file.
+    //
+    // [BUG] The banner paints its own text with TextRenderer rather than through RichNote, and
+    // TextRenderer has never heard of the ** convention — so the markers were drawn as literal
+    // asterisks. The first thing a new user read was "the **PS button** on a PlayStation one".
+    //
+    // The banner is not being converted to RichNote to fix that. Emphasis inside a four-line grey
+    // paragraph is decoration anyway; what the paragraph needed was to be shorter, which it now is.
+    // Short declarative sentences in a fixed order — what to press, what it is called, what it does
+    // at the desk, what it does on the TV, what to do if you have not got one — do the work the bold
+    // was there to fake.
+    public const string HomeGuideBannerTitle = "Press the big button in the middle of your controller";
     public const string HomeGuideBannerBody =
-        "Every console-style controller has one: **Guide** on an Xbox pad, the **PS button** on a "
-            + "PlayStation one, **HOME** on a Switch Pro, **STEAM** on a Steam Deck. Press it on the "
-            + "desktop and a session starts. Press it in one and it asks what to do next. Press and "
-            + "let go, rather than holding it. Some plain USB gamepads have no such button, and for "
-            + "those the hotkeys on the Hotkeys page do the same job.";
+        "Guide on an Xbox pad, PS on a PlayStation, HOME on a Switch Pro, STEAM on a Steam Deck. "
+            + "One press at your desk moves everything to the TV. One press on the TV asks what to "
+            + "do next. If your pad has no such button, the Hotkeys page does the same job.";
 
     public const string HomeGuideButton =
         "**PS / Xbox button** — press it on the desktop to start a session, or in one to ask what to do "
