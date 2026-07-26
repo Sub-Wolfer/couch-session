@@ -266,10 +266,14 @@ internal static class Words
             + "controller one, or both — click a box and press the keys, or hold **two or more** "
             + "buttons together (Back + Start works well) so it can't fire mid-game.";
 
+    // "Works with any pad Windows recognises" was a claim about compatibility, and only Xbox pads and
+    // the PS5 DualSense have actually been tried. The mechanism is standard HID and XInput so the rest
+    // should follow, but should-follow and tested are different things and the text now says which.
     public const string ShortcutControllerNote =
-        "Works with Xbox, PlayStation and any pad Windows recognises — no extra software. Your "
-            + "controller is **never taken over** — it is opened for reading only and never "
-            + "exclusively, so it runs alongside Steam Input, DS4Windows and games.";
+        "Tested with Xbox pads and the PS5 DualSense; other controllers Windows recognises should work "
+            + "too. No extra software either way. Your controller is **never taken over** — it is "
+            + "opened for reading only and never exclusively, so it runs alongside Steam Input, "
+            + "DS4Windows and games.";
 
     // ── First-run welcome ─────────────────────────────────────────────────────────
     public const string WelcomeTitle = "Welcome to Couch Session";

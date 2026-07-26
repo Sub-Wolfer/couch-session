@@ -35,7 +35,7 @@ it.
 | 🖥️ **Display** | Switches to your TV — on its own, or alongside your monitors — at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
 | 🔊 **Sound** | Moves audio to the TV on the way out and back to your desk on the way in. |
 | 🌈 **HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. |
-| 🎮 **Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. |
+| 🎮 **Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Tested on Xbox and PS5 pads. |
 | ⚡ **Performance** | Power plan, Game Mode, game priority, and silencing notifications — most of it undone when the session ends. |
 | 🔄 **Updates** | Tells you when a new version exists and installs it with one click. |
 
@@ -117,7 +117,16 @@ The power plan, notification silencing and game priority are all restored when a
 
 ## 🕹️ Controllers
 
-Xbox, PlayStation, and anything else Windows recognises. No extra software.
+**Tested with:** Xbox controllers and the PS5 DualSense.
+
+Anything else Windows recognises should work — the app reads standard HID and XInput rather than
+anything vendor-specific, and buttons are handled by position so a combination set on one pad is the
+same physical buttons on another. But "should work" is not "tested", and right now those two are the
+only ones that have been. If you have a DualShock 4, a Switch Pro controller, an 8BitDo or anything
+else, [a quick report](https://github.com/Sub-Wolfer/couch-session/issues) either way is genuinely
+useful.
+
+No extra software is needed for any of them.
 
 Your controller is **never taken over** — it's opened for reading only and never exclusively, so it
 runs alongside Steam Input, DS4Windows and games rather than competing with them.
