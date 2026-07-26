@@ -119,6 +119,11 @@ public sealed class TrayApp : IDisposable
         // from one that is broken, and every one of these conditions is invisible from outside.
         _pads.Connected += device => OnUi(() =>
         {
+            // A pad coming back after it dropped out mid-session is not "starting a session". It is
+            // picking up where you were, so it happens before the start-on-connect switch is even
+            // consulted — that setting is about sitting down at a desktop, and this is not that.
+            if (PadReconnected(device)) return;
+
             if (!_session.Config.StartOnControllerConnect)
             {
                 Log.Info($"{device.Name} connected, but starting on connect is switched off.");
@@ -149,38 +154,77 @@ public sealed class TrayApp : IDisposable
 
             // Switched off entirely, for the setup where a pad going quiet is routine rather than the
             // end of playing.
-            if (!_session.Config.StopOnControllerDisconnect)
+            if (!_session.Config.SwapToDesktopOnDisconnect)
             {
-                Log.Info($"{device.Name} disconnected; ending on disconnect is switched off.");
+                Log.Info($"{device.Name} disconnected; coming back on disconnect is switched off.");
                 return;
             }
 
-            // Asked rather than done, unless the user has said otherwise.
+            // Come back to the desk. Nothing is closed, and nothing is asked on the television.
             //
-            // A pad going quiet is the most ambiguous signal there is — a flat battery, a knocked
-            // cable, a wireless adapter dropping the link for a moment — and none of those is the
-            // same as deciding to stop playing. So the default goes through the ordinary session-end
-            // route, which puts the prompt up. The controller is gone, so the prompt is answered with
-            // mouse or keyboard, and if nobody is there to answer it settles on leaving everything
-            // exactly as it was.
-            if (_session.Config.AskOnControllerDisconnect)
-            {
-                Log.Info($"{device.Name} disconnected; asking what to do with the session.");
-                EndSession(bigPictureStillUp: true);
-                return;
-            }
+            // [BUG] This used to put the session-end prompt up where it was: on the TV. That prompt
+            // is answered with the controller, and the event that raised it is the controller going
+            // away — so the one input that could reach it had just stopped existing. The comment
+            // said "answered with mouse or keyboard", which is true and useless, because the mouse
+            // and keyboard are at the desk and the prompt was on the television.
+            //
+            // So the swap happens first and the question comes afterwards, on the screen the user is
+            // actually sitting at. This is the same path as the prompt's own "Swap to desktop"
+            // answer: game and Big Picture minimised and left running, display and sound back at the
+            // desk, nothing torn down. Switching the pad back on resumes it — see PadReconnected.
+            Log.Info($"{device.Name} disconnected; coming back to the desktop with everything running.");
 
-            // Straight back to the desktop, no question asked. Deliberately not routed through
-            // EndSession: that puts a prompt up whenever a game is running, which is precisely the
-            // prompt this setting exists to skip.
-            Log.Info($"{device.Name} disconnected; ending the session without asking.");
-            RunBackground("Returning to the desktop", () => _session.ReturnToDesktop());
+            // Any prompt already up is on the television, and the pad that could answer it has just
+            // gone. Left alone it would sit topmost on a screen nobody is looking at, fighting the
+            // desk for the foreground, and its answers would act on a session that no longer exists
+            // — including an auto-dismiss three minutes later that restores the game we are about to
+            // minimize. OnBigPictureClosed already does this for the same reason.
+            if (_endPrompt is { IsDisposed: false } stale) stale.Close();
+
+            _front.End();          // its timer lives on this thread, and we are already on it
+            _watcher.Suppress();   // Big Picture stays open; do not let the watcher drag us back in
+
+            _leftRunning = true;
+            _swappedOnDisconnect = true;
+
+            RunBackground("Coming back to the desktop", () =>
+            {
+                _session.MinimizeToDesktop(closeBigPicture: false);
+
+                if (_session.Config.PromptAfterDisconnect) OnUi(RaiseDisconnectPrompt);
+            });
         });
 
         // Handles held for reading buttons go stale the moment a pad is unplugged, and a new
         // pad will not be read at all until the list is rebuilt. The watcher already knows when
         // either happens, so it says so rather than the reader polling to find out.
-        _pads.DevicesChanged += () => { _pads.ResumeReports(); HidPad.Invalidate(); HidPoll.Invalidate(); };
+        _pads.DevicesChanged += () =>
+        {
+            _pads.ResumeReports();
+            HidPad.Invalidate();
+            HidPoll.Invalidate();
+
+            // The second way back in, and the one that covers the pads the first cannot see.
+            //
+            // [BUG] Resuming after a disconnect swap hung off Connected alone, and Connected is
+            // filtered by StartOnControllerLink — "wired only" or "wireless only" — while
+            // Disconnected deliberately is not, precisely so nobody is stranded on the television
+            // with no way back. So with the link set to wired only, a wireless pad could drop out and
+            // trigger the swap, then come back and be filtered out of the event that would have
+            // resumed it. The way back was closed by a setting about starting sessions.
+            //
+            // DevicesChanged is unfiltered, so this catches those. Costs nothing when there is
+            // nothing to resume: the first line of PadReconnected is the flag.
+            if (!_swappedOnDisconnect) return;
+
+            OnUi(() =>
+            {
+                if (!_swappedOnDisconnect) return;
+
+                var back = ControllerWatcher.Attached().FirstOrDefault();
+                if (back is not null) PadReconnected(back);
+            });
+        };
 
         // Button state is read from the reports the watcher already receives, rather than by
         // opening the controller — see HidPad.
@@ -262,6 +306,7 @@ public sealed class TrayApp : IDisposable
 
                 // Nothing is left behind on the desktop any more, whatever was before.
                 _leftRunning = false;
+                _swappedOnDisconnect = false;
 
                 if (_resumeWhenBack)
                 {
@@ -812,6 +857,204 @@ public sealed class TrayApp : IDisposable
         new(Words.PromptKeyboard, SessionEndPrompt.Choice.Keyboard, Theme.TextDim),
     ];
 
+    /// <summary>
+    /// Go back into a session that is waiting behind the desktop.
+    ///
+    /// Wrapped rather than calling EnterTvMode directly, because <see cref="_resumeWhenBack"/> has to
+    /// be set before the switch starts — the state change that consumes it fires part-way through —
+    /// and there is no other point at which a failure can clear it again.
+    ///
+    /// [BUG] Without this a failed resume left the flag set for good. EnterTvMode's own failure path
+    /// puts the desktop back and rethrows, which means the state never settles on TV, which means the
+    /// one place that clears the flag never runs. The next successful session — possibly days later
+    /// and nothing to do with this one — then opened by restoring and fronting Big Picture over
+    /// whatever it was actually starting.
+    /// </summary>
+    private void ResumeIntoSession()
+    {
+        try
+        {
+            _session.EnterTvMode();
+        }
+        catch
+        {
+            _resumeWhenBack = false;
+            throw;   // RunBackground still reports it; this only stops the flag outliving the attempt
+        }
+    }
+
+    /// <summary>
+    /// A controller coming back after it dropped out of a running session. True when that was handled
+    /// here and the ordinary start-on-connect trigger should be left alone.
+    ///
+    /// This is the other half of the disconnect swap. The session's windows are still up behind the
+    /// desktop, so there is something to go back to, and the user did not choose to be here — so
+    /// switching the pad on means what it plainly looks like it means.
+    /// </summary>
+    private bool PadReconnected(ControllerDevice device)
+    {
+        if (!_swappedOnDisconnect) return false;
+
+        if (_session.IsInTvMode) { _swappedOnDisconnect = false; return false; }
+
+        // The swap itself takes seconds — displays settle, audio moves, the window layout is put
+        // back — and a pad that re-enumerates inside that window (a dongle re-seating, a pad that
+        // reboots itself) would otherwise be thrown away entirely. The watcher only announces a
+        // fresh arrival, so nothing would ever announce it again and the user would have to
+        // power-cycle the controller to get back in. Asked again shortly instead.
+        if (_busy)
+        {
+            Log.Info($"{device.Name} came back while the swap was still finishing; trying again shortly.");
+            RetryReconnect(device, attempts: 6);
+            return true;
+        }
+
+        // The flag alone is not enough. The game may have been closed from the desktop in the
+        // meantime, and going back into nothing is worse than doing nothing at all — the display
+        // would move to a television showing a bare desktop.
+        bool alive = _hdr.RunningGameWindow() != IntPtr.Zero
+                  || BigPictureLauncher.FindWindow() != IntPtr.Zero;
+
+        if (!alive)
+        {
+            Log.Info($"{device.Name} came back, but the session's windows are gone; not resuming.");
+            _swappedOnDisconnect = false;
+            _leftRunning = false;
+            return false;
+        }
+
+        Log.Info($"{device.Name} came back; going straight back into the session.");
+
+        // Take the prompt down first. It is offering choices about a session that is about to be
+        // resumed underneath it, and one of them closes the game.
+        if (_endPrompt is { IsDisposed: false } open) open.Close();
+
+        _swappedOnDisconnect = false;
+        _leftRunning = false;
+        _resumeWhenBack = true;
+
+        RunBackground("Switching to the TV", ResumeIntoSession);
+        return true;
+    }
+
+    /// <summary>
+    /// Ask again in a moment whether a pad that arrived mid-swap can be resumed into.
+    ///
+    /// One-shot timer per attempt rather than a loop, because this has to run on the UI thread and
+    /// give it back between tries. Bounded: if the swap has not finished after a few seconds
+    /// something else is wrong, and quietly retrying forever would hide it.
+    /// </summary>
+    private void RetryReconnect(ControllerDevice device, int attempts)
+    {
+        if (attempts <= 0)
+        {
+            Log.Warn($"{device.Name} came back but the app never stopped being busy; not resuming.");
+            return;
+        }
+
+        var timer = new System.Windows.Forms.Timer { Interval = 700 };
+
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            timer.Dispose();
+
+            if (!_swappedOnDisconnect) return;   // answered at the desk, or resumed another way
+
+            if (_busy) { RetryReconnect(device, attempts - 1); return; }
+
+            PadReconnected(device);
+        };
+
+        timer.Start();
+    }
+
+    /// <summary>
+    /// The question that lands on the desk screen after a disconnect swap.
+    ///
+    /// Deliberately not the session-end prompt. That one is written for a controller and a
+    /// television: it is answered with a pad, and its hint row names pad buttons. Here there is no
+    /// pad by definition, so this offers three plain answers and names none of them after a button.
+    ///
+    /// Going back is the first and the accented one, because it is what most disconnects turn out to
+    /// be — a battery swapped, a cable pushed back in — and because it is the only answer that
+    /// undoes itself for free.
+    /// </summary>
+    private void RaiseDisconnectPrompt()
+    {
+        if (_endPrompt is { IsDisposed: false } open) { open.BringToFront(); return; }
+
+        // The session may have been resumed between the swap finishing and this arriving. A prompt
+        // about coming back to a session you are already in is nonsense, and one of its answers
+        // would close the game underneath you.
+        if (_session.IsInTvMode || !_swappedOnDisconnect) return;
+
+        var options = new[]
+        {
+            new SessionEndPrompt.Option(Words.DisconnectResume, SessionEndPrompt.Choice.Resume,
+                                        Theme.Good, Words.DisconnectResumeWhat),
+            new SessionEndPrompt.Option(Words.DisconnectClose, SessionEndPrompt.Choice.Close,
+                                        Theme.Bad, Words.DisconnectCloseWhat),
+            new SessionEndPrompt.Option(Words.DisconnectLeave, SessionEndPrompt.Choice.Stay,
+                                        Theme.Info, Words.DisconnectLeaveWhat),
+        };
+
+        // Named screen rather than inferred: the game and Big Picture were minimized a moment ago,
+        // and a minimized window's rectangle is parked off in the corner of the desktop, so working
+        // the monitor out from the foreground is a coin toss. Primary is the desk again by this
+        // point — putting it back is what the swap did.
+        var prompt = new SessionEndPrompt(Words.DisconnectTitle, Words.DisconnectBody, options,
+                                          on: Screen.PrimaryScreen)
+        {
+            // Everything this class does for a television is wrong here. See AtTheDesk.
+            AtTheDesk = true,
+        };
+
+        _endPrompt = prompt;
+        prompt.FormClosed += (_, _) => { if (ReferenceEquals(_endPrompt, prompt)) _endPrompt = null; };
+
+        prompt.Chosen += choice =>
+        {
+            switch (choice)
+            {
+                case SessionEndPrompt.Choice.Resume:
+                    _swappedOnDisconnect = false;
+                    _leftRunning = false;
+                    _resumeWhenBack = true;
+
+                    RunBackground("Switching to the TV", ResumeIntoSession);
+                    break;
+
+                case SessionEndPrompt.Choice.Close:
+                    // Confirmed first. This is the one answer here that cannot be undone, and the
+                    // window it appears in arrived unbidden while the user was doing something else.
+                    Confirm(choice, _ =>
+                    {
+                        _swappedOnDisconnect = false;
+                        _leftRunning = false;
+
+                        // Big Picture goes too. It is still running, minimized, from the swap — and
+                        // with the game closed and both flags cleared there is nothing left that
+                        // would ever bring it back into view, so leaving it would be leaving a
+                        // fullscreen shell running invisibly for the rest of the session.
+                        RunBackground("Closing the game", () =>
+                        {
+                            _hdr.CloseRunningGame();
+                            BigPictureLauncher.Close();
+                        });
+                    });
+                    break;
+
+                default:
+                    // Left as it is. The flag stays set on purpose, so switching the pad back on
+                    // still takes you straight in.
+                    break;
+            }
+        };
+
+        prompt.Show();
+    }
+
     private void HandleNavigationChoice(SessionEndPrompt.Choice choice)
     {
         switch (choice)
@@ -1047,6 +1290,7 @@ public sealed class TrayApp : IDisposable
 
         // Nothing survives this, so there is nothing for the PS button to go back to.
         _leftRunning = false;
+        _swappedOnDisconnect = false;
 
         // Take the prompt down if one happens to be up, so it cannot act on a session that is
         // already ending underneath it.
@@ -2186,6 +2430,16 @@ public sealed class TrayApp : IDisposable
     /// <summary>Set alongside a resume request, so the windows are restored once the TV is live.</summary>
     private bool _resumeWhenBack;
 
+    /// <summary>
+    /// The desktop we are sitting on was reached by a controller dropping out, not by choice.
+    ///
+    /// Kept apart from <see cref="_leftRunning"/> because only this one may resume on its own. A user
+    /// who chose "Swap to desktop" went to the desktop to do something there, and dragging them back
+    /// to the television because a pad woke up would be the app overruling a decision they had just
+    /// made. A user whose battery died did not decide anything.
+    /// </summary>
+    private bool _swappedOnDisconnect;
+
     /// <summary>When the watch began, for the grace below.</summary>
     private DateTime _guideArmedAt;
 
@@ -2416,6 +2670,7 @@ public sealed class TrayApp : IDisposable
                           || BigPictureLauncher.FindWindow() != IntPtr.Zero);
 
         _leftRunning = false;
+        _swappedOnDisconnect = false;
         _resumeWhenBack = resumable;
 
         Log.Info(resumable

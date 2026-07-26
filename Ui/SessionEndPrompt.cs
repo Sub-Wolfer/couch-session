@@ -24,6 +24,14 @@ internal sealed class SessionEndPrompt : Form
     {
         Stay, Close, Minimize, CloseToBigPicture,
 
+        /// <summary>
+        /// Go back into a session that is still running behind the desktop.
+        ///
+        /// Only ever offered by the prompt that lands on the desk after a controller disconnects. The
+        /// other prompts are shown while the session is live, where there is nothing to go back to.
+        /// </summary>
+        Resume,
+
         /// <summary>Turn the controller-as-mouse on or off, then get out of the way.</summary>
         ToggleMouse,
 
@@ -72,6 +80,28 @@ internal sealed class SessionEndPrompt : Form
 
     /// <summary>What the Square / X hint reads, when <see cref="Shortcut"/> is set.</summary>
     public string ShortcutHint { get; init; } = "";
+
+    /// <summary>
+    /// This prompt is on a desk monitor with a mouse, not on a television with a controller.
+    ///
+    /// Everything else this class does assumes the opposite, and rightly: it exists to be answered
+    /// with a pad over a fullscreen game that will fight it for the foreground. One prompt is not
+    /// like that — the one that appears at the desk after a controller has disconnected — and every
+    /// one of those assumptions is actively wrong there:
+    ///
+    ///  • The hint row names pad buttons. The event that raised this prompt is the pad ceasing to
+    ///    exist, so those hints would be telling somebody to press A on a controller that is flat.
+    ///  • The foreground is re-taken four times a second for up to three minutes. On a television
+    ///    that is how the prompt survives a game grabbing focus back; on a desktop it means the
+    ///    machine cannot be used for anything else until the prompt is answered.
+    ///  • The cursor is hidden. This is the one prompt that has to be answered with a mouse.
+    ///  • Backing out hands the foreground back to whatever was in front, and restores it if it has
+    ///    been minimized. What was in front here is the game, which was deliberately minimized a
+    ///    moment ago — so the restore would drag it back onto the desk three minutes later.
+    /// </summary>
+    public bool AtTheDesk { get; init; }
+
+    private bool PadHints => !AtTheDesk;
 
     private readonly string _title;
     private readonly string _body;
@@ -525,7 +555,14 @@ internal sealed class SessionEndPrompt : Form
     private Rectangle[] _optionRects = [];
     private Rectangle _hintRect;
 
-    public SessionEndPrompt(string title, string body, Option[] options)
+    /// <param name="on">
+    /// The monitor to appear on. Null works it out from whatever has the foreground, which is right
+    /// for every prompt raised over a game or Big Picture. The desk prompt names its screen instead:
+    /// it is raised straight after the game and Big Picture have been minimized, and a minimized
+    /// window's rectangle is off in the far corner of the desktop, so inferring from the foreground
+    /// there is a coin toss.
+    /// </param>
+    public SessionEndPrompt(string title, string body, Option[] options, Screen? on = null)
     {
         _title = title;
         _body = body;
@@ -543,7 +580,7 @@ internal sealed class SessionEndPrompt : Form
         // against the primary display and then showing the window on the television is what made this
         // come back small and off-centre: measured for one monitor, placed on another, and rescaled
         // again by Windows on arrival for the DPI difference between them.
-        _target = ScreenForPrompt();
+        _target = on ?? ScreenForPrompt();
         _scale = UiScale.ForNotifications(_target);
 
         FormBorderStyle = FormBorderStyle.None;
@@ -638,8 +675,12 @@ internal sealed class SessionEndPrompt : Form
         // back the moment the mouse is actually moved, so it is hidden rather than disabled: anyone who
         // reaches for a mouse still gets one.
         _cursorAtShow = MousePosition;
-        Cursor.Hide();
-        _cursorHidden = true;
+
+        if (!AtTheDesk)
+        {
+            Cursor.Hide();
+            _cursorHidden = true;
+        }
 
         // A layered window has nothing on it until UpdateLayeredWindow is called, and showing it does
         // not call one. Without this the prompt appears as an empty rectangle until the first shimmer
@@ -739,7 +780,7 @@ internal sealed class SessionEndPrompt : Form
         }
 
         int hintWidth = width - _pad * 2;
-        int hintRows = HintRows(hintWidth);
+        int hintRows = PadHints ? HintRows(hintWidth) : 0;
 
         _hintRect = new Rectangle(_pad, top + S(4), hintWidth, S(24) * hintRows);
         int height = _hintRect.Bottom + _pad;
@@ -794,7 +835,9 @@ internal sealed class SessionEndPrompt : Form
     {
         if (_decided) return;
 
-        HoldForeground();
+        // Not at the desk. See AtTheDesk: holding the foreground against a fullscreen game is this
+        // window's job on a television and an act of vandalism on a desktop.
+        if (!AtTheDesk) HoldForeground();
 
         if (DateTime.UtcNow - _openedAt > AutoStayAfter) { Decide(Choice.Stay); return; }
 
@@ -1024,7 +1067,9 @@ internal sealed class SessionEndPrompt : Form
         // while also taking the foreground away from the game, which is the whole point of this window.
         // Cyberpunk in fullscreen does exactly this. So rather than pretend it can be prevented, keeping
         // playing puts the game back: restored, then handed the foreground.
-        if (choice == Choice.Stay)
+        // Never at the desk. The window "behind the prompt" there is a game that was minimized on
+        // purpose seconds earlier, and restoring it is the opposite of what backing out means.
+        if (choice == Choice.Stay && !AtTheDesk)
         {
             var back = _minimizedGame != IntPtr.Zero ? _minimizedGame : _previousForeground;
 
@@ -1049,7 +1094,7 @@ internal sealed class SessionEndPrompt : Form
         // and only then is anything told to come forward.
         Close();
 
-        if (choice == Choice.Stay)
+        if (choice == Choice.Stay && !AtTheDesk)
         {
             if (RestoreFocus is not null) RestoreFocus();
             else if (_previousForeground != IntPtr.Zero) ForceForeground(_previousForeground);
@@ -1442,6 +1487,8 @@ internal sealed class SessionEndPrompt : Form
     /// <summary>Each hint: the glyphs to draw side by side, then its label.</summary>
     private (PadControl[] Glyphs, string Label)[] HintParts()
     {
+        if (!PadHints) return [];
+
         // No "Move" hint.
         //
         // A vertical list with one row visibly selected already says which way the stick goes; nobody
@@ -1520,6 +1567,8 @@ internal sealed class SessionEndPrompt : Form
     /// <summary>The button hints, drawn in the symbols of the pad in the user's hands.</summary>
     private void DrawHint(Graphics g)
     {
+        if (!PadHints) return;
+
         // Raised from TextFaint. That colour is for something you are meant to skim past, and this row
         // is the only place the window says which button does what — the one line a controller user has
         // to be able to read from the sofa.

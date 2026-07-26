@@ -154,8 +154,8 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _enableGameMode = new();
     private readonly ToggleSwitch _gamePriority = new();
     private readonly ToggleSwitch _startOnController = new();
-    private readonly ToggleSwitch _stopOnController = new();
-    private readonly ToggleSwitch _askOnDisconnect = new();
+    private readonly ToggleSwitch _swapOnDisconnect = new();
+    private readonly ToggleSwitch _promptAfterDisconnect = new();
 
     private readonly GameIcons _icons = new();
     private readonly HashSet<string> _checkedGames = new(StringComparer.OrdinalIgnoreCase);
@@ -1364,10 +1364,10 @@ public sealed class SettingsForm : Form
         // Back on this page, having been dropped while the behaviour was fixed and could only ever
         // say one thing. It is a setting again, and it is the one that decides what a flat battery
         // mid-game does — so it says which of the three states it is in rather than just on or off.
-        Tile("Controller disconnects", !_stopOnController.Checked ? "ignored"
-                                     : _askOnDisconnect.Checked ? "asks what to do"
-                                                                : "ends the session",
-             _stopOnController.Checked, page: ControllerPage, anchor: _stopOnController);
+        Tile("Controller disconnects", !_swapOnDisconnect.Checked ? "ignored"
+                                     : _promptAfterDisconnect.Checked ? "back to the desk, then asks"
+                                                                      : "back to the desk",
+             _swapOnDisconnect.Checked, page: ControllerPage, anchor: _swapOnDisconnect);
 
         // ── performance and pointer ──
         Tile("Power plan", _changePowerPlan.Checked
@@ -2000,7 +2000,11 @@ public sealed class SettingsForm : Form
         {
             Text = Words.ButtonReset,
             Size = new Size(150, BigButton),
-            Margin = new Padding(0, FlatButton.Bleed, 3, 3),
+
+            // Top margin puts it back on the primary button's line — see the note below. No margin on
+            // either side: the primary button's bleed already provides the gap to its right, and its
+            // own left edge is the end of the row.
+            Margin = new Padding(0, FlatButton.Bleed, 0, 3),
         };
 
         reset.Click += (_, _) => ResetEverything();
@@ -2032,9 +2036,20 @@ public sealed class SettingsForm : Form
             // was 380, which the wider primary control filled to within three pixels.
             Width = 420,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, bigTop - FlatButton.Bleed, 20, 0),
+
+            // Right inset reduced by the bleed, because the outermost control is now the primary
+            // button and nine pixels of it are transparent. Without this the pill would sit further
+            // from the window edge than every other button in the footer.
+            Padding = new Padding(0, bigTop - FlatButton.Bleed, 20 - FlatButton.Bleed, 0),
         };
-        right.Controls.AddRange([reset, _action]);
+
+        // Start on the outside, Reset inboard of it. The flow is right-to-left, so the first control
+        // added is the rightmost.
+        //
+        // The primary action belongs at the end of the row: it is where the eye finishes and where
+        // the hand already is, and it puts the most-used button furthest from Reset, which is the one
+        // in this pair worth never hitting by accident.
+        right.Controls.AddRange([_action, reset]);
 
         // Settings save themselves, so there is nothing to press. This only confirms it
         // happened — an interface that saves silently and says nothing invites the user to
@@ -2424,22 +2439,22 @@ public sealed class SettingsForm : Form
                     Words.PadLinkOptions[(int)PadLink.Either], indent: Indent);
         });
 
-        // Ending on a disconnect is a setting again.
+        // What happens when the pad drops out mid-session.
         //
-        // It was taken away on the reasoning that the prompt asks rather than acts, so nobody could
-        // want it off. That holds right up until the disconnect is routine — a pad that sleeps by
-        // itself, an adapter that drops the link during a film — at which point a prompt arriving
-        // over whatever is on the television is the annoyance rather than the way out of one.
-        AddToggle(pad, Words.StopOnController, _stopOnController, Words.StopOnControllerWhy,
-                  setting: nameof(AppConfig.StopOnControllerDisconnect));
+        // This was a setting, then it was taken away as "nobody could want it off", and it is back
+        // because both of those decisions were about the wrong behaviour: what it used to do was put
+        // a prompt on the television and wait for the controller that had just vanished to answer
+        // it. Coming back to the desk is the only answer that can actually be acted on, so that is
+        // what the switch now says.
+        AddToggle(pad, Words.SwapOnDisconnect, _swapOnDisconnect, Words.SwapOnDisconnectWhy,
+                  setting: nameof(AppConfig.SwapToDesktopOnDisconnect));
 
-        // Nested, because it only means anything while the switch above is on. Whether to ask is the
-        // whole safety of this feature — see AskOnDisconnectWhy — so it is a setting of its own
-        // rather than something folded into the one above.
-        WhenOn(() => _stopOnController.Checked, pad, () =>
-            AddToggle(pad, Words.AskOnDisconnect, _askOnDisconnect, Words.AskOnDisconnectWhy,
+        // Nested, because it only means anything while the switch above is on.
+        WhenOn(() => _swapOnDisconnect.Checked, pad, () =>
+            AddToggle(pad, Words.PromptAfterDisconnect, _promptAfterDisconnect,
+                      Words.PromptAfterDisconnectWhy,
                       indent: Indent, titleEmphasis: Theme.Good,
-                      setting: nameof(AppConfig.AskOnControllerDisconnect)));
+                      setting: nameof(AppConfig.PromptAfterDisconnect)));
 
         AddNote(pad, Words.ControllerDisconnectNote);
         AddNote(pad, Words.ControllerTriggerNote);
@@ -2537,6 +2552,12 @@ public sealed class SettingsForm : Form
         NewSection(page, Words.SectionGames);
 
         var listCard = NewCard(page);
+
+        // Only while the list is doing nothing. A card full of greyed-out controls with no
+        // explanation reads as a fault; one sentence turns it into a consequence of the choice made
+        // three rows above it.
+        WhenOn(() => HdrModeOf(_hdrMode) == HdrMode.WholeSession, listCard,
+               () => AddNote(listCard, Words.HdrWholeSessionNote));
 
         // Two deliberate rows rather than one wrapping row.
         //
@@ -5565,7 +5586,7 @@ public sealed class SettingsForm : Form
         ControllerPage =>
         [
             nameof(AppConfig.StartOnControllerConnect), nameof(AppConfig.StartOnControllerLink),
-            nameof(AppConfig.StopOnControllerDisconnect), nameof(AppConfig.AskOnControllerDisconnect),
+            nameof(AppConfig.SwapToDesktopOnDisconnect), nameof(AppConfig.PromptAfterDisconnect),
             nameof(AppConfig.TriggerControllerId), nameof(AppConfig.TriggerControllerName),
             nameof(AppConfig.MouseControlEnabled), nameof(AppConfig.MouseCursorStick),
             nameof(AppConfig.MouseSpeed), nameof(AppConfig.MouseDeadzone),
@@ -5839,8 +5860,8 @@ public sealed class SettingsForm : Form
             _enableGameMode.Checked = Config.EnableGameMode;
             _gamePriority.Checked = Config.GamePriorityEnabled;
             _startOnController.Checked = Config.StartOnControllerConnect;
-            _stopOnController.Checked = Config.StopOnControllerDisconnect;
-            _askOnDisconnect.Checked = Config.AskOnControllerDisconnect;
+            _swapOnDisconnect.Checked = Config.SwapToDesktopOnDisconnect;
+            _promptAfterDisconnect.Checked = Config.PromptAfterDisconnect;
 
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
@@ -5969,8 +5990,8 @@ public sealed class SettingsForm : Form
         Config.EnableGameMode = _enableGameMode.Checked;
         Config.GamePriorityEnabled = _gamePriority.Checked;
         Config.StartOnControllerConnect = _startOnController.Checked;
-        Config.StopOnControllerDisconnect = _stopOnController.Checked;
-        Config.AskOnControllerDisconnect = _askOnDisconnect.Checked;
+        Config.SwapToDesktopOnDisconnect = _swapOnDisconnect.Checked;
+        Config.PromptAfterDisconnect = _promptAfterDisconnect.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
         if (_triggerPad.SelectedItem is ControllerDevice pad)
@@ -6201,24 +6222,28 @@ public sealed class SettingsForm : Form
         // "Only when the controller wakes it" is meaningless unless start-on-wake is on.
         _startOnWakeControllerOnly.Enabled = _startOnWake.Checked;
 
-        bool hdr = HdrModeOf(_hdrMode) != HdrMode.Off;
-
-        if (_hdrHotkeyRemember is not null) _hdrHotkeyRemember.Enabled = hdr;
-
-        // Deliberately still editable when HDR is set to the whole session.
+        // The games list belongs to one of the three modes, not to two of them.
         //
-        // The list does not switch HDR in that mode — it is read by the priority boost on the
-        // Performance page, which watches the same games. Greying it out would make that setting
-        // uneditable from a page that has nothing to do with it.
-        if (_gameList is not null) _gameList.Enabled = hdr;
-        if (_listHeader is not null) _listHeader.Enabled = hdr;
-        if (_listBar is not null) _listBar.Enabled = hdr;
+        // It used to stay live under "whole session" as well, on the reasoning that the list is also
+        // read by the priority boost on the Performance page, so greying it out would make that
+        // setting uneditable from a page that has nothing to do with it. That is a real cost and it
+        // is the wrong trade: whole-session HDR switches on with Big Picture and off when it closes,
+        // so a list of games sitting live underneath it invites the reading that those games are the
+        // ones it applies to. A live control that does nothing is worse than a dead one, because
+        // nothing on screen says it does nothing. The note below covers the priority case in words.
+        bool perGame = HdrModeOf(_hdrMode) == HdrMode.PerGame;
 
-        _search.Enabled = hdr;
+        if (_hdrHotkeyRemember is not null) _hdrHotkeyRemember.Enabled = perGame;
 
-        if (_actingRow is not null) _actingRow.Enabled = hdr;
-        if (_browseButton is not null) _browseButton.Enabled = hdr;
-        if (_scanButton is not null) _scanButton.Enabled = hdr;
+        if (_gameList is not null) _gameList.Enabled = perGame;
+        if (_listHeader is not null) _listHeader.Enabled = perGame;
+        if (_listBar is not null) _listBar.Enabled = perGame;
+
+        _search.Enabled = perGame;
+
+        if (_actingRow is not null) _actingRow.Enabled = perGame;
+        if (_browseButton is not null) _browseButton.Enabled = perGame;
+        if (_scanButton is not null) _scanButton.Enabled = perGame;
 
 
         // Both read the same pair of switches: one decides whether the picker can be used at
@@ -6240,10 +6265,6 @@ public sealed class SettingsForm : Form
         _cursorStick.Enabled = mouse;
         _useTrackpad.Enabled = mouse;
         UpdateTriggerPadTitle();
-
-        // Turning HDR on with nothing chosen would do nothing at all, which reads as broken.
-        if (hdr && _checkedGames.Count == 0 && _games.Count > 0 && !_loading)
-            SetAllGames(true);
     }
 
     // ================= actions =================
@@ -6399,7 +6420,11 @@ public sealed class SettingsForm : Form
             features.Add(Words.FeatureGamePriority);
 
         if (Config.StartOnControllerConnect) features.Add(Words.FeatureControllerOn);
-        features.Add(Words.FeatureControllerOff);
+
+        // Conditional again, now that it is a setting rather than fixed behaviour. Listing something
+        // the user has switched off as a reason the app has to keep running is how a list like this
+        // stops being read.
+        if (Config.SwapToDesktopOnDisconnect) features.Add(Words.FeatureControllerOff);
 
         return features;
     }

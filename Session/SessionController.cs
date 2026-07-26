@@ -95,12 +95,23 @@ public sealed class SessionController
         try
         {
             var bp = BigPictureLauncher.FindWindow();
-            if (bp != IntPtr.Zero && IsIconic(bp)) ShowWindow(bp, SW_RESTORE);
-
             var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
 
-            if (game != IntPtr.Zero) BringToForeground(game);
-            else if (bp != IntPtr.Zero) BigPictureLauncher.BringToFront();
+            if (game != IntPtr.Zero)
+            {
+                BringToForeground(game);
+            }
+            else
+            {
+                // Only when there is no game. The doc above says Big Picture is not given the
+                // foreground over a running game, and that was true of the focus call — but the
+                // restore above it was unconditional, so a fullscreen shell was un-minimized on top
+                // of the game and then had to be fought back down. Left minimized it is exactly where
+                // it should be: behind the thing the user came back for, ready for when the game
+                // closes.
+                if (bp != IntPtr.Zero && IsIconic(bp)) ShowWindow(bp, SW_RESTORE);
+                if (bp != IntPtr.Zero) BigPictureLauncher.BringToFront();
+            }
         }
         catch (Exception ex) { Log.Warn($"Could not bring the session's windows back: {ex.Message}"); }
     }

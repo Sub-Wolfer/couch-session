@@ -417,25 +417,27 @@ public sealed class AppConfig
     public bool StartOnControllerConnect { get; set; }
 
     /// <summary>
-    /// React at all when the last controller disconnects.
+    /// Come back to the desktop when the last controller disconnects. Nothing is closed.
     ///
-    /// On by default, because a pad going quiet during a session leaves a television showing a game
-    /// nobody can drive, and something has to offer a way out of that. Off is for the setup where a
-    /// disconnect is routine — a pad that sleeps on its own, a wireless dongle that drops the link
-    /// while a film plays — and where being asked about it every time is the annoyance rather than
-    /// the help.
+    /// On by default. A pad going quiet during a session leaves a television showing a game nobody
+    /// can drive, and something has to offer a way out of that — but the way out cannot be a prompt
+    /// on the TV, because the only thing that could have answered it is the controller that just
+    /// vanished. So the display and sound come back to the desk, where there is a mouse, while the
+    /// game and Big Picture keep running untouched behind it.
+    ///
+    /// Off is for the setup where a disconnect is routine: a pad that sleeps on its own, or a
+    /// wireless adapter that drops the link for a moment during a film.
     /// </summary>
-    public bool StopOnControllerDisconnect { get; set; } = true;
+    public bool SwapToDesktopOnDisconnect { get; set; } = true;
 
     /// <summary>
-    /// Ask before ending, rather than ending outright.
+    /// Put a prompt on the desk screen after that swap, offering to close the game or go back.
     ///
-    /// On by default, and worth keeping on. A pad going quiet is the most ambiguous signal the app
-    /// receives — a flat battery, a knocked cable, an adapter dropping the link for a second — and
-    /// none of those is the same as deciding to stop playing. Asking settles on changing nothing if
-    /// nobody answers, so an empty battery costs nothing; ending outright means it closes the game.
+    /// On by default, because arriving at your desktop with no explanation is worse than being
+    /// asked. Off just leaves you on the desktop with everything still running, which is fine if
+    /// you know that switching the pad back on takes you straight back into the game.
     /// </summary>
-    public bool AskOnControllerDisconnect { get; set; } = true;
+    public bool PromptAfterDisconnect { get; set; } = true;
 
     /// <summary>
     /// Switch the Xbox Game Bar off while this app is running.

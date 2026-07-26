@@ -396,6 +396,13 @@ internal static class Words
     public const string HdrDisplaysUnknown =
         "No display could be identified just now, so HDR support is unknown.";
 
+    // Shown in place of a live games list when HDR is set to run for the whole session.
+    public const string HdrWholeSessionNote =
+        "**This list does nothing in this mode.** HDR comes on when Big Picture opens and goes off "
+            + "when it closes, so there is nothing to pick. Switch back to **per game** above to edit "
+            + "it. One thing to know if you use it: **Raise the game's priority** on the Performance "
+            + "page reads the same list, so change the mode here if you need to add a game for that.";
+
     public const string HdrHotkeyRemember = "Remember games when HDR is turned on — however you turn it on";
     public const string HdrHotkeyRememberWhy =
         "Turning HDR on during a game — or before it launches — adds it to (or drops it from) the "
@@ -533,20 +540,35 @@ internal static class Words
             + "— and **puts it back when you close the app**. Background clip recording goes off with "
             + "it. PlayStation pads don't trigger it.";
 
-    public const string StopOnController = "End the session when your controller disconnects";
-    public const string StopOnControllerWhy =
-        "Putting the pad down and switching it off is usually the end of playing, so this treats it "
-            + "as the cue to come back to the desktop. Off, a pad going quiet is ignored completely "
-            + "and the session runs until you end it yourself — worth it if your controller sleeps on "
-            + "its own or your wireless adapter drops the link now and then.";
+    public const string SwapOnDisconnect = "Come back to the desktop when your controller disconnects";
+    public const string SwapOnDisconnectWhy =
+        "**Nothing is closed.** Your display and sound come back to the desk while the game and Big "
+            + "Picture keep running behind it. **Switch the controller back on and you go straight "
+            + "back into the game.** This is here because a flat battery on the sofa otherwise leaves "
+            + "a television showing a game nothing can drive. Off, a pad going quiet is ignored "
+            + "completely, which suits a controller that sleeps on its own.";
 
-    public const string AskOnDisconnect = "Ask first, rather than ending it";
-    public const string AskOnDisconnectWhy =
-        "**Recommended.** A controller going quiet is the most ambiguous thing that can happen: a "
-            + "flat battery, a knocked cable and putting the pad down all look identical to the app. "
-            + "Asking puts the same prompt up that ending a session by hand does, answerable with "
-            + "mouse or keyboard, and it settles on changing nothing when nobody answers. Off, the "
-            + "session ends the moment the pad goes — including on a battery dying mid-game.";
+    public const string PromptAfterDisconnect = "Ask what to do once you are back at the desk";
+    public const string PromptAfterDisconnectWhy =
+        "**Recommended.** Puts a prompt on your desk screen offering to go back to the session, close "
+            + "the game, or leave everything as it is. It appears where there is a mouse to answer "
+            + "it, which the television no longer has. Off, you simply arrive at your desktop with "
+            + "the game still running.";
+
+    // ── The prompt that lands on the desk after a controller disconnects ──────────
+    public const string DisconnectTitle = "Your controller disconnected";
+    public const string DisconnectBody =
+        "Everything is still running. Switch the controller back on to go straight back in, or pick "
+            + "one of these.";
+
+    public const string DisconnectResume = "Go back to the session";
+    public const string DisconnectResumeWhat = "Puts the TV back and returns you to the game.";
+
+    public const string DisconnectClose = "Close the game";
+    public const string DisconnectCloseWhat = "Shuts the game down and leaves you at your desk.";
+
+    public const string DisconnectLeave = "Leave it for now";
+    public const string DisconnectLeaveWhat = "Stays on the desktop with the game running.";
 
     public const string StartOnController = "Start a session when a controller connects";
     public const string StartOnControllerWhy =
@@ -770,10 +792,7 @@ internal static class Words
     public const string FeatureAutoHdr = "HDR Switching ({0} game(s))";
     public const string FeatureGamePriority = "Raising the running game's priority";
     public const string FeatureControllerOn = "Starting when a controller connects";
-    // Was: "Ending the session when a controller disconnects", which ControllerDisconnectNote
-    // contradicts in as many words — a disconnect goes through EndSession and only ever raises a
-    // prompt, settling on changing nothing if nobody answers.
-    public const string FeatureControllerOff = "Noticing when a controller disconnects mid-session";
+    public const string FeatureControllerOff = "Coming back to the desk if a controller disconnects";
 
     // ── Resetting ──────────────────────────────────────────────────────────────────
 
@@ -1008,9 +1027,9 @@ internal static class Words
     /// and it does not — the prompt asks, and does nothing at all if nobody answers.
     /// </summary>
     public const string ControllerDisconnectNote =
-        "With the ask left on, **a disconnect never ends your session on its own** — you are asked "
-            + "what to do, and if nobody answers, nothing changes, so a flat battery mid-game costs "
-            + "you nothing.";
+        "**A disconnect never closes anything.** Your game and Big Picture keep running while the "
+            + "display and sound come back to the desk, so a flat battery mid-game costs you nothing "
+            + "at all. Charge the pad, switch it on, and you are back where you were.";
 
     public const string PadOnBattery = "on battery";
     public const string PadCharging = "charging";
