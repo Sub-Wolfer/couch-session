@@ -277,24 +277,29 @@ internal static class Words
 
     // ── First-run welcome ─────────────────────────────────────────────────────────
     public const string WelcomeTitle = "Welcome to Couch Session";
+
     public const string WelcomeBody =
-        "One press moves your PC to the TV: display, sound, HDR and Big Picture, then back again when "
-            + "you're done.";
-    // Was: "Setup is four quick steps — the list on the Home page walks you through them." That list
-    // was removed (see the note in BuildHomePage), so the first sentence every new user reads pointed
-    // at something that is not there. What replaced it is the alert strip, which only speaks up when
-    // something essential is missing — so that is what this now describes.
+        "One press moves your PC to the television: display, sound, HDR and Big Picture. One more "
+            + "brings it all back, exactly as you left it.";
+
+    // Names the destination the button actually goes to. The previous wording pointed at a setup
+    // checklist on the Home page, and that checklist had been deleted — see the note in BuildHomePage.
     public const string WelcomeSteps =
-        "Set your TV and your sound on the Display & Audio page and you are ready. The Home page says "
-            + "so if anything essential is still missing.";
-    public const string WelcomeGo = "Show me";
+        "Start on **Display & Audio** and pick your television and your speakers. That is the whole "
+            + "setup; everything else already has a sensible default. The Home page will say so if "
+            + "anything essential is still missing.";
+
+    public const string WelcomeGo = "Set up my TV";
     public const string WelcomeSkip = "I'll look around myself";
 
     // ── Home page guidance ────────────────────────────────────────────────────────
-    public const string HomeGuideBannerTitle = "The Guide button controls your session";
+    public const string HomeGuideBannerTitle = "The big button in the middle starts and ends a session";
     public const string HomeGuideBannerBody =
-        "The big button in the middle of your pad. On the desktop it starts a session; in one it asks "
-            + "what to do next. Press and let go.";
+        "Every console-style controller has one: **Guide** on an Xbox pad, the **PS button** on a "
+            + "PlayStation one, **HOME** on a Switch Pro, **STEAM** on a Steam Deck. Press it on the "
+            + "desktop and a session starts. Press it in one and it asks what to do next. Press and "
+            + "let go, rather than holding it. Some plain USB gamepads have no such button, and for "
+            + "those the hotkeys on the Hotkeys page do the same job.";
 
     public const string HomeGuideButton =
         "**PS / Xbox button** — press it on the desktop to start a session, or in one to ask what to do "

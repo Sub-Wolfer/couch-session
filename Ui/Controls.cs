@@ -964,7 +964,7 @@ internal sealed class GuideBanner : Control
     /// <summary>Air above and below the two lines when they need more room than the art does.</summary>
     private const int VerticalPad = 16;
 
-    private const int BeforeOr = 10, AfterOr = 10, BeforeText = 18, RightPad = 16;
+    private const int BeforeText = 18, RightPad = 16;
 
     /// <summary>
     /// Where the sentence starts: past both discs and the "or" between them.
@@ -973,14 +973,10 @@ internal sealed class GuideBanner : Control
     /// and the painting pass have to agree about it — a banner measured for one text width and drawn
     /// at another either clips its last line or leaves a gap under it.
     /// </summary>
-    private static int TextStart()
-    {
-        const int Disc = 44 + 7 * 2;
+    private static int TextStart() => 20 + MarkWidth + BeforeText;
 
-        int orWidth = TextRenderer.MeasureText("or", Theme.Small).Width;
-
-        return 20 + Disc + BeforeOr + orWidth + AfterOr + Disc + BeforeText;
-    }
+    /// <summary>Room for the pad diagram. See <see cref="GuideMark"/>.</summary>
+    private const int MarkWidth = 78;
 
     private const TextFormatFlags Wrapped = TextFormatFlags.Left | TextFormatFlags.Top
                                           | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix;
@@ -1036,25 +1032,14 @@ internal sealed class GuideBanner : Control
         int cy = Height / 2;
         int x = 20;
 
-        // PlayStation first, then Xbox, joined by "or" — the two shapes together say "whichever pad you
-        // have" in a way that naming them cannot.
+        // One diagram, not two logos joined by "or".
         //
-        // Every gap here is set once and stated, because the first pass had the marks nearly touching
-        // the "or" and the text starting almost against the second one. Air on both sides of a small
-        // word, and a clear break before the sentence begins.
-        x = DrawButton(g, x, cy, ps: true);
-        x += BeforeOr;
+        // The logos were trademarks the app had to draw lookalikes of, and they named two brands while
+        // the app supports anything Windows recognises. A pad with its centre button lit says the same
+        // thing without naming anyone, and says the useful half of it: *where* the button is.
+        GuideMark.Draw(g, new RectangleF(x, cy - MarkWidth / 2f, MarkWidth, MarkWidth), Theme.Accent);
 
-        int orWidth = TextRenderer.MeasureText(g, "or", Theme.Small, Size, TextFormatFlags.NoPrefix).Width;
-
-        TextRenderer.DrawText(g, "or", Theme.Small, new Rectangle(x, cy - 10, orWidth, 20), Theme.TextFaint,
-                              TextFormatFlags.Left | TextFormatFlags.VerticalCenter
-                            | TextFormatFlags.NoPrefix);
-
-        x += orWidth + AfterOr;
-
-        x = DrawButton(g, x, cy, ps: false);
-        x += BeforeText;
+        x += MarkWidth + BeforeText;
 
         // Both lines wrap, and the pair is centred as a block.
         //
@@ -1076,30 +1061,6 @@ internal sealed class GuideBanner : Control
                                   new Rectangle(x, top + h1 + 4, available, h2), Theme.TextDim, Wrapped);
     }
 
-    /// <summary>
-    /// One console button, on a soft light disc, returning the x to carry on from.
-    ///
-    /// The disc is back but doing a different job. The first version drew a coloured circle that read as
-    /// a second button around the button; this is a barely-there white wash, so a mark that is almost
-    /// black — which both of these are — lifts off a dark panel instead of dissolving into it. Round,
-    /// because the thing it sits behind is round.
-    ///
-    /// The mark itself comes from ConsoleMarks, so this is the same artwork the title bar shows.
-    /// </summary>
-    private static int DrawButton(Graphics g, int x, int cy, bool ps)
-    {
-        const int D = 44;
-        const int Pad = 7;   // the light ring visible around the mark
-
-        var disc = new RectangleF(x, cy - (D + Pad * 2) / 2f, D + Pad * 2, D + Pad * 2);
-
-        using (var wash = new SolidBrush(Color.FromArgb(26, 255, 255, 255))) g.FillEllipse(wash, disc);
-        using (var rim = new Pen(Color.FromArgb(38, 255, 255, 255), 1f)) g.DrawEllipse(rim, disc);
-
-        ConsoleMarks.Draw(g, new Rectangle(x + Pad, cy - D / 2, D, D), ps);
-
-        return x + (int)disc.Width;
-    }
 }
 
 /// <summary>

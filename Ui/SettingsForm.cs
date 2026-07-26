@@ -542,8 +542,13 @@ public sealed class SettingsForm : Form
         BringToFront();
 
         // The one-time welcome, after the form is on screen so it has something to centre on. Both
-        // buttons retire it permanently; "Show me" lands on Home, where the setup list is the first
-        // thing under the status card. Deliberately not a tour — see WelcomeDialog.
+        // buttons retire it permanently. Deliberately not a tour — see WelcomeDialog.
+        //
+        // [BUG] Its button used to call ShowPage(0), which is Home — the page the window already opens
+        // on. So the one button offering to take a new user somewhere took them nowhere, and did it
+        // silently. The comment here even explained the intent, pointing at "the setup list under the
+        // status card", which is the list that was deleted. It goes to Display & Audio now, which is
+        // the page that actually has to be filled in and the one the wording names.
         if (!Config.FirstRunWelcomeShown)
         {
             Config.FirstRunWelcomeShown = true;
@@ -555,7 +560,7 @@ public sealed class SettingsForm : Form
 
                 using var welcome = new WelcomeDialog();
                 if (welcome.ShowDialog(this) == DialogResult.OK && welcome.GoToSetup)
-                    ShowPage(0);
+                    ShowPage(DisplayPage);
             });
         }
     }
