@@ -857,22 +857,29 @@ public sealed class TrayApp : IDisposable
     }
 
     /// <summary>
-    /// The two rows at the foot of both prompts.
+    /// The row at the foot of both prompts.
     ///
-    /// Neither answers what the prompt is asking. They are there for the case the prompt cannot help
-    /// with on its own: the pad can reach this window and nothing else, because the pointer is off or
-    /// a game wants text typed into it. Offering them here is the only place they can be offered — by
-    /// definition the user has no other way to drive the screen at that moment.
+    /// It does not answer what the prompt is asking. It is there for the case the prompt cannot help
+    /// with on its own: the pad can reach this window and nothing else, because the pointer is off.
+    /// Offering it here is the only place it can be offered — by definition the user has no other way
+    /// to drive the screen at that moment.
     ///
-    /// The mouse row names the state it will move to, not the state it is in, so the row says what
-    /// pressing it does rather than what is currently true.
+    /// It names the state it will move to, not the state it is in, so the row says what pressing it
+    /// does rather than what is currently true.
+    ///
+    /// There was a second row, "Show the on-screen keyboard", and it has gone. It could not keep its
+    /// promise: it asked Steam for its keyboard through a steam:// URL that reports nothing back, and
+    /// fell through to Windows' TabTip or osk, neither of which a controller can type on without the
+    /// pointer — so the row either did nothing visible or produced a keyboard needing the very thing
+    /// the row below it exists to turn on. It also sat on the two prompts that come up mid-session,
+    /// where nothing is waiting for text. A row that usually fails, on a window it does not belong
+    /// on, is worse than not offering it: it spends the reader's attention and teaches them the
+    /// prompt cannot be trusted.
     /// </summary>
     private SessionEndPrompt.Option[] NavigationOptions() =>
     [
         new(_session.Config.MouseControlEnabled ? Words.PromptMouseOff : Words.PromptMouseOn,
             SessionEndPrompt.Choice.ToggleMouse, Theme.TextDim),
-
-        new(Words.PromptKeyboard, SessionEndPrompt.Choice.Keyboard, Theme.TextDim),
     ];
 
     /// <summary>
@@ -1113,71 +1120,12 @@ public sealed class TrayApp : IDisposable
                 Log.Info($"Controller mouse turned {(_session.Config.MouseControlEnabled ? "on" : "off")} "
                        + "from the session prompt.");
                 break;
-
-            case SessionEndPrompt.Choice.Keyboard:
-                ShowOnScreenKeyboard();
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Bring up a keyboard that can be driven without one.
-    ///
-    /// Steam's own is asked for first, because during a session Steam Input is already driving the pad
-    /// and its keyboard is the one that will accept it. Whether that URL is honoured by the desktop
-    /// client on Windows is not something this app can find out — invoking a steam:// URL reports
-    /// nothing back — so Windows' own touch keyboard follows as a backstop. It is pad-driveable
-    /// through the pointer, which is why the row above this one exists.
-    /// </summary>
-    private void ShowOnScreenKeyboard()
-    {
-        if (SteamRunning())
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "steam://open/keyboard",
-                    UseShellExecute = true,
-                })?.Dispose();
-
-                Log.Info("Asked Steam for its on-screen keyboard.");
-                return;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn($"Steam would not open its keyboard: {ex.Message}");
-            }
-        }
-
-        foreach (var exe in new[] { "TabTip.exe", "osk.exe" })
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = exe,
-                    UseShellExecute = true,
-                })?.Dispose();
-
-                Log.Info($"Opened the Windows on-screen keyboard ({exe}).");
-                return;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn($"{exe} would not start: {ex.Message}");
-            }
         }
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
-    private static bool SteamRunning()
-    {
-        try { return System.Diagnostics.Process.GetProcessesByName("steam").Length > 0; }
-        catch { return false; }
-    }
 
     /// <summary>
     /// Ask what to do with Big Picture when a session is ended (by the hotkey) with Big Picture up

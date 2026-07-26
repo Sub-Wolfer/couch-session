@@ -137,12 +137,11 @@ internal static class Words
     /// </summary>
     public const string ConfirmEndGameHint = "Close game & end";
 
-    // The two navigation options at the foot of both prompts. Neither answers the question the prompt
-    // is asking; they are there for when the pad cannot reach the answer — no pointer, or a text field
-    // waiting on a keyboard that is not in the room.
+    // The navigation option at the foot of both prompts. It does not answer the question the prompt is
+    // asking; it is there for when the pad cannot reach the answer because the pointer is off. A
+    // second row offered an on-screen keyboard and has been removed — see NavigationOptions.
     public const string PromptMouseOn = "Turn the controller mouse on";
     public const string PromptMouseOff = "Turn the controller mouse off";
-    public const string PromptKeyboard = "Show the on-screen keyboard";
 
     public const string ConfirmCloseMinimize = "Swap to desktop";
     public const string ConfirmCloseMinimizeWhat = "Your game keeps running.";

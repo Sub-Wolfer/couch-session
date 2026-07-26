@@ -36,8 +36,6 @@ internal sealed class SessionEndPrompt : Form
         /// <summary>Turn the controller-as-mouse on or off, then get out of the way.</summary>
         ToggleMouse,
 
-        /// <summary>Bring up an on-screen keyboard.</summary>
-        Keyboard,
     }
 
     /// <summary>
