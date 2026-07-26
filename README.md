@@ -1,82 +1,162 @@
-# Couch Session
+<div align="center">
 
-Move your gaming PC to the television and back with one press, then put everything exactly as it was.
+# 🛋️ Couch Session
 
-Couch Session switches your display and your sound to the TV, sets the resolution and refresh rate you
-picked for it, turns HDR on if you want it, and opens Steam Big Picture. When you are done it puts your
-monitors, your audio device, your HDR state, your power plan and your desktop windows back where they
-were. It sits in the tray and stays out of the way in between.
+**Your gaming PC on the TV, and back again, with one press.**
 
-It is built for the moment you sit down on the sofa with a controller in your hand and do not want to
-get up again. Everything a session needs can be reached from the pad: starting it, ending it, toggling
-HDR, and a pointer driven from the stick for the launchers that still want a mouse.
+[![Release](https://img.shields.io/github/v/release/Sub-Wolfer/couch-session?label=download&color=6d5bff)](https://github.com/Sub-Wolfer/couch-session/releases/latest)
+[![Licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)](#-what-you-need)
+[![Beta](https://img.shields.io/badge/status-beta-orange)](#-a-word-about-beta)
 
-**Status: beta (0.9.0).** It works and it is in daily use, but it has not been through many hands yet.
-Bug reports are genuinely useful right now.
+</div>
 
-## What a session actually does
+---
 
-Starting one switches the display over — TV only, or TV alongside your monitors, whichever you chose —
-moves audio to the TV, applies the resolution and refresh rate you set for that screen, and brings up
-Big Picture. Ending one reverses all of it, including restoring the desktop windows that got shuffled
-when the display arrangement changed.
+You want to play on the television. That means changing your display, moving the sound, setting the
+right resolution, turning HDR on, opening Big Picture — and then undoing all of it when you're done,
+usually while wondering which window went where.
 
-Sessions can start from a keyboard shortcut, a controller button combination, the PlayStation or Xbox
-Guide button, plugging in a controller, waking the PC, or just launching Steam Big Picture yourself.
-Big Picture *is* the session — opening it however you like moves everything to the TV, and closing it
-brings your desktop back.
+Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
+it.
 
-HDR can switch on for the whole session, or only while a game from a list you choose is running, with
-the display put back afterwards either way. Whether a display can actually do HDR is read from the
-monitor's own EDID rather than from Windows, because Windows reports wide colour gamut and HDR through
-the same flag and a plain SDR panel will happily claim it.
+<div align="center">
+  <img src="docs/session-prompt.png" width="480" alt="The session prompt over a running game, asking what to do with it — driven entirely by the controller.">
+  <br>
+  <em>Ending a session mid-game. Answered with the pad, from the sofa.</em>
+</div>
 
-## Requirements
+---
 
-Windows 11 is what it is developed and tested against. Windows 10 works; the only difference you will
-notice is square window corners instead of rounded ones.
+## ✨ What it actually does
 
-No .NET install is needed. Releases are a single self-contained executable with the runtime inside it.
-There is no installer and nothing is written outside `%AppData%\CouchSession`.
+| | |
+|---|---|
+| 🖥️ **Display** | Switches to your TV — on its own, or alongside your monitors — at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
+| 🔊 **Sound** | Moves audio to the TV on the way out and back to your desk on the way in. |
+| 🌈 **HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. |
+| 🎮 **Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. |
+| ⚡ **Performance** | Power plan, Game Mode, game priority, and silencing notifications — most of it undone when the session ends. |
+| 🔄 **Updates** | Tells you when a new version exists and installs it with one click. |
 
-## Settings that change Windows itself
+---
 
-Most of what this app does is temporary and undone when a session ends. A few things are not, and they
-are worth reading before you switch them on. Every one of them is **off unless you turn it on**, and
-each says on its own row what it does and how long it lasts.
+## 🚀 Getting started
 
-**User Account Control** and **Windows Defender Firewall** can both be switched off from the
-Performance page. These lower your PC's security and they are not tied to a session — they stay off
-until you turn them back on here. They exist because a UAC prompt appears on a secure desktop that a
-controller cannot reach, and the firewall's "allow this app?" dialog needs a mouse and blocks a game's
-networking until it is answered. Both are dead ends when the only thing in your hand is a gamepad. If
-that trade is not one you want, leave them alone — nothing else in the app depends on them.
+**1. Download and run it.** Grab `CouchSession.exe` from the
+[latest release](https://github.com/Sub-Wolfer/couch-session/releases/latest). There's no installer
+and no .NET to install — it's one file with everything inside.
 
-**Windows Game Mode** is only ever switched on, never back off, because it is a Windows-wide preference
-and flipping it back would fight anyone who turned it on themselves.
+**2. Pick your TV and your speakers.** Settings opens on first run. Go to **Display & Audio** and
+choose them. Your TV doesn't need to be switched on to appear in the list — it's there, dimmed, marked
+disconnected.
 
-**The Xbox Game Bar** is switched off for the whole time Couch Session is running, not just during a
+**3. Set a way to start a session.** On the **Hotkeys** page, record a keyboard combination, a
+controller combination, or both. The PlayStation and Xbox Guide buttons work out of the box.
+
+That's the whole setup. Everything else has a sensible default.
+
+<div align="center">
+  <img src="docs/home.png" width="700" alt="The Home page, showing an available update and the guide-button explainer.">
+  <br>
+  <em>The Home page tells you what's set, what's wrong, and what's new.</em>
+</div>
+
+---
+
+## 🎯 How you'll actually use it
+
+**From your desk**, press your hotkey. The TV comes on, sound moves, Big Picture opens.
+
+**From the sofa**, press the Guide button in the middle of your pad — the PlayStation logo or the Xbox
+button. On the desktop it starts a session. Inside one, it asks what you want to do.
+
+**When you're done**, the same button. If a game is still running you'll be asked whether to close it,
+leave it running, or stay on the TV — and if closing it would lose unsaved progress, you're asked a
+second time.
+
+**Closing Big Picture** ends the session too. However you got to the TV, going back is one action.
+
+---
+
+## ⚙️ Every setting explains itself
+
+No setting in this app is a bare label. Each one says what it does, what it costs, and what happens to
+it when the session ends — because a switch you can't reason about is a switch you leave alone.
+
+<div align="center">
+  <img src="docs/settings-controller.png" width="620" alt="The controller page, showing each setting with a full plain-language explanation beneath it.">
+</div>
+
+---
+
+## ⚠️ Settings that change Windows itself
+
+Most of what this app does is temporary. A few things aren't, and they're worth reading before you
+switch them on. **Every one is off unless you turn it on.**
+
+> 🔓 **User Account Control** and **Windows Defender Firewall** can both be switched off from the
+> Performance page. **These lower your PC's security**, and they aren't tied to a session — they stay
+> off until you turn them back on here.
+>
+> They exist because a UAC prompt appears on a secure desktop a controller cannot reach, and the
+> firewall's "allow this app?" dialog needs a mouse and blocks a game's networking until answered.
+> Both are dead ends when the only thing in your hand is a gamepad. If that trade isn't one you want,
+> leave them alone — nothing else depends on them.
+
+🎮 **Xbox Game Bar** is switched off for the whole time Couch Session is running, not just during a
 session, and put back when you close the app. This also disables background clip recording. If Win+G
 has stopped working at your desk, this is why.
 
-The power plan, notification silencing and the running game's priority are all restored when a session
-ends.
+🏎️ **Windows Game Mode** is only ever switched on, never back off — it's a Windows-wide preference and
+flipping it back would fight anyone who turned it on themselves.
 
-## Controllers
+The power plan, notification silencing and game priority are all restored when a session ends.
 
-Xbox, PlayStation and anything else Windows recognises, with no extra software. The controller is
-opened for reading only and never exclusively, so it runs alongside Steam Input, DS4Windows and games
-rather than competing with them.
+---
+
+## 🕹️ Controllers
+
+Xbox, PlayStation, and anything else Windows recognises. No extra software.
+
+Your controller is **never taken over** — it's opened for reading only and never exclusively, so it
+runs alongside Steam Input, DS4Windows and games rather than competing with them.
 
 Nothing here injects code, hooks another process, reads another process's memory, or synthesises
-gamepad input. That is a deliberate design rule, not an accident — it is what keeps the app clear of
-anti-cheat. It reads HID devices directly and asks Windows for its own windows, and that is all.
+gamepad input. That's a deliberate design rule, not an accident: it's what keeps the app clear of
+anti-cheat. It reads HID devices directly and asks Windows about its own windows, and that's all.
 
-## Building from source
+---
 
-You need the .NET 8 SDK.
+## 💻 What you need
 
-```
+- **Windows 11**, which is what it's developed and tested against. Windows 10 works — the only
+  difference you'll notice is square window corners instead of rounded ones.
+- **Steam**, since a session opens Big Picture.
+- Nothing else. No runtime, no installer, no admin rights unless you choose the two security settings
+  above.
+
+Settings live in `%AppData%\CouchSession`. Nothing is written anywhere else.
+
+---
+
+## 🧪 A word about beta
+
+This is version 0.9.x and it's in daily use, but it hasn't been through many hands yet. Bug reports
+are genuinely useful right now.
+
+The fastest route is the **Report a bug** button in the app's footer — it gathers the log from
+`%AppData%\CouchSession\couchsession.log` alongside your settings, which is almost always where the
+answer is hiding. Otherwise [open an issue](https://github.com/Sub-Wolfer/couch-session/issues) and
+attach that log.
+
+---
+
+## 🔨 Building it yourself
+
+You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+
+```bash
 git clone https://github.com/Sub-Wolfer/couch-session
 cd couch-session
 dotnet build -c Release
@@ -84,22 +164,47 @@ dotnet build -c Release
 
 For the single-file executable a release ships as:
 
-```
+```bash
 dotnet publish -c Release
 ```
 
-The console button artwork is not in this repository. Both marks are trademarks and cannot be
-redistributed here, so the app draws its own approximations of them; that is the shipping behaviour and
-nothing is missing without them. If you have the rights to real artwork, drop `ps-button.png` and
-`xbox-button.png` beside the `.csproj` as square transparent PNGs of 128px or larger and they will be
-embedded automatically.
+<details>
+<summary><strong>A note on the console button artwork</strong></summary>
 
-## Reporting a bug
+<br>
 
-The **Report a bug** button in the app's footer is the fastest route — it collects the log from
-`%AppData%\CouchSession\couchsession.log` alongside your settings, which is almost always what the
-answer is hiding in. Otherwise, open an issue and attach that log.
+The PlayStation and Xbox button images aren't in this repository — both marks are trademarks and
+can't be redistributed here, so the app draws its own approximations instead. That's the shipping
+behaviour and nothing is missing without them.
 
-## Licence
+If you have the rights to real artwork, drop `ps-button.png` and `xbox-button.png` beside the `.csproj`
+as square transparent PNGs, 128px or larger, and they'll be embedded automatically.
 
-MIT. See [LICENSE](LICENSE).
+</details>
+
+<details>
+<summary><strong>Regenerating the app icon</strong></summary>
+
+<br>
+
+The icon is drawn by the app itself rather than maintained as a separate file, so there's one
+definition of the mark. To rebuild `CouchSession.ico` from it:
+
+```bash
+CouchSession.exe --write-icon
+```
+
+Then build again to embed the result.
+
+</details>
+
+---
+
+## 📄 Licence
+
+MIT — see [LICENSE](LICENSE). Do what you like with it.
+
+<div align="center">
+<br>
+<sub>Built for the ten feet between the desk and the sofa.</sub>
+</div>
