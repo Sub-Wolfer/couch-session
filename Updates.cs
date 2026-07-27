@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
@@ -74,6 +75,20 @@ public static class Updates
 
             Log.Info($"Update available: {release.TagName} (running {AppInfo.Version}).");
             return new(true, Clean(release.TagName), asset.DownloadUrl, release.Body ?? "");
+        }
+        // [BUG] A repository with no published releases is a 404 from this endpoint, not an empty
+        // answer — so GetFromJsonAsync threw, the general handler below caught it, and the check
+        // reported "Could not reach GitHub." for a machine whose network was working perfectly. The
+        // release-is-null branch above was written for this case and could never once run.
+        //
+        // Drafts and prereleases do not count as "latest" either, and a repository that cannot be
+        // read at all answers the same way. All three are the same fact from here — there is no
+        // release to offer — so the message stops short of guessing which. The repository name goes
+        // in the log, because a wrong one is the reason that leaves no other trace.
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            Log.Info($"Update check: {AppInfo.Repository} has no published release to offer (404).");
+            return new(false, AppInfo.Version, "", "", "No releases have been published yet.");
         }
         catch (Exception ex)
         {
