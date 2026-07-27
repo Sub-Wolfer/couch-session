@@ -189,30 +189,6 @@ internal sealed class SessionEndPrompt : Form
     // Set once we have had to minimize the game to get the pad away from it, so it can be put back.
     private IntPtr _minimizedGame;
 
-    /// <summary>
-    /// The window "keep playing" should return to, in the order the answers can be trusted.
-    ///
-    /// A game this window minimized itself is certain. The running game reported by the caller is
-    /// next, and beats the foreground because the foreground at the moment this window appeared is
-    /// routinely Steam's overlay rather than the game. Whatever was in front is the last resort, for
-    /// the prompts that have no game behind them at all.
-    /// </summary>
-    private IntPtr BackToPlaying()
-    {
-        if (_minimizedGame != IntPtr.Zero) return _minimizedGame;
-
-        try
-        {
-            if (GameWindow?.Invoke() is { } game && game != IntPtr.Zero) return game;
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Could not ask which window the game is: {ex.Message}");
-        }
-
-        return _previousForeground;
-    }
-
     // Consecutive checks where something else held the foreground. One is ordinary (the grab has not
     // landed yet); a run of them means a window is fighting us for it.
     private int _lostForeground;
@@ -1283,23 +1259,10 @@ internal sealed class SessionEndPrompt : Form
         // playing puts the game back: restored, then handed the foreground.
         // Never at the desk. The window "behind the prompt" there is a game that was minimized on
         // purpose seconds earlier, and restoring it is the opposite of what backing out means.
-        // [BUG] This used to work from _previousForeground alone, on the reasoning that the window in
-        // front when the prompt appeared was the game. It is not, on the route this prompt is usually
-        // reached by: pressing the guide button opens Steam's Big Picture overlay first, and the app's
-        // prompt goes over that — so OnShown records the *overlay* as the foreground.
-        //
-        // The overlay is a normal window and never minimizes, so the check below found nothing to
-        // restore and the game stayed where DXGI had put it, while the foreground went back to the
-        // overlay. Keeping playing left the player looking at Steam with their game minimized behind
-        // it, and the log for those presses is silent because nothing here ever ran.
-        //
-        // Asking which window is the game, rather than inferring it from focus, is the fix. The hook
-        // was already connected and already trusted for the minimize path a few lines up; this is the
-        // same question asked at the other end of the same problem.
-        var back = BackToPlaying();
-
         if (choice == Choice.Stay && !AtTheDesk)
         {
+            var back = _minimizedGame != IntPtr.Zero ? _minimizedGame : _previousForeground;
+
             if (back != IntPtr.Zero && IsIconic(back))
             {
                 Log.Info("The window behind the prompt was minimized while it was up — most likely an "
@@ -1323,11 +1286,8 @@ internal sealed class SessionEndPrompt : Form
 
         if (choice == Choice.Stay && !AtTheDesk)
         {
-            // RestoreFocus first where the caller set one: only it knows that "back" means Big Picture
-            // brought forward rather than a window refocused. Where it did not, the game is the answer,
-            // and _previousForeground is only the fallback for when nothing knows what the game is.
             if (RestoreFocus is not null) RestoreFocus();
-            else if (back != IntPtr.Zero) ForceForeground(back);
+            else if (_previousForeground != IntPtr.Zero) ForceForeground(_previousForeground);
         }
 
         Chosen?.Invoke(choice);
