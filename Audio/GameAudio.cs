@@ -284,12 +284,28 @@ public static class GameAudio
                         // touched: silencing it takes the user's notification and error sounds with
                         // it. IsSystemSoundsSession returns S_OK for that one and S_FALSE otherwise,
                         // so zero is the value to skip on.
-                        if (identified.IsSystemSoundsSession() == 0) continue;
+                        //
+                        // Past this point every exit is logged. A session that matched the game and
+                        // then quietly did not get muted is the failure that cost the longest to
+                        // find, because from outside it looks identical to never having found the
+                        // session at all.
+                        if (identified.IsSystemSoundsSession() == 0)
+                        {
+                            Log.Info($"Audio session for pid {pid} reports itself as system sounds; left alone.");
+                            continue;
+                        }
 
-                        if (control is not ISimpleAudioVolume volume) continue;
+                        if (control is not ISimpleAudioVolume volume)
+                        {
+                            Log.Warn($"Audio session for pid {pid} would not give up its volume control.");
+                            continue;
+                        }
 
                         var context = Guid.Empty;
-                        if (volume.SetMute(mute, ref context) == 0) touched++;
+                        int hr = volume.SetMute(mute, ref context);
+
+                        if (hr == 0) touched++;
+                        else Log.Warn($"Setting mute={mute} on a session for pid {pid} failed: 0x{hr:X8}.");
                     }
                     finally
                     {
