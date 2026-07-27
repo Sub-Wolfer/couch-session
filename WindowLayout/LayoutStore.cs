@@ -76,7 +76,21 @@ public static class LayoutStore
                 // apart so it does not read as a window that would not go back.
                 if (win.Placement.showCmd == SW_SHOWMINIMIZED && IsIconic(win.Handle)) { minimized++; continue; }
 
-                if (Apply(win.Handle, win.Placement)) restored++;
+                if (Apply(win.Handle, win.Placement))
+                {
+                    restored++;
+
+                    // Where it was actually left, against where it was told to go.
+                    //
+                    // "Restored 9/12" counts calls that returned success, which is not the same as
+                    // windows that ended up where they were put: a window can accept the move and be
+                    // pushed somewhere else immediately afterwards, by its own app or by a display
+                    // change still settling. That is invisible in a count, and it is exactly the
+                    // report that comes in as "it went back to the wrong monitor".
+                    if (GetWindowPlacement(win.Handle, ref Current) && !Same(Current, win.Placement))
+                        Log.Info($"{win.ProcessName} ({win.ClassName}) was put at "
+                               + $"{Describe(win.Placement)} but is at {Describe(Current)}.");
+                }
                 else
                 {
                     failed++;
@@ -96,6 +110,14 @@ public static class LayoutStore
 
         return restored;
     }
+
+    /// <summary>Scratch for the after-the-fact check in Restore. Reused rather than reallocated.</summary>
+    private static WINDOWPLACEMENT Current = new() { length = System.Runtime.InteropServices.Marshal.SizeOf<WINDOWPLACEMENT>() };
+
+    /// <summary>Same place, within a pixel or two of rounding.</summary>
+    private static bool Same(WINDOWPLACEMENT a, WINDOWPLACEMENT b) =>
+        Math.Abs(a.rcNormalPosition.Left - b.rcNormalPosition.Left) <= 2
+     && Math.Abs(a.rcNormalPosition.Top - b.rcNormalPosition.Top) <= 2;
 
     private static string Describe(WINDOWPLACEMENT p)
     {
