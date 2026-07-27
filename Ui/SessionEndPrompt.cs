@@ -277,13 +277,34 @@ internal sealed class SessionEndPrompt : Form
     /// rounded path into a transparent bitmap, leaves GDI free to stamp opaque text over transparent
     /// pixels and transparent text over opaque ones, with no way to tell afterwards which was which.
     /// </summary>
+    /// <summary>
+    /// The composition surface, kept between frames.
+    ///
+    /// This used to be allocated and thrown away on every redraw, off a 33 ms timer. At
+    /// television size that is a 32-bit bitmap the full width and height of the prompt — around
+    /// thirty megabytes on a 4K set — created and collected thirty times a second, all of it large
+    /// enough to land on the large object heap, which is the one the collector compacts least
+    /// willingly. The pauses that causes land in the middle of the shimmer animation, which is
+    /// exactly where a stutter is visible.
+    ///
+    /// Reused instead, and rebuilt only when the window changes size. Redraw clears it to an opaque
+    /// backdrop as its first act, so nothing carries over from the frame before.
+    /// </summary>
+    private Bitmap? _frame;
+
     private void Redraw()
     {
         if (_decided || !IsHandleCreated || Width <= 0 || Height <= 0) return;
 
         try
         {
-            using var frame = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
+            if (_frame is null || _frame.Width != Width || _frame.Height != Height)
+            {
+                _frame?.Dispose();
+                _frame = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
+            }
+
+            var frame = _frame;
 
             using (var g = Graphics.FromImage(frame))
             {
@@ -1370,6 +1391,7 @@ internal sealed class SessionEndPrompt : Form
             _optionFont?.Dispose();
             _hintFont?.Dispose();
             _detailFont?.Dispose();
+            _frame?.Dispose();
             ReleaseSurface();
         }
         base.Dispose(disposing);
