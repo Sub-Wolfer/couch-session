@@ -951,12 +951,14 @@ internal static class Words
     // choice — is a settings mistake the user can fix in ten seconds, and they were told nothing
     // about it. Neither cause can be told apart from here, so this names the state, not the cause,
     // and gives the fix that works for both.
-    public const string NoticeAudioAlreadyThere = "Sound is already on your couch device";
+    // Written to be read in the two seconds a toast is looked at. It had three sentences covering
+    // what happened, why it happened, and two different ways to fix it — which is a paragraph, and a
+    // paragraph in the corner of the screen gets dismissed rather than read. The situation and one
+    // place to go is all a notification can carry; the settings page explains itself when they get
+    // there.
+    public const string NoticeAudioAlreadyThere = "Couch audio is already in use";
     public const string NoticeAudioAlreadyThereDetail =
-
-            "Nothing to move, and nothing to put back afterwards. If your couch device is also "
-            + "your everyday one, pick a different couch device on Display & Audio, or switch "
-            + "off \"Move sound to the TV\".";
+        "It is your desktop device too, so nothing moves. Change it on Display & Audio.";
 
     public const string DesktopAudio = "Desktop audio";
     public const string DesktopAudioWhy = "The device to return to when you finish.";
