@@ -21,6 +21,12 @@ one of them when you're done, while working out which window ended up where.
 Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
 it.
 
+<div align="center">
+<img src="docs/session-prompt.png" alt="The session prompt over a running game, asking what should happen to it" width="620">
+<br>
+<sub>One press on the pad, mid-game. Every answer says what it costs.</sub>
+</div>
+
 > ### 👥 Who this is for
 >
 > **One PC doing two jobs.** A machine you work and play at on a desk, that you also want to game on
@@ -47,6 +53,12 @@ it.
 | 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Decide what happens if it disconnects. Tested on Xbox and PS5 pads. |
 | ⚡&nbsp;**Performance** | Power plan, game priority, and silencing notifications for the session. Shortcuts to a few Windows settings that are not. |
 | 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. Never while you're playing. |
+
+<div align="center">
+<img src="docs/hdr-switching.png" alt="The HDR Switching page, listing installed games with their HDR support" width="720">
+<br>
+<sub>Your games, tagged by whether they render HDR natively. The list can learn from your hotkey presses.</sub>
+</div>
 
 ---
 
@@ -95,6 +107,12 @@ They're two separate settings, and either can be set to come back, to ask first,
 > To leave a game running, end the session with the Guide button instead and pick one of the answers
 > above.
 
+<div align="center">
+<img src="docs/session-prompt-bigpicture.jpg" alt="The prompt over Steam Big Picture" width="760">
+<br>
+<sub>The same prompt in Big Picture, with nothing running behind it.</sub>
+</div>
+
 ---
 
 ## ⚙️ Every setting explains itself
@@ -103,6 +121,19 @@ No setting in this app is a bare label. Each one says what it does, what it cost
 put back when the session ends, because a switch you can't reason about is a switch you leave alone.
 
 Nothing is hidden behind a wiki either. If a setting has a catch, it says so on its own row.
+
+<div align="center">
+<img src="docs/performance.png" alt="The Performance page, with every setting explained under its own title" width="720">
+<br>
+<sub>The Performance page. Every row says what it changes and whether it is put back.</sub>
+</div>
+
+The Home page opens with everything at a glance, so the state of the whole app is one screen rather
+than seven.
+
+<div align="center">
+<img src="docs/home.png" alt="The Home page, showing every setting at a glance" width="720">
+</div>
 
 ---
 

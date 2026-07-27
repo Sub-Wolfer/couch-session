@@ -33,3 +33,6 @@ TextEditor.html
 *.suo
 *.userprefs
 .vscode/
+
+# Raw screenshots, kept out of the repository. The processed ones live in docs/.
+Screenshots/
