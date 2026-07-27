@@ -1450,7 +1450,7 @@ public sealed class SettingsForm : Form
 
         // ── sound ──
         Tile("Sound in session", audio ? tvSound ?? "TV (not detected)" : "unchanged", tvSoundLive,
-             page: DisplayPage, anchor: _tvAudio);
+             page: DisplayPage, anchor: _tvAudio, wide: true);
         Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
              anchor: _desktopAudio);
         Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
@@ -1610,7 +1610,14 @@ public sealed class SettingsForm : Form
 
         // page:  where clicking this tile goes — the settings page that owns what it reports.
         // anchor: the control on that page holding this setting, so its row can be lit on arrival.
-        void Tile(string caption, string value, bool set, int page, Control? anchor = null, int combo = 0)
+        // wide: give this tile two columns instead of one.
+        //
+        // For the audio devices, whose names this grid cannot hold. Windows reports them as the
+        // channel prefix, the interface and the model — "Game (8- TC-HELICON GoXLR…" — and a quarter
+        // of a row cuts that off before the useful half, so the tile answers "which output?" with
+        // the part every output has in common. Nothing else here is long enough to need it.
+        void Tile(string caption, string value, bool set, int page, Control? anchor = null,
+                  int combo = 0, bool wide = false)
         {
             if (building)
             {
@@ -1623,7 +1630,9 @@ public sealed class SettingsForm : Form
                     Vendor = _shortcutController.Vendor,
                     Product = _shortcutController.Product,
                     Actionable = true,
-                    Size = new Size(tileWidth, GlanceTile.PreferredHeight()),
+                    // Two columns is two tiles plus the gap that would have been between them, so a
+                    // wide tile lines up with the grid rather than merely being bigger than it.
+                    Size = new Size(wide ? tileWidth * 2 + Gap : tileWidth, GlanceTile.PreferredHeight()),
                     Margin = new Padding(0, 0, Gap, 10),
                 };
 
