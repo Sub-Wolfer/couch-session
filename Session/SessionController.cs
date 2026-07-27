@@ -25,6 +25,15 @@ public sealed class SessionController
     private readonly object _gate = new();
 
     private DisplaySnapshot? _displaySnapshot;
+
+    /// <summary>
+    /// Whether the couch-audio-is-already-in-use warning has been shown this run.
+    ///
+    /// Deliberately not saved with the settings. It is a reminder rather than a preference, and one
+    /// that should come back if the app is restarted — a fresh launch is the moment somebody is most
+    /// likely to be looking at the machine and able to act on it.
+    /// </summary>
+    private bool _warnedAudioSameDevice;
     private string? _previousAudioId;
     private bool _layoutCaptured;
     private Rectangle? _tvBounds;
@@ -834,8 +843,19 @@ public sealed class SessionController
             // A problem, so it answers to the problem switch rather than the session one. Somebody
             // who has deliberately pointed both settings at one device will turn this off, and the
             // message tells them the other way to stop it as well.
-            if (Config.ShowNotifications && Config.ShowProblemNotifications)
+            //
+            // Once per run of the app, not once per session. The state it reports cannot change
+            // between one session and the next without somebody visiting the settings page, so every
+            // session after the first was repeating a message whose answer had not moved — and this
+            // is a setting people swap in and out of several times an evening. A warning that arrives
+            // every single time is one that gets dismissed without reading, which costs the times it
+            // has something new to say. The log still records it on every session, where repetition
+            // is evidence rather than noise.
+            if (!_warnedAudioSameDevice
+                    && Config.ShowNotifications && Config.ShowProblemNotifications)
             {
+                _warnedAudioSameDevice = true;
+
                 Toast.Show(Ui.Words.NoticeAudioAlreadyThere,
                            Ui.Words.NoticeAudioAlreadyThereDetail,
                            Ui.Theme.Warn,
