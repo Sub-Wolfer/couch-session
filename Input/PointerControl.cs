@@ -123,8 +123,16 @@ public sealed class PointerControl : IDisposable
             // be clearer. An explicit request beats a guess about what the foreground window is.
             bool asked = _holdToActivate && PadShortcut.IsControlHeld(_holdButton);
 
+            // Holding the button beats Big Picture too, not just the game check.
+            //
+            // Big Picture was an unconditional stand-down, on the reasoning that Steam drives its own
+            // pointer in there and two things steering one cursor is worse than none. That reasoning
+            // holds for the automatic modes and not for this one: holding a button is somebody asking
+            // for the pointer at that moment, and the answer "not here" is one they cannot see a
+            // reason for or do anything about. A hold now works anywhere — over a game, in a
+            // launcher, inside Big Picture — which is the whole promise of an explicit request.
             if (!_enabled
-                || _bigPictureInFront
+                || (_bigPictureInFront && !asked)
                 || ControllerUiCapturing?.Invoke() == true
                 || (_holdToActivate && !asked)
                 || (_gameInFront && !asked && !_inGames))

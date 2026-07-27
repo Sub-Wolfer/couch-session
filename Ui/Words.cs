@@ -1130,14 +1130,15 @@ internal static class Words
             + "mouse and ignore a controller. Holding the button below does the same thing "
             + "for a moment, without leaving it on all the time.";
 
+    // "though never inside Big Picture, which always drives itself" is gone, and so is the behaviour
+    // it described — see PointerControl.Tick. A held button is somebody asking for the pointer right
+    // now, and "not here" is an answer they can neither see a reason for nor do anything about.
     public const string MouseHoldWhy =
-        
-            "The pointer only responds while the button below is held. **Worth trying if "
-            + "the pointer is dead in a launcher, or moves in a game when you did not want it "
-            + "to** — nothing is guessed about the window in front, you say when you want "
-            + "it.\n\nWhile held it works over a game too, though never inside Big Picture, "
-            + "which always drives itself. It also stops a resting stick nudging the pointer, "
-            + "which is what keeps a screen from going to sleep on you.";
+        "The pointer only responds while the button below is held, and then it works **anywhere** — "
+            + "over a game, in a launcher, inside Big Picture.\n\n"
+            + "**Worth trying if the pointer is dead in a launcher, or moves in a game when you did "
+            + "not want it to.** Nothing is guessed about the window in front; you say when you want "
+            + "it.";
 
     public const string MouseHoldButton = "Button to hold";
     public const string MouseHoldButtonWhy =
