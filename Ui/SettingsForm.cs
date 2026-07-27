@@ -1430,11 +1430,13 @@ public sealed class SettingsForm : Form
              DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
              page: ControllerPage, anchor: _onControllerLost);
 
+        // Short forms of the option labels, for a tile four to a row. Same words where they fit, so
+        // the home page and the page it links to do not describe one setting two ways.
         static string Says(DisconnectAction action) => action switch
         {
             DisconnectAction.EndAndClose => "closes the game",
-            DisconnectAction.ComeBackAndAsk => "back to the desk, then asks",
-            DisconnectAction.ComeBack => "back to the desk",
+            DisconnectAction.ComeBackAndAsk => "switches back, then asks",
+            DisconnectAction.ComeBack => "switches back to the desktop",
             _ => "nothing",
         };
 

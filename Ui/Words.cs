@@ -578,22 +578,29 @@ internal static class Words
     // first was on — and where one of the three states was reachable two ways, since the prompt's own
     // "leave it for now" answer did the same thing as turning the second switch off. Same shape as
     // HdrModeOptions, for the same reason.
-    // Two lists, and the difference between them is the point.
+    // Answers that read as answers on their own.
     //
-    // Closing the game is offered for a deliberate power-off and for nothing else. Somebody who held
-    // the guide button until their controller shut down has said they are finished and is allowed to
-    // mean it. A controller that went flat has said nothing at all, and putting "close the game" in
-    // front of that event would hand a dead battery the power to end somebody's evening.
+    // These were "Ignore it", "Come back to the desktop" and so on, with a paragraph above the card
+    // explaining what each of them meant. If a list of options needs a paragraph to explain it, the
+    // options are the thing to fix: "Ignore it" leaves the reader asking *ignore what*, and "come
+    // back" never says who is coming back. Every entry is now a plain verb phrase describing what
+    // the app will do, so the list can be read without reading anything else.
+    //
+    // Two lists, and the difference is deliberate. Closing the game is offered for a power-off and
+    // nothing else: somebody who held the guide button until their controller shut down has said
+    // they are finished and is allowed to mean it, while a controller that went flat has said
+    // nothing at all. Putting "close the game" in front of that event would hand a dead battery the
+    // power to end somebody's evening.
     public static readonly string[] DisconnectOptions =
         [
-        "Ignore it",
-        "Come back to the desktop",
-        "Come back and ask what to do",
-        "End the session and close the game",
+        "Do nothing",
+        "Switch back to the desktop",
+        "Switch back and ask me what to do",
+        "Close the game and end the session",
     ];
 
     public static readonly string[] DisconnectOptionsLost =
-        ["Ignore it", "Come back to the desktop", "Come back and ask what to do"];
+        ["Do nothing", "Switch back to the desktop", "Switch back and ask me what to do"];
 
     // Two questions, not one, because they are two events with two right answers.
     //
@@ -607,33 +614,28 @@ internal static class Words
     // once before and had to be rescued from. Neither of these depends on the other; both are always
     // live, and each says which event it is about in its own title.
     public const string DisconnectOff = "When you switch it off";
-    // One sentence each, and no cross-reference between them.
-    //
-    // These two grew to four sentences apiece, explaining how the app tells the events apart and
-    // pointing at each other to say which covered what. That is a description of the mechanism, and
-    // the reader does not have the mechanism's problem — they have two named events in front of
-    // them and want to know what each one does. Each row now says what it covers and stops. How it
-    // is worked out is in TrayApp.WasPoweredOff, where anyone who needs it will look.
+    // What the event is, in the reader's own terms. Not why it matters, not how it is detected —
+    // those were both tried and both made this longer without making it clearer.
     public const string DisconnectOffWhy =
-        "Holding the guide button until the controller powers down. That is usually somebody saying "
-            + "they have finished playing.";
+        "You held the guide button until the controller powered down.";
 
     public const string DisconnectLost = "If it disconnects on its own";
     public const string DisconnectLostWhy =
-        "A flat battery, a cable pulled out, or a wireless link dropping. **Left alone by default** "
-            + "— you may still be sitting there.";
+        "The battery ran out, a cable came loose, or the wireless dropped. You may still be sitting "
+            + "there, so this does nothing unless you say otherwise.";
     // Three short paragraphs, one per thing worth knowing: what "come back" means, what "and ask"
     // adds, and when to pick neither. It was one dense block that answered all three at once and had
     // to be read twice — on a setting somebody meets on their first run.
     // What the three options mean, said once above both pickers rather than twice inside them.
+    // One sentence, and only the part nobody would guess.
+    //
+    // This was two paragraphs restating every option in the two lists below it — which is the shape
+    // a card ends up in when the options are unclear and the fix is attempted above them instead of
+    // inside them. With the options rewritten there is exactly one thing left worth saying, and it
+    // is the one thing a first-time reader would get wrong: switching back does not close anything.
     public const string DisconnectNote =
-        "**Come back to the desktop** moves your display and sound to the desk with the game still "
-            + "running, so switching the controller on again takes you straight back in. **Come back "
-            + "and ask** adds a prompt at your desk offering to go back, close the game, or leave "
-            + "it, shown only when a game is running.\n\n"
-            + "**End the session and close the game** is the one answer that cannot be undone, and "
-            + "it is only offered for switching your controller off — never for a battery going "
-            + "flat.";
+        "**Switching back to the desktop leaves your game running.** Turn the controller on again "
+            + "and you are straight back where you were.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
