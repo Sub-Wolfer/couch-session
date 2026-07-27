@@ -1492,8 +1492,17 @@ public sealed class SettingsForm : Form
             _ => "wired or wireless",
         }, Config.StartOnControllerLink == PadLink.Either, page: ControllerPage, anchor: _padLink);
 
+        // Both halves of each hotkey, keyboard as well as pad.
+        //
+        // The keyboard ones were dropped when this grid was cut back to display, controller and HDR,
+        // on the reasoning that a key combination is not a controller setting. True, and the wrong
+        // cut to make: a hotkey is how a session starts and ends whichever device it lives on, and
+        // "not set" against one of these is exactly the sort of thing somebody comes to this page to
+        // find out. They are back, in pairs, so neither is the odd one missing.
         Tile("Session hotkey (pad)", padCombo != 0 ? PadText(padCombo) : "not set", padCombo != 0,
              page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
+        Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
+             keyCombo != 0, page: HotkeysPage, anchor: _shortcutKeyboard);
         Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
              anchor: _guideEndsSession);
         Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
