@@ -512,6 +512,13 @@ public sealed class TrayApp : IDisposable
         // is silent for good and no idea why. See GameAudio.RecoverFromCrash.
         CouchMode.Audio.GameAudio.RecoverFromCrash();
 
+        // And put back any monitor such a run left detached, for the same reason and with more at
+        // stake: a missing monitor does not merely persist, it propagates. The next session captures
+        // the reduced desktop as the arrangement to restore, so one hard stop becomes every session
+        // afterwards agreeing that the monitor was never there. Runs before anything captures a
+        // topology, which is why it is here rather than inside the session.
+        Display.DisplayManager.RecoverFromCrash();
+
         // Look for a new version shortly after launch, and once a day after that.
         //
         // [BUG] AppConfig.CheckForUpdates has existed and defaulted to true since the setting was

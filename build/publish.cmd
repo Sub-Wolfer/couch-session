@@ -22,11 +22,43 @@ cd /d "%~dp0\.."
 set "MESSAGE=%~1"
 set "TAGIT=%~2"
 
+REM Ask first, force second.
+REM
+REM A plain taskkill /F was costing a monitor. If a session is running, the app has monitors
+REM detached and puts them back during its shutdown - which a force kill never reaches. The
+REM displays stayed off, and the next launch captured the reduced desktop as the arrangement to
+REM restore, so one rebuild at the wrong moment broke every session after it.
+REM
+REM Without /F, taskkill posts WM_CLOSE and the app runs HandBack: displays, HDR and audio all go
+REM back. The wait below is for that, not for the file lock. /F is still here for a build that has
+REM hung or has no message loop to close, because a rebuild has to be able to proceed.
+REM
+REM The app now also recovers this by itself at startup - see DisplayManager.RecoverFromCrash - but
+REM recovering from a mess is not a reason to keep making one.
 echo Closing Couch Session if it's running...
+taskkill /IM CouchSession.exe >nul 2>&1
+
+REM Three seconds, then force it.
+REM
+REM Kept short because the polite close usually does nothing: taskkill without /F posts WM_CLOSE to
+REM a process's top-level windows, and this app spends its life as a tray icon with none. So the
+REM attempt is worth making for the case where the settings window is open, and not worth waiting
+REM long for. The startup recovery is what actually makes the force kill safe.
+REM
+REM ping rather than timeout: timeout reads the console and fails outright with "Input redirection
+REM is not supported" whenever this script is run with its output piped, which is every automated
+REM build. ping to the loopback address waits without touching stdin and is the same one second.
+for /l %%i in (1,1,3) do (
+    tasklist /FI "IMAGENAME eq CouchSession.exe" 2>nul | find /i "CouchSession.exe" >nul || goto :closed
+    ping -n 2 127.0.0.1 >nul
+)
+
+echo   it did not close on its own; forcing it.
 taskkill /IM CouchSession.exe /F >nul 2>&1
 
-REM Give the tray a second to release the exe file lock before we overwrite it.
-timeout /t 1 /nobreak >nul
+:closed
+REM Give Windows a moment to release the exe file lock before we overwrite it.
+ping -n 2 127.0.0.1 >nul
 
 echo Building Couch Session...
 dotnet publish CouchSession.csproj -c Release -r win-x64 -o build\out

@@ -792,6 +792,162 @@ public static class DisplayManager
         }
     }
 
+    // ── Surviving a run that never got to finish ──────────────────────────────────
+    //
+    // A session detaches monitors and puts them back at the end. That promise is kept by a snapshot
+    // held in a field, which is fine right up until the process stops without running its teardown:
+    // a crash, Task Manager, or a build script's taskkill /F. The monitors stay detached, the note
+    // saying how to put them back dies with the process, and the next launch reads the reduced
+    // desktop as the normal one and captures *that* as the arrangement to restore. One hard stop
+    // mid-session therefore costs a monitor permanently, and every session afterwards agrees.
+    //
+    // So the snapshot goes to disk as well, for exactly as long as it is needed. Written when a
+    // session takes the displays, deleted the moment they are given back, and read at startup: if
+    // the file is still there, the last run did not finish, and the arrangement in it is the one
+    // nothing else on this machine knows how to restore.
+    //
+    // The same shape, and the same reasoning, as GameAudio.RecoverFromCrash.
+
+    private static string RecoveryPath => Path.Combine(AppConfig.Directory, "display-recovery.bin");
+
+    /// <summary>
+    /// Write the snapshot down, so a run that is killed can still be undone.
+    ///
+    /// The paths and modes are fixed-size blittable structs — the type initializer above asserts
+    /// their exact byte sizes for this reason — so they are stored as the bytes they already are
+    /// rather than described in a format that would have to be kept in step with the interop.
+    /// A layout change fails the size assertion on the next build, long before it can read a stale
+    /// file back as nonsense.
+    /// </summary>
+    public static void ArmRecovery(DisplaySnapshot snapshot)
+    {
+        try
+        {
+            if (snapshot.Paths.Length == 0) return;
+
+            System.IO.Directory.CreateDirectory(AppConfig.Directory);
+
+            using var file = File.Create(RecoveryPath);
+            using var writer = new BinaryWriter(file);
+
+            writer.Write(Marshal.SizeOf<PathInfo>());
+            writer.Write(Marshal.SizeOf<ModeInfo>());
+            writer.Write(snapshot.Paths.Length);
+            writer.Write(snapshot.Modes.Length);
+            writer.Write(snapshot.ActivePathCount);
+            writer.Write(snapshot.PrimaryDevicePath);
+
+            writer.Write(MemoryMarshal.AsBytes(new ReadOnlySpan<PathInfo>(snapshot.Paths)));
+            writer.Write(MemoryMarshal.AsBytes(new ReadOnlySpan<ModeInfo>(snapshot.Modes)));
+        }
+        catch (Exception ex)
+        {
+            // Never fatal. Failing to arm the safety net must not stop the session it protects.
+            Log.Warn($"Could not record the display arrangement for recovery: {ex.Message}");
+        }
+    }
+
+    /// <summary>The displays are back where they belong, so the note about them is no longer true.</summary>
+    public static void DisarmRecovery()
+    {
+        try { if (File.Exists(RecoveryPath)) File.Delete(RecoveryPath); }
+        catch (Exception ex) { Log.Warn($"Could not clear the display recovery file: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// Put the displays back after a run that was killed rather than closed.
+    ///
+    /// Called at startup, before anything captures a topology of its own — otherwise the reduced
+    /// desktop left behind gets captured as the arrangement to return to, which is how one crash
+    /// turns into every session afterwards being wrong.
+    /// </summary>
+    public static void RecoverFromCrash()
+    {
+        DisplaySnapshot snapshot;
+
+        try
+        {
+            if (!File.Exists(RecoveryPath)) return;
+
+            using (var file = File.OpenRead(RecoveryPath))
+            using (var reader = new BinaryReader(file))
+            {
+                int pathSize = reader.ReadInt32();
+                int modeSize = reader.ReadInt32();
+
+                // Written by a different build whose structs are a different shape. Nothing sensible
+                // can be done with it, and applying it would be worse than leaving it.
+                if (pathSize != Marshal.SizeOf<PathInfo>() || modeSize != Marshal.SizeOf<ModeInfo>())
+                {
+                    Log.Warn("The display recovery file was written by an incompatible build; ignoring it.");
+                    DisarmRecovery();
+                    return;
+                }
+
+                int pathCount = reader.ReadInt32();
+                int modeCount = reader.ReadInt32();
+                int activeCount = reader.ReadInt32();
+                string primary = reader.ReadString();
+
+                var paths = new PathInfo[pathCount];
+                var modes = new ModeInfo[modeCount];
+
+                var pathBytes = reader.ReadBytes(pathCount * pathSize);
+                var modeBytes = reader.ReadBytes(modeCount * modeSize);
+
+                // A short read means the file was cut off, which is what a machine losing power
+                // mid-write leaves behind. Applying half a topology is worse than applying none.
+                if (pathBytes.Length != pathCount * pathSize || modeBytes.Length != modeCount * modeSize)
+                {
+                    Log.Warn("The display recovery file is incomplete; ignoring it.");
+                    DisarmRecovery();
+                    return;
+                }
+
+                pathBytes.CopyTo(MemoryMarshal.AsBytes(paths.AsSpan()));
+                modeBytes.CopyTo(MemoryMarshal.AsBytes(modes.AsSpan()));
+
+                snapshot = new DisplaySnapshot
+                {
+                    Paths = paths,
+                    Modes = modes,
+                    ActivePathCount = activeCount,
+                    PrimaryDevicePath = primary,
+                };
+            }
+
+            int now = ActiveDisplayCount();
+
+            // Already whole. The last run was killed after the displays came back, or the user put
+            // them back by hand in the meantime, and re-applying a stale arrangement over a desktop
+            // somebody has since rearranged is its own kind of rude.
+            if (now >= snapshot.ActivePathCount)
+            {
+                Log.Info($"Display recovery not needed: {now} display(s) active, "
+                       + $"{snapshot.ActivePathCount} expected.");
+                DisarmRecovery();
+                return;
+            }
+
+            Log.Warn($"The last run ended without restoring the displays — {now} active where there "
+                   + $"were {snapshot.ActivePathCount}. Putting them back.");
+
+            Restore(snapshot);
+
+            if (snapshot.PrimaryDevicePath.Length > 0)
+                try { EnsurePrimary(snapshot.PrimaryDevicePath); }
+                catch (Exception ex) { Log.Warn($"Recovery could not restore the primary display: {ex.Message}"); }
+
+            Log.Info($"Display recovery finished: {ActiveDisplayCount()} display(s) active.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Display recovery failed: {ex.Message}");
+        }
+
+        DisarmRecovery();
+    }
+
     /// <summary>Number of currently active monitors — used to confirm a switch actually landed.</summary>
     public static int ActiveDisplayCount()
     {

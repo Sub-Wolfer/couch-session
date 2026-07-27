@@ -163,6 +163,11 @@ public sealed class SessionController
             _displaySnapshot = DisplayManager.Capture();
             Log.Info($"Captured display topology ({_displaySnapshot.ActivePathCount} active).");
 
+            // And to disk, in case this process never gets to use the copy in memory. Armed before
+            // anything is detached rather than after, because the window between taking a monitor
+            // away and recording how to give it back is exactly the window that costs one.
+            DisplayManager.ArmRecovery(_displaySnapshot);
+
             // What the snapshot contains decides what the restore puts back at the end. If the couch
             // display is missing from it, the restore will remove that display no matter what the
             // detach step is told to do — so this is worth knowing at the start, not deduced at the end.
@@ -656,6 +661,10 @@ public sealed class SessionController
         // is turned off after the fact takes primary and its windows with it.
 
         _displaySnapshot = null;
+
+        // The displays are back, so the note saying how to put them back has nothing left to say.
+        // Anything still on disk after this point means a run that did not reach here.
+        DisplayManager.DisarmRecovery();
 
         _ = SteamWindowMemory
                 // Generous, because it may have to sit through a Big Picture launch that is
