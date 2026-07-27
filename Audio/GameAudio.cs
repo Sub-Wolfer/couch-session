@@ -193,10 +193,17 @@ public static class GameAudio
     /// audio sessions as it runs — a cutscene, a menu, a voice channel — so a session captured at
     /// mute time may not be the one making noise a minute later.
     /// </summary>
+    /// <summary>What the last pass walked past, for the "nothing was muted" line only.</summary>
+    private static int Seen;
+    private static readonly SortedSet<uint> Owners = [];
+
     private static int Apply(IReadOnlyCollection<uint> pids, bool mute)
     {
         var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
         int touched = 0;
+
+        Seen = 0;
+        Owners.Clear();
 
         try
         {
@@ -222,6 +229,14 @@ public static class GameAudio
                 catch (Exception ex) { Log.Warn($"Could not read sessions on one playback device: {ex.Message}"); }
                 finally { Marshal.ReleaseComObject(device); }
             }
+
+            // Only when a mute found nothing, and only then. "No session" is indistinguishable in the
+            // log from "no devices", "sessions but none ours" and "ours, but the mute was refused",
+            // and those want completely different fixes — so the one case worth explaining explains
+            // itself rather than being reasoned about from the outside afterwards.
+            if (mute && touched == 0)
+                Log.Info($"Nothing was muted: {deviceCount} active playback device(s), "
+                       + $"{Seen} session(s) seen, owners {(Owners.Count == 0 ? "(none)" : string.Join(", ", Owners))}.");
 
             Marshal.ReleaseComObject(devices);
         }
@@ -259,6 +274,10 @@ public static class GameAudio
                     {
                         if (control is not IAudioSessionControl2 identified) continue;
                         if (identified.GetProcessId(out uint pid) != 0) continue;
+
+                        Seen++;
+                        if (pid != 0) Owners.Add(pid);
+
                         if (!pids.Contains(pid)) continue;
 
                         // The system sounds session belongs to no application and must never be
