@@ -2632,11 +2632,14 @@ public sealed class TrayApp : IDisposable
             // life of the app, so the controller never slept and quietly ran itself flat. The button
             // being seen matters, but not at the price of the pad being dead when it is next picked up.
             //
-            // Five minutes of an untouched pad, then let go — because a controller that sleeps
+            // Ninety seconds of an untouched pad, then let go — because a controller that sleeps
             // disconnects, and a disconnected pad announces its own return the moment the PS button
             // wakes it. Since a session is started by the button coming back *up*, the wake, the
             // reconnect and the resubscribe all happen during the press, and the release still lands.
-            // If the pad turns out not to sleep, the check above puts this straight within minutes.
+            //
+            // This said five minutes, which was the old value of TriggerReleaseAfter. That constant's
+            // own summary records why it went back to ninety seconds and what the log proved; this
+            // sentence was left behind saying the opposite, three lines from the field it describes.
             if (now - HidPad.LastActivityUtc < TriggerReleaseAfter || now < _triggerRetryAt)
             {
                 if (now - _lastHeldForTriggerLog > TimeSpan.FromMinutes(10))
