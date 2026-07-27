@@ -1462,6 +1462,40 @@ public sealed class SettingsForm : Form
         Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
              _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
 
+        Group("HDR");
+        // One tile, because it is now one setting. Two tiles for two switches that cancelled each
+        // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
+        // described a state the app has never actually been in.
+        Tile("HDR Switching", HdrModeOf(_hdrMode) switch
+        {
+            HdrMode.WholeSession => "whole session",
+            HdrMode.PerGame => $"per game · {Config.HdrGames.Count} games",
+            _ => "off",
+        }, autoHdr, page: HdrPage, anchor: _hdrMode);
+        // Whether turning HDR on by hand teaches the app anything.
+        //
+        // On this page because it is the setting that changes the HDR list behind your back — switch
+        // HDR on during a game and that game is added to it. Somebody who does not know it is on has
+        // no way to account for a list that keeps growing, and somebody who wants that behaviour has
+        // no way to tell whether they have it. Neither question was answerable from this page.
+        // Read through the same null guard the save routine uses. The field is declared with null!
+        // but is genuinely null until the HDR page has been built, and the home page is built first
+        // on a cold start — so the saved value is the honest answer until the control exists.
+        bool hdrLearns = _hdrHotkeyRemember is not null
+                             ? _hdrHotkeyRemember.Checked
+                             : Config.HdrHotkeyRemembersGame;
+
+        Tile("Smart HDR", hdrLearns ? "learns as you switch" : "list unchanged",
+             hdrLearns, page: HdrPage, anchor: _hdrHotkeyRemember);
+
+        Tile("HDR hotkey (pad)", _shortcutControllerHdr.Value != 0
+                                     ? PadText(_shortcutControllerHdr.Value) : "not set",
+             _shortcutControllerHdr.Value != 0, page: HotkeysPage, anchor: _shortcutControllerHdr,
+             combo: _shortcutControllerHdr.Value);
+        Tile("HDR hotkey (keys)", _shortcutKeyboardHdr.Value != 0
+                                      ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
+             _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
+
         Group("Controller");
         //
         // "Controller — PlayStation DualSense" used to open this group and has gone. Every other tile
@@ -1546,69 +1580,85 @@ public sealed class SettingsForm : Form
             _ => "nothing",
         };
 
-        Group("HDR");
-        // One tile, because it is now one setting. Two tiles for two switches that cancelled each
-        // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
-        // described a state the app has never actually been in.
-        Tile("HDR Switching", HdrModeOf(_hdrMode) switch
-        {
-            HdrMode.WholeSession => "whole session",
-            HdrMode.PerGame => $"per game · {Config.HdrGames.Count} games",
-            _ => "off",
-        }, autoHdr, page: HdrPage, anchor: _hdrMode);
-        // Whether turning HDR on by hand teaches the app anything.
+        // Four from the other pages, and only four.
         //
-        // On this page because it is the setting that changes the HDR list behind your back — switch
-        // HDR on during a game and that game is added to it. Somebody who does not know it is on has
-        // no way to account for a list that keeps growing, and somebody who wants that behaviour has
-        // no way to tell whether they have it. Neither question was answerable from this page.
-        // Read through the same null guard the save routine uses. The field is declared with null!
-        // but is genuinely null until the HDR page has been built, and the home page is built first
-        // on a cold start — so the saved value is the honest answer until the control exists.
-        bool hdrLearns = _hdrHotkeyRemember is not null
-                             ? _hdrHotkeyRemember.Checked
-                             : Config.HdrHotkeyRemembersGame;
-
-        Tile("Smart HDR", hdrLearns ? "learns as you switch" : "list unchanged",
-             hdrLearns, page: HdrPage, anchor: _hdrHotkeyRemember);
-
-        Tile("HDR hotkey (pad)", _shortcutControllerHdr.Value != 0
-                                     ? PadText(_shortcutControllerHdr.Value) : "not set",
-             _shortcutControllerHdr.Value != 0, page: HotkeysPage, anchor: _shortcutControllerHdr,
-             combo: _shortcutControllerHdr.Value);
-        Tile("HDR hotkey (keys)", _shortcutKeyboardHdr.Value != 0
-                                      ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
-             _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
-
-        // A heading inside the grid, full width so it always starts its own row.
+        // This grid was cut back to the three subjects that decide whether a session works, and that
+        // is still the right shape — but three settings elsewhere outlive a session and one decides
+        // whether the app is running at all, which makes them worth a line here even though nothing
+        // about them is about the television.
         //
-        // Full width does two jobs: it reads as a heading rather than as another tile, and it
+        // The three Windows ones are the argument: everything else this app touches is put back when
+        // a session ends, and these are changed and left changed. Two of them lower the machine's
+        // security. Somebody skimming this page to see what the app has done to their PC should not
+        // have to open the Performance page to find the part that outlives the session.
+        //
+        // Start with Windows earns its place differently: none of the rest of this grid means
+        // anything if the app is not running when you sit down.
+        Group("Windows and startup");
+
+        Tile("Start with Windows", onBoot ? "yes" : "no", onBoot, page: GeneralPage,
+             anchor: _startWithWindows);
+
+        Tile("Admin prompts", _disableUac.Checked ? "silenced" : "normal", _disableUac.Checked,
+             page: PerformancePage, anchor: _disableUac);
+
+        Tile("Windows Firewall", _disableFirewall.Checked ? "switched off" : "on",
+             _disableFirewall.Checked, page: PerformancePage, anchor: _disableFirewall);
+
+        // "off" rather than "off while the app runs": it is a Windows setting now and stays however
+        // it is left, so describing it in terms of this app's lifetime would be a plain untruth.
+        Tile("Game Bar", _disableGameBarButton.Checked ? "off" : "on",
+             !_disableGameBarButton.Checked, page: PerformancePage, anchor: _disableGameBarButton);
+
+        // A heading inside the grid: full width, so it always starts its own row.
+        //
+        // Full width does two jobs. It reads as a heading rather than as another tile, and it
         // guarantees the wrap — a part-width heading would sit in whatever column the group before
         // it happened to end in, which is the one place a heading must never be.
         //
-        // Deliberately short. A heading row is overhead: it buys the reader a landmark and costs
-        // them a row of the thing they came to look at, so it takes the least height that still
-        // separates two groups. The caption font's own line is the whole of it, the air above is
-        // ten pixels rather than a tile's worth, and there is almost none below because the tiles
-        // carry their own top edge.
+        // Drawn rather than set as a Label, because bright text alone was not enough separation.
+        // Every caption on this grid is small dim text, so a heading in small text differing only in
+        // shade is a heading you have to hunt for. Three things set it apart instead: a rule across
+        // the full width above it, which *closes* the group before rather than merely labelling the
+        // one after; bright ink where a caption is dim; and air above the rule so the groups read as
+        // blocks with gaps between them rather than as a continuous grid with labels sprinkled in.
+        //
+        // The first heading has no rule. There is nothing above it to close, and a line under the
+        // card's own top edge is just a second border.
         void Group(string name)
         {
             if (!building) return;
 
-            _homeGlance!.Controls.Add(new Label
-            {
-                Text = name.ToUpperInvariant(),
-                Font = Theme.Caption,
-                ForeColor = Theme.TextFaint,
-                AutoSize = false,
-                Size = new Size(RowWidth, 16),
-                TextAlign = ContentAlignment.BottomLeft,
-                BackColor = Color.Transparent,
+            bool first = _homeGlance!.Controls.Count == 0;
 
-                // Nothing above the first one; the card's own padding is already there.
-                Margin = new Padding(0, _homeGlance.Controls.Count == 0 ? 0 : 10, 0, 2),
-                UseMnemonic = false,
-            });
+            var head = new Panel
+            {
+                Size = new Size(RowWidth, first ? 18 : 30),
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, first ? 0 : 10, 0, 6),
+            };
+
+            string caption = name.ToUpperInvariant();
+
+            head.Paint += (_, e) =>
+            {
+                var g = e.Graphics;
+                Theme.PaintBackdrop(g, head);
+
+                if (!first)
+                {
+                    using var rule = new Pen(Theme.Hairline);
+                    g.DrawLine(rule, 0, 0, head.Width, 0);
+                }
+
+                TextRenderer.DrawText(g, caption, Theme.Caption,
+                                      new Rectangle(0, first ? 0 : 12, head.Width, 18),
+                                      Theme.Text,
+                                      TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix
+                                    | TextFormatFlags.VerticalCenter);
+            };
+
+            _homeGlance!.Controls.Add(head);
         }
 
         // page:  where clicking this tile goes — the settings page that owns what it reports.
