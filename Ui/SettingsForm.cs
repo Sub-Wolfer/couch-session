@@ -5314,7 +5314,7 @@ public sealed class SettingsForm : Form
             }
 
             status.ForeColor = Theme.Info;
-            status.Text = string.Format(Words.UpdateFound, found.Version);
+            status.Text = string.Format(Words.NoticeUpdateFound, found.Version);
 
             // Through the same property the launch check uses, so pressing the button here also puts
             // the offer on the Home page. The two routes should not disagree about what is available.

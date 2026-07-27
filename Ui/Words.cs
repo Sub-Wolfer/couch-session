@@ -203,6 +203,9 @@ internal static class Words
     //
     // {0} is the version number that was found.
 
+    // One sentence for one fact, wherever it appears. UpdateFound sat at the bottom of this file with
+    // the identical text and was read by the About page while this one was read by the tray notice —
+    // so editing the wording here changed it in one place out of two, silently.
     public const string NoticeUpdateFound = "Version {0} is available.";
 
     public const string CheckForUpdates = "Look for new versions";
@@ -1343,7 +1346,7 @@ internal static class Words
     public const string CheckUpdatesBusy = "Checking…";
 
     public const string UpToDate = "Version {0} is the newest.";
-    public const string UpdateFound = "Version {0} is available.";
+    // UpdateFound was here, word for word the same as NoticeUpdateFound above. Use that one.
 
     public const string UpdateFailed =
         
