@@ -172,8 +172,11 @@ internal static class Words
     // The B / Circle hint on the Big Picture prompt, not a listed option.
     public const string BigPictureEndResume = "Resume Big Picture";
 
-    public const string BigPictureEndMinimize = "Swap to desktop";
-    public const string BigPictureEndMinimizeWhat = "Big Picture stays open on the TV.";
+    // BigPictureEndMinimize ("Swap to desktop" / "Big Picture stays open on the TV.") stood here as
+    // this prompt's second answer. It went with the option: this prompt only appears when no game is
+    // running, so going to the desktop with Big Picture left open behind it and ending the session
+    // outright come to the same thing from where the reader is sitting. The game prompt keeps its own
+    // version, where leaving something running is the entire point of the answer.
 
     public const string BigPictureEndClose = "Close Big Picture and finish up";
     public const string BigPictureEndCloseWhat = "Everything goes back to your desk.";

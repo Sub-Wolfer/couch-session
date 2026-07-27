@@ -1354,10 +1354,16 @@ public sealed class TrayApp : IDisposable
     {
 
         // Resuming Big Picture is B / Circle, named in the hint row rather than listed here.
+        //
+        // "Swap to desktop" was a second answer here and has gone. It dropped to the desktop with Big
+        // Picture left running behind it, which is a distinction worth offering on the *game* prompt,
+        // where it is what keeps a game alive. This prompt is only ever raised when no game is
+        // running, and with nothing to preserve, leaving Big Picture open behind the desktop differs
+        // from ending the session in nothing the user can see. Two answers to one question, one of
+        // them a shade of the other, is a choice to make rather than an option to have.
         var options = new[]
         {
             new SessionEndPrompt.Option(Words.BigPictureEndClose, SessionEndPrompt.Choice.Close, Theme.Bad, Words.BigPictureEndCloseWhat),
-            new SessionEndPrompt.Option(Words.BigPictureEndMinimize, SessionEndPrompt.Choice.Minimize, Theme.Info, Words.BigPictureEndMinimizeWhat),
         }.Concat(NavigationOptions()).ToArray();
 
         var prompt = new SessionEndPrompt(Words.BigPictureEndTitle, Words.BigPictureEndBody, options)
@@ -1409,18 +1415,10 @@ public sealed class TrayApp : IDisposable
                     RunBackground("Returning to the desktop", () => _session.ReturnToDesktop());
                     break;
 
-                case SessionEndPrompt.Choice.Minimize:
-                    // Go to the desktop but leave Big Picture running (minimized), so a session can
-                    // drop straight back into it.
-                    OnUi(() => _front.End());   // its timer lives on the UI thread
-                    _watcher.Suppress();
-
-                    // Big Picture is still open behind the desktop, so the PS button means "back to it".
-                    _leftRunning = true;
-
-                    RunBackground("Minimizing to the desktop",
-                                  () => _session.MinimizeToDesktop(closeBigPicture: false));
-                    break;
+                // Choice.Minimize was handled here, dropping to the desktop with Big Picture left
+                // running. Nothing offers it on this prompt any more, so the case went with the
+                // option rather than sitting here waiting for a choice that cannot arrive. The game
+                // prompt still has it, and MinimizeToDesktop is still what answers it there.
 
                 case SessionEndPrompt.Choice.Stay:
                     break;   // keep using Big Picture — nothing to do
