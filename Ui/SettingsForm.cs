@@ -1490,6 +1490,28 @@ public sealed class SettingsForm : Form
         Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
              anchor: _guideEndsSession);
 
+        // The two disconnect answers, beside the controller settings they belong to rather than in
+        // the startup group four tiles later. They were down there because the single tile they
+        // replaced was about ending a session, and "starting and stopping" was where ending lived —
+        // but this grid is read by scanning for a subject, and the subject here is the controller.
+        Tile("Switching it off", Says(DisconnectOf(_onControllerOff, DisconnectAction.ComeBack)),
+             DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore,
+             page: ControllerPage, anchor: _onControllerOff);
+
+        Tile("If it drops out", Says(DisconnectOf(_onControllerLost, DisconnectAction.Ignore)),
+             DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
+             page: ControllerPage, anchor: _onControllerLost);
+
+        // Short forms of the option labels, for a tile four to a row. Same words where they fit, so
+        // the home page and the page it links to do not describe one setting two ways.
+        static string Says(DisconnectAction action) => action switch
+        {
+            DisconnectAction.EndAndClose => "closes the game",
+            DisconnectAction.ComeBackAndAsk => "switches back, then asks",
+            DisconnectAction.ComeBack => "switches back to the desktop",
+            _ => "nothing",
+        };
+
         // ── HDR ──
         // One tile, because it is now one setting. Two tiles for two switches that cancelled each
         // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
@@ -1513,7 +1535,7 @@ public sealed class SettingsForm : Form
                              ? _hdrHotkeyRemember.Checked
                              : Config.HdrHotkeyRemembersGame;
 
-        Tile("Remember HDR games", hdrLearns ? "learns as you switch" : "list unchanged",
+        Tile("Smart HDR", hdrLearns ? "learns as you switch" : "list unchanged",
              hdrLearns, page: HdrPage, anchor: _hdrHotkeyRemember);
 
         Tile("HDR hotkey (pad)", _shortcutControllerHdr.Value != 0
@@ -1530,26 +1552,11 @@ public sealed class SettingsForm : Form
              page: ControllerPage, anchor: _startOnController);
         Tile("Start on wake", _startOnWake.Checked ? "yes" : "no", _startOnWake.Checked, page: GeneralPage,
              anchor: _startOnWake);
-        // Back on this page, having been dropped while the behaviour was fixed and could only ever
-        // say one thing. It is a setting again, and it is the one that decides what a flat battery
-        // mid-game does — so it says which of the three states it is in rather than just on or off.
-        Tile("Switching it off", Says(DisconnectOf(_onControllerOff, DisconnectAction.ComeBack)),
-             DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore,
-             page: ControllerPage, anchor: _onControllerOff);
-
-        Tile("If it drops out", Says(DisconnectOf(_onControllerLost, DisconnectAction.Ignore)),
-             DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
-             page: ControllerPage, anchor: _onControllerLost);
-
-        // Short forms of the option labels, for a tile four to a row. Same words where they fit, so
-        // the home page and the page it links to do not describe one setting two ways.
-        static string Says(DisconnectAction action) => action switch
-        {
-            DisconnectAction.EndAndClose => "closes the game",
-            DisconnectAction.ComeBackAndAsk => "switches back, then asks",
-            DisconnectAction.ComeBack => "switches back to the desktop",
-            _ => "nothing",
-        };
+        // Was missing entirely, and it is the fourth member of the group above it — the app opening
+        // is a way a session starts, exactly like the machine booting, a controller connecting or a
+        // wake. Three of the four were reported here and the fourth was not.
+        Tile("Start when the app opens", _startOnLaunch.Checked ? "yes" : "no",
+             _startOnLaunch.Checked, page: GeneralPage, anchor: _startOnLaunch);
 
         // ── performance and pointer ──
         Tile("Power plan", _changePowerPlan.Checked

@@ -271,14 +271,13 @@ internal static class Words
     // reader could reasonably set both, or wonder which of them was the real one. Naming the overlap
     // also answers why anybody would want this: a controller with no guide button, or a preference
     // for a combination of your own.
-    // The second paragraph is gone: "Works anywhere in Windows, even over a game. Click a box and
-    // press the keys, or hold two or more buttons together so it cannot fire mid-game." The page's
-    // own subtitle already says these work anywhere including over a game, and the boxes below say
-    // what to do the moment you click one — so it was instructions for a control the reader can see.
     public const string ShortcutSessionWhy =
-        "**The same thing the PS / Xbox button does**, on a key or button combination of your own. "
-            + "Worth setting if your controller has no guide button, or if you would rather not use "
-            + "it.";
+        
+            "**The same thing the PS / Xbox button does**, on a key or button combination "
+            + "of your own. Worth setting if your controller has no guide button, or if you "
+            + "would rather not use it.\n\nWorks anywhere in Windows, even over a game. Click a "
+            + "box and press the keys, or hold **two or more** buttons together so it cannot "
+            + "fire mid-game.";
 
     // "Works with any pad Windows recognises" was a claim about compatibility, and only Xbox pads and
     // the PS5 DualSense have actually been tried. The mechanism is standard HID and XInput so the rest
@@ -330,13 +329,13 @@ internal static class Words
     // Short declarative sentences in a fixed order — what to press, what it is called, what it does
     // at the desk, what it does on the TV, what to do if you have not got one — do the work the bold
     // was there to fake.
-    public const string HomeGuideBannerTitle = "Press the big button in the middle of your controller";
+    public const string HomeGuideBannerTitle = "Press the button in the middle of your controller to start a Couch Session!";
     public const string HomeGuideBannerBody =
         
-            "Guide on an Xbox pad, PS on a PlayStation, HOME on a Switch Pro, STEAM on a "
-            + "Steam Deck. One press at your desk moves everything to the TV. One press on "
-            + "the TV asks what to do next. If your pad has no such button, the Hotkeys page "
-            + "does the same job.";
+            "Guide on an Xbox pad, PS logo on a PlayStation, HOME on a Switch Pro, STEAM on "
+            + "a Steam Controller. One press at your desk moves everything to the TV. One "
+            + "press on the TV asks what to do next. If your pad has no such button, the "
+            + "Hotkeys page does the same job.";
 
     public const string HomeBorderlessTip =
         
@@ -352,19 +351,12 @@ internal static class Words
     // would want to switch off, so switching it off took away two things they never agreed to lose.
     public const string GuideEndsSession = "Use the PS / Xbox button to start and end sessions";
     // Kept next to the other session-end wording so the two stay consistent.
-    // Was: "Press it mid-game and Steam opens its Big Picture overlay, which takes the controller off
-    // the game — then this asks what to do with the session." Three ways that is not always so. In
-    // Big Picture with no game running there is no overlay at all and the prompt appears straight
-    // away. Pressing it while that overlay is already open just closes the overlay, and no prompt
-    // comes. And whether Steam opens an overlay over a given game is Steam's own setting, not ours.
     public const string GuideEndsSessionWhy =
-        "Press it during a session and this asks what to do — keep playing, close the game, or go "
-            + "back to your desktop.\n\n"
-            + "**The button is only listened for, never intercepted**, so Steam still does whatever "
-            + "it normally does with it. Where that opens Steam's Big Picture overlay, the prompt "
-            + "lands on top and takes the controller with it — **the overlay behind will not "
-            + "respond until you answer**, which is also what gets the pad off your game. Whichever "
-            + "answer you pick hands it straight back.";
+        
+            "Press it mid-game and Steam opens its Big Picture overlay, which takes the "
+            + "controller off the game — then this asks what to do with the session. **The "
+            + "button is only listened for, never intercepted**, so Steam still does "
+            + "everything it normally does with it.";
 
     public const string ShortcutNone = "Not set — click to choose";
     public const string ShortcutListenKeyboard = "Press a combination…";
@@ -1131,15 +1123,14 @@ internal static class Words
             + "mouse and ignore a controller. Holding the button below does the same thing "
             + "for a moment, without leaving it on all the time.";
 
-    // "though never inside Big Picture, which always drives itself" is gone, and so is the behaviour
-    // it described — see PointerControl.Tick. A held button is somebody asking for the pointer right
-    // now, and "not here" is an answer they can neither see a reason for nor do anything about.
     public const string MouseHoldWhy =
-        "The pointer only responds while the button below is held, and then it works **anywhere** — "
-            + "over a game, in a launcher, inside Big Picture.\n\n"
-            + "**Worth trying if the pointer is dead in a launcher, or moves in a game when you did "
-            + "not want it to.** Nothing is guessed about the window in front; you say when you want "
-            + "it.";
+        
+            "The pointer only responds while the button below is held. **Worth trying if "
+            + "the pointer is dead in a launcher, or moves in a game when you did not want it "
+            + "to** — nothing is guessed about the window in front, you say when you want "
+            + "it.\n\nWhile held it works over a game too, though never inside Big Picture, "
+            + "which always drives itself. It also stops a resting stick nudging the pointer, "
+            + "which is what keeps a screen from going to sleep on you.";
 
     public const string MouseHoldButton = "Button to hold";
     public const string MouseHoldButtonWhy =
@@ -1205,16 +1196,10 @@ internal static class Words
     // Shortened from five sentences to two, and moved next to the picker it qualifies. The line
     // people actually need is that the triggers are paused while you are on this page, and it was
     // third in a paragraph nobody was going to finish.
-    // Leads with what is paused. It opened on "Paused while you are on this page", which states a
-    // condition before naming its subject — so the first thing the reader met was a word with
-    // nothing attached to it and they had to reach the comma before finding out what was being
-    // talked about.
-    //
-    // "While this window is in front" is also newer than the old wording: suspension used to follow
-    // the page alone, so leaving settings open here and walking away killed every trigger.
     public const string ControllerTriggerNote =
-        "**Controller triggers are paused while this window is in front on this page or the Hotkeys "
-            + "page**, so switching a controller on to set it up does not also start a session.";
+        
+            "**Paused while you are on this page or the Hotkeys page**, so switching a "
+            + "controller on to set it up will not also start a session.";
 
     // Live state at the top of the card. Nielsen's first heuristic, and the one thing this page could
     // not answer: whether the app can see your controller right now.
