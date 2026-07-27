@@ -41,11 +41,11 @@ it.
 | | |
 |---|---|
 | 🖥️&nbsp;**Display** | Switches to your TV, on its own or alongside your monitors, at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
-| 🔊&nbsp;**Sound** | Moves audio to the TV on the way out and back to your desk on the way in. |
-| 🌈&nbsp;**HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. |
-| 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Tested on Xbox and PS5 pads. |
-| ⚡&nbsp;**Performance** | Power plan, Game Mode, game priority, and silencing notifications. Most of it is undone when the session ends. |
-| 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. |
+| 🔊&nbsp;**Sound** | Moves audio to the TV on the way out and back to your desk on the way in. Can mute a game you left running behind you. |
+| 🌈&nbsp;**HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. The list can learn from your hotkey presses. |
+| 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Decide what happens if it disconnects. Tested on Xbox and PS5 pads. |
+| ⚡&nbsp;**Performance** | Power plan, game priority, and silencing notifications for the session. Shortcuts to a few Windows settings that are not. |
+| 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. Never while you're playing. |
 
 ---
 
@@ -60,7 +60,8 @@ choose them. Your TV doesn't need to be switched on to appear in the list. It's 
 disconnected.
 
 **3. Set a way to start a session.** On the **Hotkeys** page, record a keyboard combination, a
-controller combination, or both. The PlayStation and Xbox Guide buttons work out of the box.
+controller combination, or both. The PlayStation and Xbox Guide buttons already work without setting
+anything up.
 
 That's the whole setup. Everything else has a sensible default.
 
@@ -73,18 +74,32 @@ That's the whole setup. Everything else has a sensible default.
 **From the sofa**, press the Guide button in the middle of your pad: the PlayStation logo or the Xbox
 button. On the desktop it starts a session. Inside one, it asks what you want to do.
 
-**When you're done**, the same button. If a game is still running you'll be asked whether to close it,
-leave it running, or stay on the TV. If closing it would lose unsaved progress, you're asked a second
-time.
+**When you're done**, the same button. If a game is still running you get three answers: leave it
+running and go back to your desk, close it and stay on the TV for the next one, or close it and finish
+up. Anything that would close a running game asks once more first, naming the game, until you turn
+that check off.
 
-**Closing Big Picture** ends the session too. However you got to the TV, going back is one action.
+**If your controller disconnects**, what happens depends on how it went. Holding the Guide button
+until the pad powers down brings your desktop back, because that's you saying you're finished. A
+battery going flat does nothing at all, because you're probably still on the sofa looking for a cable.
+They're two separate settings, and either can be set to come back, to ask first, or to do nothing.
+
+> ### ⚠️ Closing Big Picture closes your game
+>
+> Quitting Big Picture from Steam's own menu ends the session **and shuts down the game you were
+> playing**, without asking. That isn't an oversight. Big Picture is the only thing on the television
+> able to show a question, so once it's gone there's nothing left to ask with and nobody holding a
+> controller who could answer.
+>
+> To leave a game running, end the session with the Guide button instead and pick one of the answers
+> above.
 
 ---
 
 ## ⚙️ Every setting explains itself
 
-No setting in this app is a bare label. Each one says what it does, what it costs, and what happens to
-it when the session ends, because a switch you can't reason about is a switch you leave alone.
+No setting in this app is a bare label. Each one says what it does, what it costs, and whether it's
+put back when the session ends, because a switch you can't reason about is a switch you leave alone.
 
 Nothing is hidden behind a wiki either. If a setting has a catch, it says so on its own row.
 
@@ -92,26 +107,30 @@ Nothing is hidden behind a wiki either. If a setting has a catch, it says so on 
 
 ## ⚙️ Settings that outlast the session
 
-Most of what this app does is temporary. The power plan, notification silencing and game priority are
-all put back when a session ends. A few settings aren't, and they're worth understanding before you
-switch them on. **Every one of these is off until you turn it on**, and each says so on its own row.
+Most of what this app does is temporary. **The power plan, notification silencing and the game's
+priority are all put back**, so a session leaves nothing behind.
 
-### 👍 Recommended, and they stay on
+The Performance page also holds four switches that are not like that, because they aren't really this
+app's settings at all. They're Windows' own, shown here so you don't have to go looking for them. Each
+one changes Windows the moment you press it and stays changed. **All four are off until you turn them
+on**, and each says so on its own row.
 
-🏎️ **Windows Game Mode** asks Windows to prioritize the game and hold back background work. Worth
-having on. Couch Session switches it on and then leaves it alone, because it's a Windows-wide
-preference and flipping it back off afterwards would fight anyone who'd turned it on themselves.
+### 👍 Worth having on
+
+🏎️ **Windows Game Mode** asks Windows to prioritize whichever game is running and hold back background
+work. This is the same switch as Windows Settings ▸ Gaming ▸ Game Mode, and pressing it here is the
+same as pressing it there. Nothing puts it back afterwards, because it was never ours to put back.
 
 🎮 **Switch off the Xbox Game Bar** stops the Guide button opening the Game Bar over your game, which
-is awkward from a sofa. Also worth having on, with one thing to know: it applies for the whole time
-Couch Session is running rather than just during a session, and it takes background clip recording with
-it. If Win+G has stopped working at your desk, this is why. Closing the app puts both back.
+is awkward from a sofa. Two things to know: it takes background clip recording with it, so if you
+record your play you'll lose that, and **closing the app does not turn it back on**. It stays off until
+you switch it back on, here or in Windows. If Win+G has stopped working at your desk, this is why.
 
 ### ⚠️ Your call, and they lower your security
 
 > 🔓 **User Account Control** and **Windows Defender Firewall** can both be switched off from the
-> Performance page. **These reduce your PC's security**, and they aren't tied to a session. They stay
-> off until you turn them back on here.
+> Performance page. **These reduce your PC's security**, and like the two above they stay off until you
+> turn them back on.
 >
 > They exist because a UAC prompt appears on a secure desktop a controller cannot reach, and the
 > firewall's "allow this app?" dialog needs a mouse and blocks a game's networking until it's answered.
@@ -134,9 +153,10 @@ useful.
 No extra software is needed for any of them.
 
 Your controller is **never taken over**. It's opened for reading only and never exclusively, so it
-runs alongside Steam Input, DS4Windows and games rather than competing with them.
+runs alongside Steam Input, DS4Windows and games rather than competing with them. The Guide button is
+only listened for, never intercepted, so Steam still does everything it normally does with it.
 
-Nothing here injects code, hooks another process, reads another process's memory, or synthesises
+Nothing here injects code, hooks another process, reads another process's memory, or synthesizes
 gamepad input. That's a deliberate design rule, not an accident: it's what keeps the app clear of
 anti-cheat. It reads HID devices directly and asks Windows about its own windows, and that's all.
 
@@ -146,7 +166,7 @@ anti-cheat. It reads HID devices directly and asks Windows about its own windows
 
 - **Windows 11**, which is what it's developed and tested against. Windows 10 works, and the only
   difference you'll notice is square window corners instead of rounded ones.
-- **Steam**, since a session opens Big Picture.
+- **Steam**, for the Big Picture half of a session. The HDR and display features work without it.
 - Nothing else. No runtime, no installer, no admin rights unless you choose the two security settings
   above.
 
@@ -200,7 +220,7 @@ Then build again to embed the result.
 
 ---
 
-## 📄 Licence
+## 📄 License
 
 MIT. See [LICENSE](LICENSE). Do what you like with it.
 
