@@ -962,6 +962,21 @@ internal static class Words
             + "sound back exactly as it was. Nothing else on your PC is affected. Turn it off "
             + "if you leave a game running on purpose to listen to it.";
 
+    // Shown when Windows is already on the couch audio device as a session begins, so there is
+    // nothing to move and no earlier device to come back to.
+    //
+    // The log used to assert "a previous restore must have failed", which is one of two explanations
+    // and not the likelier one. The other — the couch device and the everyday device being the same
+    // choice — is a settings mistake the user can fix in ten seconds, and they were told nothing
+    // about it. Neither cause can be told apart from here, so this names the state, not the cause,
+    // and gives the fix that works for both.
+    public const string NoticeAudioAlreadyThere = "Sound is already on your couch device";
+    public const string NoticeAudioAlreadyThereDetail =
+
+            "Nothing to move, and nothing to put back afterwards. If your couch device is also "
+            + "your everyday one, pick a different couch device on Display & Audio, or switch "
+            + "off \"Move sound to the TV\".";
+
     public const string DesktopAudio = "Desktop audio";
     public const string DesktopAudioWhy = "The device to return to when you finish.";
     public const string SteamAfter = "Steam window on exit";

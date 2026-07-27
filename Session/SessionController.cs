@@ -794,10 +794,18 @@ public sealed class SessionController
     /// <summary>
     /// Work out which device to come back to.
     ///
-    /// Guards against a failure mode seen in the logs: if a previous session couldn't restore
-    /// desktop audio (the endpoint was briefly missing), the default was left on the TV. The
-    /// next session then captured *the TV* as "previous" and the setting became permanently
-    /// stuck. If what's currently default is the TV, that's a broken state, not a preference.
+    /// Refuses to record the couch device as the desktop one. Two different things put the machine
+    /// in that state and this cannot tell them apart from here:
+    ///
+    /// A previous session failed to restore desktop audio — the endpoint was briefly missing — and
+    /// left the default on the couch device. Capturing it now would make that permanent, which is
+    /// the failure this guard was originally written for.
+    ///
+    /// Or the couch device and the everyday device are simply the same choice, which is a settings
+    /// mistake rather than a fault. It is the likelier of the two and the user can fix it in
+    /// seconds, so it is worth saying out loud instead of only muttering into the log.
+    ///
+    /// Either way the answer is the same: record nothing, and say so where it will be read.
     /// </summary>
     private string? CaptureDesktopAudio()
     {
@@ -809,8 +817,21 @@ public sealed class SessionController
         if (current is not null &&
             string.Equals(current, Config.TvAudioDeviceId, StringComparison.OrdinalIgnoreCase))
         {
-            Log.Warn("Default audio is already the TV — a previous restore must have failed. "
-                   + "Not recording it as the desktop device.");
+            Log.Warn($"Default audio is already the couch device ({Config.TvAudioDeviceName}), so "
+                   + "there is nothing to move and no desktop device to record. Either a previous "
+                   + "restore failed, or the couch device and the desktop device are the same "
+                   + "choice.");
+
+            // A problem, so it answers to the problem switch rather than the session one. Somebody
+            // who has deliberately pointed both settings at one device will turn this off, and the
+            // message tells them the other way to stop it as well.
+            if (Config.ShowNotifications && Config.ShowProblemNotifications)
+            {
+                Toast.Show(Ui.Words.NoticeAudioAlreadyThere,
+                           Ui.Words.NoticeAudioAlreadyThereDetail,
+                           Ui.Theme.Warn);
+            }
+
             return null;
         }
 
