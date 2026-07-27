@@ -21,12 +21,6 @@ one of them when you're done, while working out which window ended up where.
 Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
 it.
 
-<div align="center">
-<img src="docs/session-prompt.png" alt="The session prompt over a running game, asking what should happen to it" width="620">
-<br>
-<sub>One press on the pad, mid-game. Every answer says what it costs.</sub>
-</div>
-
 > ### 👥 Who this is for
 >
 > **One PC doing two jobs.** A machine you work and play at on a desk, that you also want to game on
