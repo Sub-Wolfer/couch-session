@@ -237,8 +237,12 @@ internal static class Words
     public const string UpdateCardBusy = "Updating…";
 
     /// <summary>Shown instead of the button while a session is running.</summary>
+    // Was: "so it waits until your session has ended", which promised a deferral nothing performs.
+    // AddUpdateCard simply returns before it builds the button (SettingsForm.cs:3378) — there is no
+    // queue, nothing retries when the session ends, and the offer only reappears when the window is
+    // opened again. Saying the button is not on offer right now is both true and the same length.
     public const string UpdateCardDuringSession =
-        "Updating restarts the app, so it waits until your session has ended.";
+        "Updating restarts the app, which would end your session. It is offered again at your desk.";
 
     public const string ConfirmClosingGame = "Double-check before closing a running game";
     public const string ConfirmClosingGameWhy =
