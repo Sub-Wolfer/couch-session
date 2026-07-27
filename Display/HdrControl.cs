@@ -26,34 +26,6 @@ public static class HdrControl
     private static readonly HashSet<string> Reported = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// The user's per-display verdict, asked of whoever is holding the settings.
-    ///
-    /// A hook rather than an AppConfig reference on purpose. This class is the lowest layer there
-    /// is — interop and nothing else — and it is called from the session, the coordinator, the
-    /// hotkey and the settings window alike. Handing it the config would make every one of those
-    /// callers responsible for passing one down, and would tie display interop to the shape of a
-    /// settings file. TrayApp points this at the config once, at startup.
-    ///
-    /// Null, or a path nobody recognises, means <see cref="HdrCapability.Auto"/>: unset behaves
-    /// exactly as this class did before the setting existed.
-    /// </summary>
-    public static Func<string, HdrCapability>? CapabilityChoice;
-
-    private static HdrCapability ChoiceFor(string? monitorDevicePath)
-    {
-        if (CapabilityChoice is null || string.IsNullOrWhiteSpace(monitorDevicePath))
-            return HdrCapability.Auto;
-
-        try { return CapabilityChoice(monitorDevicePath); }
-        catch (Exception ex)
-        {
-            // Never let a settings lookup break a display call.
-            Log.Warn($"HDR: could not read the capability choice for a display: {ex.Message}");
-            return HdrCapability.Auto;
-        }
-    }
-
-    /// <summary>
     /// What is known about the primary display's HDR.
     ///
     /// <paramref name="Found"/> exists because its absence was being reported as "no HDR
@@ -139,16 +111,9 @@ public static class HdrControl
             var path = DisplayManager.ActivePathFor(monitorDevicePath);
             if (path is null) return HdrStatus.Unknown;
 
-            // The user's answer wins over the panel's where one has been given. Auto leaves the EDID
-            // reading exactly as it was, so a display nobody has ruled on reads the same as always.
             var status = StatusOf(path.Value) with
             {
-                Capable = ChoiceFor(monitorDevicePath) switch
-                {
-                    HdrCapability.AlwaysCapable => true,
-                    HdrCapability.Never => false,
-                    _ => MonitorNames.AdvertisesHdr(monitorDevicePath),
-                },
+                Capable = MonitorNames.AdvertisesHdr(monitorDevicePath),
             };
 
             // Once per display per run, with both answers side by side — the one Windows gives and
@@ -189,33 +154,12 @@ public static class HdrControl
             return false;
         }
 
-        // The user's verdict for whichever display is primary right now, which is the television
-        // during a session and the monitor at the desk. Resolved here rather than passed in, for the
-        // same reason the path is: no caller should have to know which screen is which.
-        var choice = ChoiceFor(DisplayManager.CurrentPrimaryDevicePath());
-
-        if (choice == HdrCapability.Never)
-        {
-            Log.Info("HDR: the primary display is set to never use HDR; leaving it alone.");
-            return false;
-        }
-
         var status = StatusOf(path.Value);
-
-        // AlwaysCapable goes past the gate rather than around the check. Windows still gets the last
-        // word — the call below either works or it does not — but a display that reports no support
-        // and switches perfectly well is a real case, and the whole point of this setting is that
-        // refusing to try was the wrong answer for it. The attempt is logged either way, because a
-        // forced switch that fails should be findable afterwards.
-        if (!status.Supported && choice != HdrCapability.AlwaysCapable)
+        if (!status.Supported)
         {
             Log.Info("HDR: the primary display does not report HDR support; leaving it alone.");
             return false;
         }
-
-        if (!status.Supported)
-            Log.Info("HDR: the primary display reports no support, but it is set to always capable — "
-                   + "trying anyway.");
 
         if (status.Enabled == enable) return true;   // already where we want it
 

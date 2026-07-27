@@ -79,13 +79,6 @@ public sealed class TrayApp : IDisposable
         _watcher.Opened += OnBigPictureOpened;
         _watcher.Closed += OnBigPictureClosed;
 
-        // Point the display layer at the per-display HDR choices. Read through a lambda rather than
-        // copied, so a change made in the settings window takes effect on the next switch instead of
-        // on the next launch. Set once, here, because every route into HdrControl comes through this
-        // process and none of them should have to carry the config with them.
-        Display.HdrControl.CapabilityChoice = path =>
-            config.HdrCapabilityByDisplay.TryGetValue(path, out var choice) ? choice : HdrCapability.Auto;
-
         _hdr = new HdrCoordinator(config);
 
         // Lets the front guard hand the foreground to a launcher that opened behind Big Picture.

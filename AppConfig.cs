@@ -119,25 +119,6 @@ public sealed class AppConfig
     public bool AutoHdrEnabled { get; set; }
 
     /// <summary>
-    /// The user's answer where the two automatic ones disagree, kept per display by device path.
-    ///
-    /// Two things have an opinion about whether a screen can do HDR and they do not always match.
-    /// The panel's own EDID is what the HDR page prints, because it is the honest description of the
-    /// hardware. Windows' advancedColorSupported flag is what HdrControl.SetPrimaryHdr acts on,
-    /// because it is what the API will actually obey. A display can therefore be described as
-    /// capable on the page and refuse to switch, or be described as incapable and work perfectly.
-    ///
-    /// Neither answer can be made authoritative — that is the whole difficulty, and it is why this
-    /// exists rather than a cleverer guess. The person sitting in front of the screen can see which
-    /// one is right, so they get the casting vote, and it is stored against the display rather than
-    /// globally because the two screens on one machine routinely disagree in opposite directions.
-    ///
-    /// Keyed by monitor device path, which is what every other per-display setting here uses and
-    /// what survives a reboot. Absent means <see cref="HdrCapability.Auto"/>.
-    /// </summary>
-    public Dictionary<string, HdrCapability> HdrCapabilityByDisplay { get; set; } = [];
-
-    /// <summary>
     /// Turn HDR on for the whole couch session rather than per game.
     ///
     /// The guaranteed option. A game samples the display's HDR state once, while building its
@@ -814,24 +795,6 @@ public enum PadLink { Either, WiredOnly, WirelessOnly }
 /// When Auto HDR switches the display. Ordered so the value doubles as the dropdown's index.
 /// </summary>
 public enum HdrMode { Off, PerGame, WholeSession }
-
-/// <summary>
-/// Whose answer to believe about a display's HDR support. See
-/// <see cref="AppConfig.HdrCapabilityByDisplay"/> for why the question arises at all.
-///
-/// Order matters: these are the dropdown's rows, and the index is what gets stored.
-/// </summary>
-public enum HdrCapability
-{
-    /// <summary>Believe the display and Windows, as now. The shipped behavior.</summary>
-    Auto,
-
-    /// <summary>Treat the display as HDR capable and try the switch even if Windows says no.</summary>
-    AlwaysCapable,
-
-    /// <summary>Never switch HDR on this display, whatever either of them claims.</summary>
-    Never,
-}
 
 /// <summary>
 /// What a controller leaving mid-session does. Used by both halves of that question — see
