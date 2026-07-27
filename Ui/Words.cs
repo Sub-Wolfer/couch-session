@@ -921,7 +921,11 @@ internal static class Words
     // ── Messages and odds and ends ─────────────────────────────────────────────────
 
     public const string AutomaticAudio = "Automatic (restore the previous device)";
-    public const string NoDisplaysFound = "No displays found — is the TV on?";
+    // Was "No displays found — is the TV on?", which sent the reader to switch on a television that
+    // would not have changed the answer. ListDisplays keeps inactive displays deliberately, so a
+    // switched-off TV is already in this list, dimmed (SettingsForm.cs:4597) — this line only appears
+    // when Windows reports no displays whatsoever, which is a fault rather than a cold television.
+    public const string NoDisplaysFound = "No displays found — Windows is not reporting any.";
 
     public const string GamesListNote =
         
