@@ -1447,7 +1447,7 @@ public sealed class SettingsForm : Form
         // switches, and what the controller starts and ends. Everything dropped is still one click
         // away on its own page, and this page is better at its job for not restating it.
         //
-        // ── the session ──
+        Group("Display and sound");
         Tile("Couch display", display ?? "not chosen", displayLive, page: DisplayPage, anchor: _tvDisplay);
         Tile("Resolution", _tvVideoMode.SelectedItem?.ToString() ?? "whatever it is", true, page: DisplayPage,
              anchor: _tvVideoMode);
@@ -1462,7 +1462,7 @@ public sealed class SettingsForm : Form
         Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
              _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
 
-        // ── controls ──
+        Group("Controller");
         //
         // "Controller — PlayStation DualSense" used to open this group and has gone. Every other tile
         // here reports a setting; that one reported live state, which under a heading reading
@@ -1546,7 +1546,7 @@ public sealed class SettingsForm : Form
             _ => "nothing",
         };
 
-        // ── HDR ──
+        Group("HDR");
         // One tile, because it is now one setting. Two tiles for two switches that cancelled each
         // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
         // described a state the app has never actually been in.
@@ -1579,6 +1579,37 @@ public sealed class SettingsForm : Form
         Tile("HDR hotkey (keys)", _shortcutKeyboardHdr.Value != 0
                                       ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
              _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
+
+        // A heading inside the grid, full width so it always starts its own row.
+        //
+        // Full width does two jobs: it reads as a heading rather than as another tile, and it
+        // guarantees the wrap — a part-width heading would sit in whatever column the group before
+        // it happened to end in, which is the one place a heading must never be.
+        //
+        // Deliberately short. A heading row is overhead: it buys the reader a landmark and costs
+        // them a row of the thing they came to look at, so it takes the least height that still
+        // separates two groups. The caption font's own line is the whole of it, the air above is
+        // ten pixels rather than a tile's worth, and there is almost none below because the tiles
+        // carry their own top edge.
+        void Group(string name)
+        {
+            if (!building) return;
+
+            _homeGlance!.Controls.Add(new Label
+            {
+                Text = name.ToUpperInvariant(),
+                Font = Theme.Caption,
+                ForeColor = Theme.TextFaint,
+                AutoSize = false,
+                Size = new Size(RowWidth, 16),
+                TextAlign = ContentAlignment.BottomLeft,
+                BackColor = Color.Transparent,
+
+                // Nothing above the first one; the card's own padding is already there.
+                Margin = new Padding(0, _homeGlance.Controls.Count == 0 ? 0 : 10, 0, 2),
+                UseMnemonic = false,
+            });
+        }
 
         // page:  where clicking this tile goes — the settings page that owns what it reports.
         // anchor: the control on that page holding this setting, so its row can be lit on arrival.
