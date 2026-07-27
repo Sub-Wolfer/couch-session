@@ -829,7 +829,8 @@ public sealed class SessionController
             {
                 Toast.Show(Ui.Words.NoticeAudioAlreadyThere,
                            Ui.Words.NoticeAudioAlreadyThereDetail,
-                           Ui.Theme.Warn);
+                           Ui.Theme.Warn,
+                           duration: Toast.ProblemDuration);
             }
 
             return null;

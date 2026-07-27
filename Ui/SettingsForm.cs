@@ -4326,7 +4326,8 @@ public sealed class SettingsForm : Form
             // it is back on, red cross.
             bool off = _disableUac.Checked;
             var msg = off ? Words.NoticeUacRestart : Words.NoticeUacOn;
-            if (Actions()) Toast.Show(Words.NoticeUacChanged, msg, Theme.Warn);
+            if (Actions()) Toast.Show(Words.NoticeUacChanged, msg, Theme.Warn,
+                                      duration: Toast.ProblemDuration);
             _securityChangedAt[Words.DisableUac] = DateTime.UtcNow;
             ShowToggleMessage(Words.DisableUac, msg, off ? Theme.Good : Theme.Bad);
         }
@@ -4356,7 +4357,8 @@ public sealed class SettingsForm : Form
         {
             bool off = _disableFirewall.Checked;
             var msg = off ? Words.NoticeFirewallOff : Words.NoticeFirewallOn;
-            if (Actions()) Toast.Show(Words.NoticeFirewallChanged, msg, Theme.Warn);
+            if (Actions()) Toast.Show(Words.NoticeFirewallChanged, msg, Theme.Warn,
+                                      duration: Toast.ProblemDuration);
             _securityChangedAt[Words.DisableFirewall] = DateTime.UtcNow;
             ShowToggleMessage(Words.DisableFirewall, msg, off ? Theme.Good : Theme.Bad);
         }

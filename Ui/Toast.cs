@@ -188,9 +188,25 @@ internal sealed class Toast : Form
     public static void BindTo(Control uiAnchor) => _ui = uiAnchor;
 
     /// <summary>
+    /// How long a message stays up when something has gone wrong.
+    ///
+    /// The ordinary seven seconds is written for "HDR on" and "back on the desktop" — confirmations
+    /// you glance at, where missing one costs nothing because the thing it describes already
+    /// happened in front of you. A problem is the opposite: it names something that did not work and
+    /// usually asks you to go and change a setting, and seven seconds is not long enough to read
+    /// two lines, decide it applies to you, and act on it before it fades.
+    ///
+    /// Long rather than permanent. Every toast can be dismissed with a click anywhere on it, so the
+    /// cost of it lingering is small, while a notification that never leaves on its own becomes
+    /// something to close rather than something to read.
+    /// </summary>
+    public static readonly TimeSpan ProblemDuration = TimeSpan.FromSeconds(25);
+
+    /// <summary>
     /// Show a toast, by default in the corner of the primary display.
     /// </summary>
     /// <param name="delay">How long to wait before appearing, so a display switch can settle.</param>
+    /// <param name="duration">How long it stays. <see cref="ProblemDuration"/> for anything wrong.</param>
     /// <param name="anchor">Where to put it. Corner unless the message is about the tray.</param>
     public static void Show(string title, string detail, Color accent,
                             TimeSpan? delay = null, TimeSpan? duration = null,

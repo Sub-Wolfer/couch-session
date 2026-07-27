@@ -1635,7 +1635,8 @@ public sealed class TrayApp : IDisposable
         {
             Toast.Show(Words.NoticeShortcutTaken,
                        string.Format(Words.ShortcutTaken, KeyShortcut.Describe(config.ShortcutKeyboard)),
-                       Theme.Bad, delay: TimeSpan.FromMilliseconds(400));
+                       Theme.Bad, delay: TimeSpan.FromMilliseconds(400),
+                       duration: Toast.ProblemDuration);
         }
 
         _padShortcut.Apply(config.ShortcutController,
@@ -1646,7 +1647,8 @@ public sealed class TrayApp : IDisposable
         {
             Toast.Show(Words.NoticeShortcutTaken,
                        string.Format(Words.ShortcutTaken, KeyShortcut.Describe(config.ShortcutKeyboardHdr)),
-                       Theme.Bad, delay: TimeSpan.FromMilliseconds(400));
+                       Theme.Bad, delay: TimeSpan.FromMilliseconds(400),
+                       duration: Toast.ProblemDuration);
         }
 
         _padHdr.Apply(config.ShortcutControllerHdr,
