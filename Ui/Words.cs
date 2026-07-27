@@ -1204,10 +1204,16 @@ internal static class Words
     // Shortened from five sentences to two, and moved next to the picker it qualifies. The line
     // people actually need is that the triggers are paused while you are on this page, and it was
     // third in a paragraph nobody was going to finish.
+    // Leads with what is paused. It opened on "Paused while you are on this page", which states a
+    // condition before naming its subject — so the first thing the reader met was a word with
+    // nothing attached to it and they had to reach the comma before finding out what was being
+    // talked about.
+    //
+    // "While this window is in front" is also newer than the old wording: suspension used to follow
+    // the page alone, so leaving settings open here and walking away killed every trigger.
     public const string ControllerTriggerNote =
-        
-            "**Paused while you are on this page or the Hotkeys page**, so switching a "
-            + "controller on to set it up will not also start a session.";
+        "**Controller triggers are paused while this window is in front on this page or the Hotkeys "
+            + "page**, so switching a controller on to set it up does not also start a session.";
 
     // Live state at the top of the card. Nielsen's first heuristic, and the one thing this page could
     // not answer: whether the app can see your controller right now.
