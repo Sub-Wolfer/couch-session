@@ -362,8 +362,9 @@ internal static class Words
             + "back to your desktop.\n\n"
             + "**The button is only listened for, never intercepted**, so Steam still does whatever "
             + "it normally does with it. Where that opens Steam's Big Picture overlay, the prompt "
-            + "lands on top — which is also what takes the controller off your game while you "
-            + "answer.";
+            + "lands on top and takes the controller with it — **the overlay behind will not "
+            + "respond until you answer**, which is also what gets the pad off your game. Whichever "
+            + "answer you pick hands it straight back.";
 
     public const string ShortcutNone = "Not set — click to choose";
     public const string ShortcutListenKeyboard = "Press a combination…";
