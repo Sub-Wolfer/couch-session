@@ -349,6 +349,11 @@ public sealed class TrayApp : IDisposable
                 _guideHeld = false;
                 _guideArmedAt = DateTime.UtcNow;
 
+                // Stamped here rather than when the switch was asked for: what matters to the prompt
+                // is how long Steam has had to finish arranging itself, and that clock starts when
+                // the session is actually live.
+                _sessionLiveSince = DateTime.UtcNow;
+
                 // Nothing is left behind on the desktop any more, whatever was before.
                 _leftRunning = false;
                 _swappedOnDisconnect = false;
@@ -906,6 +911,14 @@ public sealed class TrayApp : IDisposable
     /// another one behind it.</summary>
     private bool _promptPending;
 
+    /// <summary>When the current session became live, for the launch-settling window below.</summary>
+    private DateTime _sessionLiveSince = DateTime.MinValue;
+
+    /// <summary>
+    /// How long after a session starts the foreground is still considered to be moving.
+    /// </summary>
+    private static readonly TimeSpan LaunchSettling = TimeSpan.FromSeconds(20);
+
     /// <summary>
     /// Hold a prompt back until the foreground has stopped changing hands.
     ///
@@ -926,6 +939,21 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private void WhenForegroundSettles(Action raise)
     {
+        // Skipped once the session has been running a while.
+        //
+        // [BUG] The wait was unconditional, and it exists for one situation: the first seconds of a
+        // Big Picture launch, when Steam is still throwing the foreground about and would take the
+        // pad back off the prompt. In a game half an hour later there is nothing to wait for — the
+        // foreground has not moved in minutes — and yet every prompt still paid at least 400ms of
+        // settling on top of Steam's overlay opening, which reads as the button not having worked
+        // and gets pressed again. The protection is kept where it earns its place and dropped where
+        // it does not.
+        if (_session.IsInTvMode && DateTime.UtcNow - _sessionLiveSince > LaunchSettling)
+        {
+            raise();
+            return;
+        }
+
         var timer = new System.Windows.Forms.Timer { Interval = 100 };
 
         var startedAt = DateTime.UtcNow;
@@ -938,7 +966,11 @@ public sealed class TrayApp : IDisposable
 
             if (front != last) { last = front; steadySince = DateTime.UtcNow; }
 
-            bool settled = DateTime.UtcNow - steadySince >= TimeSpan.FromMilliseconds(400);
+            // 250ms rather than 400. Four checks at 100ms was the original description and 400 was
+            // the number written; the point is "the same window twice in a row and then some", and a
+            // quarter of a second is that on every machine this has been run on. The remaining wait
+            // is only ever paid during a launch now, where it is the whole reason this exists.
+            bool settled = DateTime.UtcNow - steadySince >= TimeSpan.FromMilliseconds(250);
             bool waited = DateTime.UtcNow - startedAt >= TimeSpan.FromSeconds(4);
 
             if (!settled && !waited) return;

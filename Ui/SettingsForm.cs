@@ -257,7 +257,67 @@ public sealed class SettingsForm : Form
     /// description out as one line and stretches most of the way across the display, which is
     /// unreadable and covers whatever it is describing. See <see cref="Wrapped"/>.
     /// </summary>
-    private readonly ToolTip _tips = new() { AutoPopDelay = 25000, InitialDelay = 400, ReshowDelay = 100 };
+    /// <summary>
+    /// The hover tips, drawn by this app rather than by Windows.
+    ///
+    /// A stock ToolTip is painted by the shell in the system's own colours — pale yellow or white,
+    /// with a system border and the system font. Against this window that arrives looking like a
+    /// message from a different program, which is the same objection the prompts, the message boxes
+    /// and the update dialog were all rewritten for. Owner-drawing is the only way to change it:
+    /// BackColor and ForeColor on a ToolTip are ignored outright unless OwnerDraw is set.
+    /// </summary>
+    private readonly ToolTip _tips = new()
+    {
+        AutoPopDelay = 25000,
+        InitialDelay = 400,
+        ReshowDelay = 100,
+        OwnerDraw = true,
+        UseAnimation = false,
+        UseFading = false,
+    };
+
+    /// <summary>Air inside a tip, around the text.</summary>
+    private const int TipPadX = 10, TipPadY = 7;
+
+    /// <summary>
+    /// Measure a tip at the app's own font, so the window Windows makes is the size we will fill.
+    ///
+    /// Popup runs before the tooltip window is sized; whatever is put in ToolTipSize here is what the
+    /// Draw handler gets to paint into. Measured with NoPadding so the number is the text and nothing
+    /// else, then the padding is added once and deliberately.
+    /// </summary>
+    private void OnTipPopup(object? sender, PopupEventArgs e)
+    {
+        string? text = _tips.GetToolTip(e.AssociatedControl);
+        if (string.IsNullOrEmpty(text)) return;
+
+        var size = TextRenderer.MeasureText(text, Theme.Small, Size.Empty,
+                                            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+
+        e.ToolTipSize = new Size(size.Width + TipPadX * 2, size.Height + TipPadY * 2);
+    }
+
+    private void OnTipDraw(object? sender, DrawToolTipEventArgs e)
+    {
+        var g = e.Graphics;
+
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+        // A card, not a label: the same surface, hairline and radius as everything else in the window.
+        var body = new RectangleF(e.Bounds.X + 0.5f, e.Bounds.Y + 0.5f,
+                                  e.Bounds.Width - 1f, e.Bounds.Height - 1f);
+
+        Theme.FillRounded(g, body, 8, Theme.SurfaceHi);
+        Theme.DrawRounded(g, body, 8, Theme.Line);
+
+        TextRenderer.DrawText(g, e.ToolTipText, Theme.Small,
+                              new Rectangle(e.Bounds.X + TipPadX, e.Bounds.Y + TipPadY,
+                                            e.Bounds.Width - TipPadX * 2,
+                                            e.Bounds.Height - TipPadY * 2),
+                              Theme.Text,
+                              TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.NoPrefix);
+    }
 
     /// <summary>Characters per line before a tooltip is broken. Roughly 70 is comfortable.</summary>
     private const int TipWidth = 72;
@@ -347,6 +407,15 @@ public sealed class SettingsForm : Form
         // window can end up on a display far smaller than the one it was built for, where a
         // window too wide to reach the edges of is genuinely hard to use with a pad in hand.
         ResizeGrip.Enable(this);
+
+        // The pad triggers follow this window's focus — see UpdatePadSuspension. Minimising counts
+        // as losing it, and WinForms reports that through Resize rather than Deactivate.
+        Activated += (_, _) => { _windowActive = true; UpdatePadSuspension(); };
+        Deactivate += (_, _) => { _windowActive = false; UpdatePadSuspension(); };
+        Resize += (_, _) => UpdatePadSuspension();
+
+        _tips.Popup += OnTipPopup;
+        _tips.Draw += OnTipDraw;
 
         LoadDevices();
         LoadGames();
@@ -2051,7 +2120,7 @@ public sealed class SettingsForm : Form
         };
 
         bug.Click += (_, _) => ReportBug();
-        _tips.SetToolTip(bug, Wrapped(Plain(Words.ReportBugWhy)));
+        _tips.SetToolTip(bug, Wrapped(Words.TipReportBug));
 
         // Reset sits where Close used to.
         //
@@ -2488,6 +2557,15 @@ public sealed class SettingsForm : Form
     private const int DeadzoneMin = 0;
     private const int DeadzoneMax = 60;
 
+    /// <summary>
+    /// Whether this window is the one the user is looking at.
+    ///
+    /// Tracked from the events rather than read from ContainsFocus on demand: focus moves through
+    /// intermediate states while a window is being shown or a dropdown is opening, and a question
+    /// asked in the middle of one gets an answer that is true for a few milliseconds.
+    /// </summary>
+    private bool _windowActive = true;
+
     private void UpdatePadSuspension()
     {
         if (_pads is null) return;
@@ -2501,7 +2579,18 @@ public sealed class SettingsForm : Form
         // The shortcuts page counts too. Setting a controller shortcut means switching the pad
         // on and pressing buttons on it, which is exactly the sequence that would otherwise
         // start a session and throw the display over to the television mid-configuration.
-        bool suspend = (onControllerPage || onShortcutsPage) && !SessionNow;
+        //
+        // But only while this window is the one you are looking at.
+        //
+        // [BUG] It was the page alone, so leaving the settings window open on the Controller page and
+        // going off to do something else left every controller trigger dead — switching a pad on did
+        // nothing, and neither did using it as a mouse — with the only clue being a window sitting
+        // behind whatever you were actually doing. The reason for suspending is that buttons pressed
+        // *at this window* must not also fire triggers, and that reason evaporates the moment the
+        // window is not in front. Minimised counts as not in front, obviously.
+        bool watching = _windowActive && WindowState != FormWindowState.Minimized;
+
+        bool suspend = (onControllerPage || onShortcutsPage) && watching && !SessionNow;
         bool wasSuspended = _pads.Suspended;
 
         _pads.Suspended = suspend;
@@ -3362,6 +3451,11 @@ public sealed class SettingsForm : Form
         // that is worth reading exactly once, wherever it lives.
         NewSection(page, Words.SectionBigPicture);
         var bigPicture = NewCard(page);
+
+        // Put back. This is the one place the app explains that Big Picture and a couch session are
+        // the same thing, and it was orphaned when the Steam page it lived on was folded into this
+        // one — leaving several other descriptions relying on a fact nothing states any more.
+        AddNote(bigPicture, Words.BigPictureIsSessionNote);
 
         SetOptions(_steamAfter, Words.SteamAfterOptions);
         AddPick(bigPicture, Words.SteamAfter, _steamAfter, Words.SteamAfterWhy,
@@ -4703,7 +4797,10 @@ public sealed class SettingsForm : Form
 
         if (others.Count == 0)
         {
-            Warn(Words.WarnAllNative);
+            // "They are all native" and "there are none" are different answers, and the second is an
+            // ordinary first-run state now that nothing is discovered until a scan finds it. Telling
+            // somebody with no games that every game they have is native HDR is nonsense.
+            Warn(_games.Count == 0 ? Words.WarnNoGames : Words.WarnAllNative);
             return;
         }
 

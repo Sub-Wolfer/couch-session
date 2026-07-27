@@ -152,11 +152,15 @@ public static class PerformanceCheck
             int now = key.GetValue("AutoGameModeEnabled") as int? ?? 0;
             key.SetValue("AutoGameModeEnabled", before, RegistryValueKind.DWord);
 
+            // Written for a switch that turned Game Mode on for a session and never off. It is a
+            // live mirror of the Windows setting now, so "can be switched back off" described a
+            // behaviour that no longer exists — this says whether the setting can be written, which
+            // is the only thing this check has ever actually established.
             return now == 1
                  ? new(Name, true, before == 1
-                       ? "Already on. Checked against current Windows settings."
-                       : "Can be switched on and back off.")
-                 : new(Name, false, "The setting did not take.");
+                       ? "Already on in Windows."
+                       : "Off in Windows right now, and this app can change it.")
+                 : new(Name, false, "Windows would not accept the setting.");
         }
         catch (Exception ex) { return new(Name, false, $"Could not be checked: {ex.Message}"); }
     }

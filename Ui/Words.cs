@@ -29,17 +29,18 @@ namespace CouchMode.Ui;
 /// </summary>
 internal static class Words
 {
-    // Shown next to a setting's title, coloured green (recommended) or red (not recommended) by the
-    // titleEmphasis passed with it.
+    // Appended to a setting's title and coloured by the titleEmphasis passed with it.
+    //
+    // There was a BadgeNotRecommended beside this and it was never used once — the two settings it
+    // was written for, UAC and the firewall, carry their warning in the first words of their
+    // description instead, which is where somebody about to lower their machine's security should
+    // meet it. A convention with one half missing is not a convention.
     public const string BadgeRecommended = " **(Recommended)**";
-    public const string BadgeNotRecommended = " **(Not recommended)**";
 
     // ── The window itself ─────────────────────────────────────────────────────────
 
     public const string PageDisplayAudio = "Display & Audio";
     public const string PageDisplayAudioWhy = "Choose the TV and speakers your couch sessions move to.";
-    public const string PageSteam = "Steam";
-    public const string PageSteamWhy = "How couch mode and Steam Big Picture work together.";
     public const string PageController = "Controller";
     public const string PageControllerWhy =
         "Which controller starts a session, what happens if it disconnects, and using one as a mouse.";
@@ -55,12 +56,15 @@ internal static class Words
     public const string ShortcutHdrWhy =
         "Toggles HDR on your main display, whether a session is running or not — for the games and "
             + "apps that look wrong in HDR, without going into Windows settings. **Turn it on just "
-            + "before you launch a game (or while one is running) and that game is remembered**: added "
-            + "to the HDR Switching list so HDR comes on for it by itself next time, and off again when it "
-            + "closes. Before launching is the better order — most games read the display at startup.";
+            + "before you launch a game (or while one is running) and that game is remembered**: "
+            + "added to the HDR Switching list so HDR comes on for it by itself next time, and off "
+            + "again when it closes. That last part is a setting of its own on the HDR Switching "
+            + "page, on by default.\n\n"
+            + "Before launching is the better order — most games read the display at startup.";
 
     public const string PageAutoHDR = "HDR Switching";
-    public const string PageAutoHDRWhy = "Switches your display's HDR on while a game runs, then back off when it closes.";
+    public const string PageAutoHDRWhy =
+        "Switch your display's HDR on for a whole session, or only while chosen games are running.";
     public const string PagePerformance = "Performance";
     // Was: "then put your settings back when it ends" — a blanket promise four of the seven settings on
     // the page do not keep. Game Mode is only ever switched on (PerformanceTuning.Restore says so
@@ -68,9 +72,10 @@ internal static class Words
     // they are left. Only the power plan and notification silencing are actually undone at session end.
     public const string PagePerformanceWhy =
         "Speed Windows up for a session. Some of these go back to how you had them when it ends and "
-            + "some stay until you change them here — each one says which.";
+            + "some are Windows' own settings that stay however they are left — each one says which.";
     public const string PageGeneral = "General";
-    public const string PageGeneralWhy = "When the app starts, and the messages it shows you.";
+    public const string PageGeneralWhy =
+        "When the app starts, what it asks before closing a game, and the messages it shows you.";
     public const string PageAbout = "About";
     public const string PageAboutWhy = "";
 
@@ -78,23 +83,15 @@ internal static class Words
     public const string PageHome = "Home";
     public const string PageHomeWhy = "Your couch session at a glance — start it here, and set what turns it on.";
 
-    public const string SectionSessionTriggers = "Session triggers";
-
-    public const string HomeStatusReady = "Ready";
-    public const string HomeStatusActive = "On the TV";
-    public const string HomeReadySub = "Start a couch session on your TV, or set it to start on its own below.";
-    public const string HomeActiveSub = "A couch session is running. Send it back to the desktop when you are done.";
-    public const string HomeControllerConnected = "Controller connected";
-    public const string HomeControllerNone = "No controller connected";
-    public const string HomeControllerSetup = "Controller & mouse settings";
-
     // ── Section headings ──────────────────────────────────────────────────────────
 
     public const string SectionGlance = "Settings at a glance";
     public const string SectionDisplay = "Display";
     public const string SectionAudio = "Audio";
     public const string SectionBigPicture = "Big Picture";
-    public const string SectionAutomaticHDR = "HDR Switching";
+    // Was "HDR Switching", which is the page's own title and rendered directly under it. Every
+    // other page names a sub-topic in its first section rather than repeating itself.
+    public const string SectionAutomaticHDR = "When HDR switches";
     public const string SectionGames = "Games";
     public const string SectionWindows = "Windows";
     public const string SectionStartup = "Startup";
@@ -134,8 +131,6 @@ internal static class Words
 
     public const string ConfirmCloseTitle = "Your game is still running";
     public const string ConfirmCloseBody = "What should happen to it?";
-
-    public const string ConfirmCloseStay = "Keep playing";
 
     /// <summary>
     /// The Square / X hint on the Big Picture prompt, where ending the session closes Big Picture.
@@ -208,8 +203,9 @@ internal static class Words
     public const string CheckForUpdates = "Look for new versions";
     public const string CheckForUpdatesWhy =
         "Asks GitHub shortly after the app starts, whenever you open this window, and once a day "
-            + "otherwise. Nothing is ever installed on its own — a new version appears on the Home "
-            + "page with a button, and only that button installs it.";
+            + "otherwise. **Nothing is ever installed on its own.** A new version appears on the "
+            + "Home page with a button, and there is one on this page too; an update only happens "
+            + "when you press one of them.";
 
     /// <summary>{0} is the version you are on, {1} the one on offer.</summary>
     public const string UpdateFromTo = "You have {0}  ·  new version {1}";
@@ -247,14 +243,6 @@ internal static class Words
 
     public const string SectionEndingSession = "Ending a session";
 
-    public const string BigPictureOnTop = "Keep Big Picture on top during a session";
-    public const string BigPictureOnTopWhy =
-        "Holds Big Picture above the desktop and any stray windows on the TV, and tries to step aside "
-            + "when you launch a game or its launcher. It works for most games, but with a few the "
-            + "launcher opens *behind* Big Picture — Steam and the launcher fight over the top spot — "
-            + "so if that happens to you, leave this off. Otherwise you can alt-tab freely and stray "
-            + "windows may sit in front of it.";
-
     public const string TurnOffTvOnExit = "Disconnect the Couch Session display when session ends";
     public const string TurnOffTvOnExitWhy =
         "Windows drops the TV from your desktop, so no windows or the mouse stray onto a dark screen. "
@@ -268,11 +256,6 @@ internal static class Words
     // "Not recommended" is shown the same way everywhere: a red title (the titleEmphasis argument
     // where this is used) and a "**Not recommended.**" lead on the explanation, like DisableUac and
     // DisableFirewall below.
-    public const string RestartSteam = "Restart Steam to fix Big Picture menu sound on the TV";
-    public const string RestartSteamWhy =
-        "Steam locks its audio device at launch, so Big Picture menu sounds can play from the wrong "
-            + "speakers. Restarting Steam is the only fix and adds 10–30s per session. Game audio is "
-            + "unaffected.";
 
     // ── Shortcuts ─────────────────────────────────────────────────────────────────
 
@@ -280,7 +263,7 @@ internal static class Words
     public const string ShortcutSessionWhy =
         "Starts or ends a session anywhere in Windows, even over a game. Set a keyboard combo, a "
             + "controller one, or both — click a box and press the keys, or hold **two or more** "
-            + "buttons together (Back + Start works well) so it can't fire mid-game.";
+            + "buttons together so it cannot fire mid-game.";
 
     // "Works with any pad Windows recognises" was a claim about compatibility, and only Xbox pads and
     // the PS5 DualSense have actually been tried. The mechanism is standard HID and XInput so the rest
@@ -309,8 +292,7 @@ internal static class Words
     // tool and one with a second reason to keep it.
     public const string WelcomeSteps =
         "Start on **Display & Audio** and pick your television and your speakers. That is the whole "
-            + "setup; everything else already has a sensible default. The Home page will say so if "
-            + "anything essential is still missing.\n\n"
+            + "setup; everything else already has a sensible default.\n\n"
             + "Not gaming on a TV? You can use this for **HDR alone**. Have it switch HDR on when a "
             + "game launches and off again when you quit, so the desktop never sits there looking "
             + "washed out. Just leave the television side switched off.";
@@ -335,10 +317,6 @@ internal static class Words
         "Guide on an Xbox pad, PS on a PlayStation, HOME on a Switch Pro, STEAM on a Steam Deck. "
             + "One press at your desk moves everything to the TV. One press on the TV asks what to "
             + "do next. If your pad has no such button, the Hotkeys page does the same job.";
-
-    public const string HomeGuideButton =
-        "**PS / Xbox button** — press it on the desktop to start a session, or in one to ask what to do "
-            + "next. It acts when you let go, so holding it still works normally.";
 
     public const string HomeBorderlessTip =
         "**Set games to borderless fullscreen for the best experience.**  Exclusive fullscreen gives "
@@ -398,7 +376,7 @@ internal static class Words
     /// </summary>
     public const string HdrDisplayPart = "**{0}** — {1}: {2}.";
     public const string HdrDisplayMain = "main display now";
-    public const string HdrDisplayCouch = "couch display";
+    public const string HdrDisplayCouch = "Couch Session display";
     public const string HdrDisplayUnnamed = "Unnamed display";
     // These read the monitor's EDID, which is the honest answer about the panel. What actually gates
     // switching is Windows' own advancedColorSupported (HdrControl.SetPrimaryHdr), and the two can
@@ -412,23 +390,25 @@ internal static class Words
         "No display could be identified just now, so HDR support is unknown.";
 
     // Shown in place of a live games list when HDR is set to run for the whole session.
+    // The priority-boost sentence that used to end this is gone. It said this list was what
+    // "Raise the game's priority" reads and told the reader to leave whole-session mode to add a
+    // game for it — untrue since that setting started acting on every game the app can find, and
+    // flatly contradicted by its own description one page away.
     public const string HdrWholeSessionNote =
-        "**This list does nothing in this mode.** HDR comes on when Big Picture opens and goes off "
-            + "when it closes, so there is nothing to pick. Switch back to **per game** above to edit "
-            + "it. One thing to know if you use it: **Raise the game's priority** on the Performance "
-            + "page reads the same list, so change the mode here if you need to add a game for that.";
+        "**This list is not used in this mode.** HDR comes on as the session starts and goes off "
+            + "when it ends, so there is nothing to pick. Switch back to **per game** above to edit "
+            + "it.";
 
-    public const string HdrHotkeyRemember = "Remember games when HDR is turned on — however you turn it on";
+    public const string HdrHotkeyRemember = "Remember when HDR is toggled manually per game — however it is toggled";
     public const string HdrHotkeyRememberWhy =
         "Turning HDR on during a game — or before it launches — adds it to (or drops it from) the "
             + "list, so HDR comes on for it by itself next time and off when it closes. The hotkey, "
             + "the controller shortcut, or a game launched with HDR already on all count. Off, HDR is "
             + "toggled the once and the list is left alone.";
-    public const string TipHdrBulk = "Tick every game known to render HDR natively. Press again to untick them.";
+    public const string TipHdrBulk = "Tick every game known to render HDR natively.";
     public const string TipHdrBulkOther =
         "Tick everything not known to render HDR natively — **Windows' own Auto HDR** (a different "
-            + "feature, which invents HDR from an SDR game) may still improve those. Press again to "
-            + "untick them.";
+            + "feature, which invents HDR from an SDR game) may still improve those.";
     public const string TipSelectAll = "Tick every game shown.";
     public const string TipClearAll = "Untick every game shown.";
     public const string TipBrowse = "Add a game that was not found automatically.";
@@ -451,10 +431,6 @@ internal static class Words
             + "faster. Or name your own and it's used as-is.";
     public const string PowerPlanAuto = "Automatic — the fastest one you have";
 
-    public const string KeepDisplayAwake = "Keep the TV awake";
-    public const string KeepDisplayAwakeWhy =
-        "Stops the TV sleeping mid-session. Windows does not count controller input as "
-            + "activity, so a long cutscene can otherwise blank the screen.";
     public const string SilenceNotifications = "Silence Windows notifications";
     public const string SilenceNotificationsWhy =
         "Hides Windows notifications until the session ends — a corner card becomes a TV-sized "
@@ -534,8 +510,9 @@ internal static class Words
 
     public const string ShowActionNotifications = "When something you pressed is done";
     public const string ShowActionNotificationsWhy =
-        "Confirms a bug report was saved, or that UAC or the firewall has changed. Only ever appears "
-            + "just after you press the thing that causes it.";
+        "Confirms a bug report was saved, that UAC or the firewall has changed, or that a new "
+            + "version is available. Everything here is a short message in the corner; nothing waits "
+            + "for an answer.";
     public const string DisableUac = "Turn off User Account Control (UAC)";
     public const string DisableUacWhy =
         "**This lowers your PC's security.** UAC prompts appear on a secure screen a controller can't "
@@ -556,6 +533,10 @@ internal static class Words
     public const string NoticeFirewallOff = "Windows Firewall is now off.";
     public const string NoticeFirewallOn = "Windows Firewall is now on.";
 
+    // The title says "switch off" and the description used to say "this is the same switch as
+    // Windows Settings ▸ Gaming ▸ Xbox Game Bar" — which it is the inverse of. Two adjacent rows,
+    // Game Mode and this one, carried that identical sentence with opposite polarity: turning Game
+    // Mode on turns the Windows setting on, turning this on turns the Windows setting off.
     public const string DisableGameBarButton = "Switch off the Xbox Game Bar";
     // Was: "switches it off during a session and back on when you quit". Two things wrong with that.
     // GameBarControl is applied from TrayApp at startup and restored at app exit, not per session — so
@@ -570,9 +551,9 @@ internal static class Words
 
     public const string DisableGameBarButtonWhy =
         "The Xbox Guide button opens the Game Bar over your game, which is awkward from the couch. "
-            + "**This is the same switch as Windows Settings ▸ Gaming ▸ Xbox Game Bar**, changed as "
-            + "soon as you press it and left that way — closing this app does not put it back. "
-            + "Background clip recording goes off with it. PlayStation pads do not trigger it.";
+            + "**Switching this on turns the Xbox Game Bar off** in Windows Settings ▸ Gaming, as "
+            + "soon as you press it and for good — closing this app does not put it back. Background "
+            + "clip recording goes off with it. PlayStation pads do not trigger it.";
 
     // One three-way choice, replacing two switches where the second only meant anything while the
     // first was on — and where one of the three states was reachable two ways, since the prompt's own
@@ -658,7 +639,7 @@ internal static class Words
     // "don't show this again", so it is clear the check is going away and not just this one window.
     public const string SureCloseDontAsk = "Stop double-checking before closing a game";
 
-    public const string DisconnectDontAsk = "Stop asking me this — just come back to the desktop";
+    public const string DisconnectDontAsk = "Stop asking me this — just switch back to the desktop";
 
     public const string StartOnController = "Start a session when it connects";
     public const string StartOnControllerWhy =
@@ -720,9 +701,17 @@ internal static class Words
     public const string NoticeHdrForgotten = "{0} will no longer turn HDR on by itself.";
 
     public const string ReportBug = "Report a bug";
+    // Shown on the About page, under the row of buttons there — none of which is Report a bug, which
+    // lives in the footer. It used to describe that footer button and sat directly beneath "Save
+    // diagnostics", which writes a different file, so it read as instructions for the wrong control.
     public const string ReportBugWhy =
-        "Saves one file to your desktop — log, settings, display and audio details — then opens the "
-            + "report page. **Attach that file.**";
+        "**Open settings folder** shows where your settings and log live. **Save diagnostics** writes "
+            + "one file to your desktop with the log, your settings and your display and audio "
+            + "details — attach it to a bug report.";
+
+    /// <summary>The tooltip on the footer button, which is the one that files a report.</summary>
+    public const string TipReportBug =
+        "Saves a diagnostics file to your desktop, then opens the report page. Attach that file.";
 
     public const string WarnBugReportFailed = "The bug report could not be saved. {0}";
 
@@ -743,7 +732,6 @@ internal static class Words
 
     // Appended to whichever active display is currently the Windows primary. Says "currently" so it
     // is not mistaken for the display that becomes primary during a couch session.
-    public const string DisplayPrimary = "— currently primary";
 
     public const string TvDisplay = "Couch Session display";
     // Was: "Only displays Windows can see right now are listed — switch your TV on and it appears
@@ -783,8 +771,9 @@ internal static class Words
 
     public const string DisplayMode = "Other displays";
     public const string DisplayModeWhy =
-        "Off stops games opening on the wrong screen; on keeps a browser or Discord visible. Either "
-            + "way they're restored when the session ends.";
+        "**Turning them off** stops games opening on the wrong screen. **Keeping them on** leaves a "
+            + "browser or Discord visible on your monitor. Either way they are put back when the "
+            + "session ends.";
     public const string DisplayModeGameNote =
         "Some games reopen on the exact monitor they remember, whatever is primary. If one keeps "
             + "landing on the wrong screen, choose **Turn them off while I'm on the TV** — then it has "
@@ -840,11 +829,13 @@ internal static class Words
     /// <summary>{0} is the version, already including "v" and the channel. {1} is the author.</summary>
     public const string AboutVersion = "{0}  ·  Created by {1}";
 
+    // Was "Sit down, switch a controller on, and your PC moves to the television", which describes a
+    // trigger that ships switched off — so the app's own headline sentence was untrue of a fresh
+    // install. One press is true of every install: the guide button, the hotkey, or Big Picture.
     public const string AboutBlurb =
-        "Sit down, switch a controller on, and your PC moves to the television — display, "
-            + "sound, HDR, resolution and power plan, all at once. Get up and it puts every "
-            + "one of them back exactly as it was.\nNo mouse, no keyboard, no settling for "
-            + "the wrong screen. Just the couch.";
+        "One press and your PC moves to the television — display, sound, HDR, resolution and power "
+            + "plan, all at once. Get up and it puts every one of them back exactly as it was.\n"
+            + "No mouse, no keyboard, no settling for the wrong screen. Just the couch.";
 
     // Warnings. \n is a line break.
 
@@ -852,7 +843,12 @@ internal static class Words
         "None of your installed games are known to support HDR natively yet.\n\nThe list "
             + "updates in the background, so this may fill in shortly.";
 
-    public const string WarnAllNative = "Every game in your library is already tagged as having native HDR.";
+    public const string WarnAllNative = "Every game found is already tagged as having native HDR.";
+
+    // The message above was also shown when the library was empty, which is a perfectly ordinary
+    // first-run state now that nothing is discovered until a scan finds it.
+    public const string WarnNoGames =
+        "No games have been found yet. Use **Scan** to look again, or **Browse** to add one by hand.";
     public const string WarnNotAGame = "That does not look like a game program.";
     public const string WarnPickDisplay = "Choose which display is your TV first.";
     public const string WarnPickControllerFirst = "Choose a controller from the list first.";
@@ -870,11 +866,6 @@ internal static class Words
 
     public const string WarnPickDisplayFirst = "Choose your Couch Session display before starting.";
 
-    /// <summary>{0} is the display's name. Shown when the couch display looks like the desk monitor.</summary>
-    public const string WarnCouchDisplayIsPrimary =
-        "**{0} is your main display**, and Couch Session is set to use it as the television. A "
-            + "session will move that screen about and put it back afterwards, which is probably "
-            + "not what you want.\nIf your TV is not in the list, switch it on and it appears.";
     public const string WarnSaveFailed = "Could not save your settings.\n\n{0}";
     public const string WarnDiagnosticsFailed = "Could not write the diagnostics report.\n\n{0}";
 
@@ -930,7 +921,10 @@ internal static class Words
 
     public const string ResetConfirm =
         "This puts every setting back to its default, including your chosen display, your audio "
-            + "devices and every game ticked for HDR Switching.\n\nThis cannot be undone. Continue?";
+            + "devices and every game ticked for HDR Switching.\n\n"
+            + "**Windows' own settings are left alone** — Game Mode, the Xbox Game Bar, User Account "
+            + "Control, the firewall and Start with Windows are not this app's to reset.\n\n"
+            + "This cannot be undone. Continue?";
 
     // ── Resetting one page ─────────────────────────────────────────────────────────
     //
@@ -982,9 +976,13 @@ internal static class Words
     /// Shown under the Performance page's reset, because two of its switches are not the app's to
     /// reset — they change Windows itself and are read back from it.
     /// </summary>
+    // All four, where this used to name two. Game Mode and the Game Bar became live mirrors of the
+    // Windows settings and are re-read from Windows straight after any reset, so the button leaves
+    // them alone in practice — it just did not say so.
     public const string ResetPageKeepsWindows =
-        "User Account Control and the firewall are left exactly as they are — those are Windows' own "
-            + "settings, not this app's, so this button will not change them.";
+        "Game Mode, the Xbox Game Bar, User Account Control and the firewall are left exactly as "
+            + "they are — those are Windows' own settings, not this app's, so this button will not "
+            + "change them.";
 
     // ── Defaults ───────────────────────────────────────────────────────────────────
     //
@@ -1080,40 +1078,6 @@ internal static class Words
 
     public const string ClearControllers = "Forget selected";
 
-    public const string TurnDisplayBackOn = "Turn it back on now";
-    public const string TurnDisplayBackOnWhy =
-        "Reconnects the Couch Session display if the app has switched it off. Handy when a session "
-            + "ended with the setting above turned on and you want that screen back without "
-            + "starting another one.";
-
-    public const string NoticeDisplayBackOn = "Display reconnected";
-    public const string NoticeDisplayBackOnDetail = "{0} is part of your desktop again.";
-    public const string WarnDisplayAlreadyOn = "That display is already connected.";
-    public const string WarnDisplayWouldNotAttach =
-        "Windows would not switch that display on.\n\nCheck it is powered up and on the right input.";
-
-    public const string NoticeDisplayOff = "Display switched off";
-    public const string NoticeDisplayOffDetail = "{0} was disconnected from your desktop.";
-    public const string WarnLastDisplay =
-        "That is the only screen left, so it cannot be switched off — you would have nowhere to look.";
-    public const string WarnDisplayWouldNotDetach = "Windows would not switch that display off.";
-
-    public const string DisplayStateOn = "Enabled";
-    public const string DisplayStateOff = "Disabled";
-    public const string DisplayOnTip =
-        "Connects or disconnects the Couch Session display. Off removes it from your desktop; on adds "
-            + "it back where it was.";
-
-    public const string SetPrimary = "Set as primary now";
-    public const string SetPrimaryTip =
-        "Make the Couch Session display your main screen — where the taskbar lives and new windows "
-            + "open. The display must be connected first.";
-    public const string WarnDisplayOffForPrimary =
-        "Switch that display on before making it the main screen.";
-    public const string NoticePrimarySet = "Main display changed";
-    public const string NoticePrimarySetDetail = "{0} is now your primary screen.";
-    public const string WarnPrimaryFailed = "Windows would not make that display the main one.";
-
     public const string RenameController = "Rename…";
     public const string RenameControllerWhy =
         "Give the selected controller a name of your own, so you can tell which is which.";
@@ -1123,8 +1087,6 @@ internal static class Words
         "What would you like to call it?\n\nLeave it empty to go back to the model name.";
 
     public const string RevertControllerName = "Use original name";
-    public const string RevertControllerNameWhy =
-        "Drops the name you gave this controller and goes back to the model it reports.";
 
     /// <summary>Shown in light blue under the controller settings. ** ** marks the bold part.</summary>
     // Shortened from five sentences to two, and moved next to the picker it qualifies. The line
@@ -1236,8 +1198,6 @@ internal static class Words
 
     public const string UpToDate = "Version {0} is the newest.";
     public const string UpdateFound = "Version {0} is available.";
-
-
 
     public const string UpdateFailed =
         "The update could not be installed. Nothing has been changed.\n\nYou can download it "
