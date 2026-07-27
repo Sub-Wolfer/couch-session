@@ -436,6 +436,44 @@ internal static class Words
     public const string HdrDisplaysUnknown =
         "No display could be identified just now, so HDR support is unknown.";
 
+    // ── Overruling the HDR answer, per display ────────────────────────────────────
+    //
+    // Written for somebody who has just been told, one line above, that a display supports HDR — and
+    // has watched it not happen. The heading names the situation rather than the mechanism, because
+    // "EDID disagrees with advancedColorSupported" is true and useless.
+    public const string SectionHdrCapability = "If the answer above is wrong";
+
+    public const string HdrCapabilityNote =
+
+            "The line above is what your display reports about itself. Windows keeps its own "
+            + "answer, and the two do not always agree — so a display can be listed here as "
+            + "supporting HDR and still refuse to switch, or claim it cannot and work perfectly. "
+            + "**If what you see does not match what happens, say so here** and this app will "
+            + "believe you instead.";
+
+    /// <summary>{0} is the display's name.</summary>
+    public const string HdrCapabilityFor = "{0}";
+
+    public static readonly string[] HdrCapabilityOptions = [
+        "Automatic — believe the display",
+        "Always treat it as HDR capable",
+        "Never use HDR on this display",
+    ];
+
+    public const string HdrCapabilityAutoWhy =
+        "The shipped setting. HDR switches when the display and Windows both allow it.";
+
+    public const string HdrCapabilityForceWhy =
+        "For a display that can do HDR but does not report it. The switch is attempted anyway.";
+
+    public const string HdrCapabilityNeverWhy =
+        "Nothing on this page will switch HDR on this display, whatever it reports.";
+
+    // Shown when there is no display to offer a choice about, so an empty card reads as a state
+    // rather than as something that failed to load.
+    public const string HdrCapabilityNoDisplays =
+        "No display to set this for just now.";
+
     // Shown in place of a live games list when HDR is set to run for the whole session.
     // The priority-boost sentence that used to end this is gone. It said this list was what
     // "Raise the game's priority" reads and told the reader to leave whole-session mode to add a
@@ -1161,7 +1199,9 @@ internal static class Words
             + "and the app goes back to guessing them.";
 
     public const string ResetPageLosesHdr =
-        "\n\nEvery game ticked for HDR Switching is cleared as well.";
+
+            "\n\nEvery game ticked for HDR Switching is cleared as well, and any display you have "
+            + "set to always or never use HDR goes back to Automatic.";
 
     public const string ResetPageLosesController =
         

@@ -143,6 +143,15 @@ public sealed class SettingsForm : Form
     private RichNote? _hdrDisplayNote;
 
     /// <summary>
+    /// Holds the per-display HDR capability pickers, which are rebuilt rather than kept.
+    ///
+    /// Not one of the Persistent() controls: those are a fixed set of fields carrying one setting
+    /// each, and this is a variable number of rows standing for whichever displays exist. It is
+    /// destroyed and remade with its page like any other built control.
+    /// </summary>
+    private FlowLayoutPanel? _hdrCapabilityHost;
+
+    /// <summary>
     /// Groups of rows that only exist on screen while the setting above them is on.
     ///
     /// Greying a nested setting out says "this is here but inert", which is worth saying when the
@@ -2965,9 +2974,37 @@ public sealed class SettingsForm : Form
         _hdrDisplayNote = AddNote(card, Words.HdrDisplaysUnknown);
         RefreshHdrDisplayNote();
 
+        // The casting vote, directly under the answer it overrules. Anywhere else and the reader has
+        // to carry a disagreement between two screens across a page break to act on it.
+        NewSection(page, Words.SectionHdrCapability);
+        var capability = NewCard(page);
+
+        AddNote(capability, Words.HdrCapabilityNote);
+
+        _hdrCapabilityHost = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(RowWidth, 0),
+            BackColor = Color.Transparent,
+            Margin = new Padding(0),
+        };
+
+        AddRow(capability, _hdrCapabilityHost, 0, elbow: false);
+        RefreshHdrCapabilities();
+
         // Re-read on the way back in: a television that was off when this window opened is the
-        // ordinary case, and the answer changes the moment it is switched on.
-        page.VisibleChanged += (_, _) => { if (page.Visible) RefreshHdrDisplayNote(); };
+        // ordinary case, and the answer changes the moment it is switched on. The pickers are rebuilt
+        // with it, because switching the set on is also what makes a row for it appear.
+        page.VisibleChanged += (_, _) =>
+        {
+            if (!page.Visible) return;
+
+            RefreshHdrDisplayNote();
+            RefreshHdrCapabilities();
+        };
 
         NewSection(page, Words.SectionGames);
 
@@ -4852,6 +4889,126 @@ public sealed class SettingsForm : Form
         }
     }
 
+    /// <summary>
+    /// One capability picker per display worth offering one about.
+    ///
+    /// Built here rather than by AddPick because the set of rows is not known until it runs: it is
+    /// whichever displays exist right now, which changes when a television is switched on. Rebuilt
+    /// wholesale on each pass — the alternative is reconciling two lists, for a card that holds two
+    /// rows on the machines this app is for.
+    ///
+    /// The main display and the couch display, deduplicated. Deliberately not every display Windows
+    /// knows about: a third monitor that no session will ever make primary cannot have its HDR
+    /// switched by this app, so a control for it would be a control that does nothing.
+    /// </summary>
+    private void RefreshHdrCapabilities()
+    {
+        if (_hdrCapabilityHost is null || _hdrCapabilityHost.IsDisposed) return;
+
+        // The old rows are going, so their tooltips go with them — see ForgetToolTips.
+        ForgetToolTips(_hdrCapabilityHost);
+
+        foreach (Control old in _hdrCapabilityHost.Controls) old.Dispose();
+        _hdrCapabilityHost.Controls.Clear();
+
+        try
+        {
+            var paths = new List<string>();
+
+            if (DisplayManager.CurrentPrimaryDevicePath() is { Length: > 0 } primary)
+                paths.Add(primary);
+
+            if (Config.TvDisplayPath is { Length: > 0 } couch
+                    && !paths.Contains(couch, StringComparer.OrdinalIgnoreCase))
+                paths.Add(couch);
+
+            if (paths.Count == 0)
+            {
+                _hdrCapabilityHost.Controls.Add(
+                    NewLabel(Words.HdrCapabilityNoDisplays, Theme.Small, Theme.TextFaint, RowWidth));
+                return;
+            }
+
+            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in DisplayManager.ListDisplays()) names[d.DevicePath] = d.FriendlyName;
+
+            foreach (var path in paths)
+            {
+                string name = names.TryGetValue(path, out var found) && !string.IsNullOrWhiteSpace(found)
+                                  ? found
+                                  : Words.HdrDisplayUnnamed;
+
+                _hdrCapabilityHost.Controls.Add(CapabilityRow(path, name));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not build the HDR capability pickers: {ex.Message}");
+        }
+    }
+
+    /// <summary>One display's name and its three-way choice.</summary>
+    private Control CapabilityRow(string devicePath, string displayName)
+    {
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(RowWidth, 0),
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 10, 0, 0),
+        };
+
+        row.Controls.Add(new RichNote(string.Format(Words.HdrCapabilityFor, displayName),
+                                      RowWidth, Theme.BodySemi, Theme.BodyBold, Theme.Text));
+
+        var combo = new Dropdown
+        {
+            Size = new Size(Math.Min(RowWidth, DropdownWidth), 34),
+            Margin = new Padding(0, 6, 0, 0),
+        };
+
+        combo.Items.AddRange(Words.HdrCapabilityOptions);
+
+        var current = Config.HdrCapabilityByDisplay.TryGetValue(devicePath, out var saved)
+                          ? saved
+                          : HdrCapability.Auto;
+
+        combo.SelectedIndex = (int)current;
+
+        // Written straight into the config rather than through the dirty-tracking the built-in rows
+        // use: those controls are fields this form owns for its whole life and are wired once, and
+        // these are made and destroyed every time the card refreshes.
+        combo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_loading) return;
+
+            var choice = (HdrCapability)Math.Clamp(combo.SelectedIndex, 0, 2);
+
+            if (choice == HdrCapability.Auto) Config.HdrCapabilityByDisplay.Remove(devicePath);
+            else Config.HdrCapabilityByDisplay[devicePath] = choice;
+
+            Log.Info($"HDR capability for {displayName} set to {choice}.");
+
+            MarkDirty();
+
+            // The line above this card is built from the same answer this just changed.
+            RefreshHdrDisplayNote();
+        };
+
+        _tips.SetToolTip(combo, Wrapped(current switch
+        {
+            HdrCapability.AlwaysCapable => Words.HdrCapabilityForceWhy,
+            HdrCapability.Never => Words.HdrCapabilityNeverWhy,
+            _ => Words.HdrCapabilityAutoWhy,
+        }));
+
+        row.Controls.Add(combo);
+        return row;
+    }
+
     /// <summary>Repaint, relabel and re-sort after a tag was set by either route.</summary>
     private void TagChanged()
     {
@@ -6209,6 +6366,12 @@ public sealed class SettingsForm : Form
         {
             Config.HdrGames = [];
             _checkedGames.Clear();
+
+            // The per-display verdicts are on this page and are a collection, so the reflection loop
+            // above cannot see them either — the same trap the controller names fell into below.
+            // Cleared here so every display goes back to Automatic, which is what the reset promises.
+            Config.HdrCapabilityByDisplay = [];
+            RefreshHdrCapabilities();
         }
         else if (page == ControllerPage)
         {
