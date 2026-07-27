@@ -104,6 +104,10 @@ public sealed class TrayApp : IDisposable
             // while a session is active — off the couch the user's monitor choice is their own.
             if (running && _session.IsInTvMode) _landing.Begin();
             else if (!running) _landing.End();
+
+            // A game closing is one of the two ways the machine goes quiet. Marshalled because this
+            // fires on the watcher thread and a toast belongs to the UI thread.
+            if (!running) OnUi(ReleaseHeldUpdateNotice);
         };
 
         // Close the game as the session tears down.
@@ -313,7 +317,14 @@ public sealed class TrayApp : IDisposable
                 // Steam.
                 _hdr.AdoptRunningGame();
             }
-            else _hdr.DisarmAfterSession();
+            else
+            {
+                _hdr.DisarmAfterSession();
+
+                // The other way the machine goes quiet. Held back if the session ended with the game
+                // left running — the game closing will call this again.
+                OnUi(ReleaseHeldUpdateNotice);
+            }
         };
 
         _session.StateChanged += () => OnUi(() =>
@@ -1871,6 +1882,26 @@ public sealed class TrayApp : IDisposable
     /// <summary>The newest release found, when it is newer than what is running. Null otherwise.</summary>
     private UpdateInfo? _pendingUpdate;
 
+    /// <summary>
+    /// A "there is a new version" notice found while playing, waiting for a quiet moment to appear.
+    ///
+    /// The check runs on a daily timer that has no idea what is on screen, so before this it could
+    /// land a corner toast over a fullscreen game — and during a session that toast is drawn at TV
+    /// size, on the television, in front of whatever is being played. Nothing about a version number
+    /// is worth that. It is held instead and shown once the machine is idle: the release is not going
+    /// anywhere, and the update is never installed without a button press either way.
+    /// </summary>
+    private bool _updateNoticeHeld;
+
+    /// <summary>
+    /// Whether now is a bad moment to interrupt: on the television, or with a game up at the desk.
+    ///
+    /// Both halves matter. "Swap to desktop" ends the session with the game still running, so
+    /// checking the session alone would pop a notice over a game somebody stepped away from for a
+    /// moment and is about to go back to.
+    /// </summary>
+    private bool Playing => _session.IsInTvMode || _hdr.RunningGameWindow() != IntPtr.Zero;
+
     private System.Windows.Forms.Timer? _updateWatch;
 
     private void StartUpdateWatch(AppConfig config)
@@ -1938,7 +1969,17 @@ public sealed class TrayApp : IDisposable
             _pendingUpdate = found;
 
             // A window already open needs telling; one opened later is handed it on construction.
+            // This is not the interrupting part — it only decides what the Home page shows the next
+            // time somebody looks at it — so it happens whether or not a game is running.
             if (_settings is { IsDisposed: false } open) OnUi(() => open.PendingUpdate = found);
+
+            if (Playing)
+            {
+                _updateNoticeHeld = true;
+                Log.Info($"Update {found.Version} found while playing; holding the notice until the "
+                       + "session ends and no game is running.");
+                return;
+            }
 
             Notify(string.Format(Words.NoticeUpdateFound, found.Version), ToolTipIcon.Info);
         }
@@ -1946,6 +1987,25 @@ public sealed class TrayApp : IDisposable
         {
             Log.Info($"Update check failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Show a held "new version" notice, once nothing is being played.
+    ///
+    /// Called from both events that can make the moment quiet — the session ending and a game
+    /// closing — because either can happen last. Ending a session with the game still running leaves
+    /// the game to finish; closing a game at the desk leaves nothing at all. The Playing check is
+    /// what makes calling this twice harmless.
+    /// </summary>
+    private void ReleaseHeldUpdateNotice()
+    {
+        if (!_updateNoticeHeld || Playing) return;
+        if (_pendingUpdate is not { Available: true } found) { _updateNoticeHeld = false; return; }
+
+        _updateNoticeHeld = false;
+
+        Log.Info($"Showing the held notice for version {found.Version}.");
+        Notify(string.Format(Words.NoticeUpdateFound, found.Version), ToolTipIcon.Info);
     }
 
     private void ShowSettings()
