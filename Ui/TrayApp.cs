@@ -1671,9 +1671,14 @@ public sealed class TrayApp : IDisposable
         {
             var status = Display.HdrControl.PrimaryStatus();
 
+            // Warning, not Info. Notify routes by severity — Info is governed by "when something you
+            // pressed is done" and everything else by "when something goes wrong" — so as Info this
+            // sat under the wrong switch, two lines from the identical case below it. Somebody who
+            // turned problem messages off still got told their monitor cannot do HDR, and somebody
+            // who turned them off *because* of that message could not make it stop.
             if (!status.Found || !status.Supported)
             {
-                Notify("The main display does not support HDR.", ToolTipIcon.Info);
+                Notify("The main display does not support HDR.", ToolTipIcon.Warning);
                 return;
             }
 
