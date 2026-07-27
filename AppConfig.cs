@@ -678,7 +678,12 @@ public sealed class AppConfig
             {
                 var json = File.ReadAllText(FilePath);
                 var cfg = JsonSerializer.Deserialize(json, ConfigJson.Default.AppConfig);
-                if (cfg is not null) return cfg;
+
+                if (cfg is not null)
+                {
+                    CleanSavedNames(cfg);
+                    return cfg;
+                }
             }
         }
         catch (Exception ex)
@@ -687,6 +692,37 @@ public sealed class AppConfig
             Log.Warn($"Could not read config, using defaults: {ex.Message}");
         }
         return new AppConfig();
+    }
+
+    /// <summary>
+    /// Take the picker's decoration back out of names written before it was stripped on the way in.
+    ///
+    /// The display list marks a switched-off television by appending a word to its name, and the
+    /// selected item is that decorated copy — so choosing a TV while it was off, which is the case
+    /// the list is built to allow, saved the marker as part of the name. It then showed up on the
+    /// Home page, in warnings and in the diagnostics report, permanently, because nothing rewrote
+    /// the name once the set came back on.
+    ///
+    /// Fixed at the point of saving in SettingsForm.PlainDisplayName. This is for the settings files
+    /// that already have it, and it is deliberately literal: it removes the exact suffix from the end
+    /// and touches nothing else, so a television genuinely named after that word keeps its name.
+    /// </summary>
+    private static void CleanSavedNames(AppConfig cfg)
+    {
+        cfg.TvDisplayName = Strip(cfg.TvDisplayName, Ui.Words.DisplayDisconnected);
+        cfg.TvAudioDeviceName = Strip(cfg.TvAudioDeviceName, Ui.Words.AudioDeviceOff);
+        cfg.DesktopAudioDeviceName = Strip(cfg.DesktopAudioDeviceName, Ui.Words.AudioDeviceOff);
+
+        static string Strip(string name, string suffix)
+        {
+            if (name.Length == 0) return name;
+
+            var trimmed = name.TrimEnd();
+
+            return trimmed.EndsWith(suffix, StringComparison.Ordinal)
+                ? trimmed[..^suffix.Length].TrimEnd()
+                : name;
+        }
     }
 
     /// <summary>

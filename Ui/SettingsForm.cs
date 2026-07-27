@@ -4698,6 +4698,21 @@ public sealed class SettingsForm : Form
     private static string PlainAudioName(string name) =>
         name.Replace(Words.AudioDeviceOff, "").TrimEnd();
 
+    /// <summary>
+    /// The display's own name, without the marker the picker adds to a switched-off one.
+    ///
+    /// [BUG] The list decorates a disconnected display by copying it with the suffix appended to
+    /// FriendlyName, and that copy is the selected item — so saving wrote the decoration into the
+    /// stored name. A television chosen while it was switched off, which the picker exists to allow,
+    /// was recorded as "LG TV SSCR2 — disconnected" for good. That name is shown back on the Home
+    /// page, in the log's warnings, and in the diagnostics report, and it never came off, because
+    /// nothing ever wrote the name again once the set was on.
+    ///
+    /// The audio side has had PlainAudioName for the same reason since its own version of this.
+    /// </summary>
+    private static string PlainDisplayName(string name) =>
+        name.Replace(Words.DisplayDisconnected, "").TrimEnd();
+
     private void LoadGames()
     {
         try
@@ -6303,9 +6318,14 @@ public sealed class SettingsForm : Form
         _loading = true;
         try
         {
+            // Both sides stripped before comparing. The list's entry carries the "disconnected"
+            // marker when the set is off, and configurations written before PlainDisplayName existed
+            // have that marker baked into the saved name — so a raw comparison could miss on either
+            // side. The device path is the real identity; this is the fallback for when it changes.
             _tvDisplay.SelectedIndex = IndexOf(_tvDisplay,
                 o => o is DisplayInfo d && (d.DevicePath == Config.TvDisplayPath
-                                            || d.FriendlyName == Config.TvDisplayName));
+                                            || PlainDisplayName(d.FriendlyName)
+                                                   == PlainDisplayName(Config.TvDisplayName)));
 
             _tvAudio.SelectedIndex = IndexOf(_tvAudio,
                 o => o is AudioDeviceInfo a && (a.Id == Config.TvAudioDeviceId
@@ -6441,7 +6461,7 @@ public sealed class SettingsForm : Form
         if (_tvDisplay.SelectedItem is DisplayInfo display)
         {
             Config.TvDisplayPath = display.DevicePath;
-            Config.TvDisplayName = display.FriendlyName;
+            Config.TvDisplayName = PlainDisplayName(display.FriendlyName);
         }
 
         if (_tvAudio.SelectedItem is AudioDeviceInfo tv)
