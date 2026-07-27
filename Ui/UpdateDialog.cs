@@ -82,15 +82,12 @@ internal sealed class UpdateDialog : Form
         // forty commits in it would otherwise produce a dialog taller than the screen.
         var changes = Summarise(found.Notes);
 
-        var list = new Label
+        // RichNote rather than a Label, so the ** that Summarise leaves in comes out bold instead of
+        // as two asterisks. A Label renders markup as the characters it is made of, which is fine for
+        // GitHub's generated list of commit subjects and wrong for notes somebody wrote.
+        var list = new RichNote(changes, Wide - Pad * 2 - 24, Theme.Body, Theme.BodySemi, Theme.Text)
         {
-            Text = changes,
-            Font = Theme.Body,
-            ForeColor = Theme.Text,
-            AutoSize = true,
-            MaximumSize = new Size(Wide - Pad * 2 - 20, 0),
             Location = new Point(0, 0),
-            BackColor = Color.Transparent,
         };
 
         var host = new ScrollHost
@@ -172,13 +169,27 @@ internal sealed class UpdateDialog : Form
         if (string.IsNullOrWhiteSpace(notes)) return Words.UpdateNoNotes;
 
         var lines = new List<string>();
+        bool blankPending = false;
+        int shown = 0;
 
         foreach (var raw in notes.Replace("\r", "").Split('\n'))
         {
             var line = raw.Trim();
 
-            if (line.Length == 0) continue;
-            if (line.StartsWith("#")) continue;                          // section headings
+            // "> [!NOTE]" and its four siblings. GitHub draws these as a coloured panel; here the
+            // marker is the panel's name and carries nothing a reader needs, so it goes and the text
+            // it introduces stays.
+            if (line.StartsWith("> [!") && line.EndsWith("]")) continue;
+
+            // The rest of a quoted block is ordinary text once its marker is gone.
+            if (line.StartsWith(">")) line = line[1..].Trim();
+
+            if (line.Length == 0)
+            {
+                blankPending = lines.Count > 0;
+                continue;
+            }
+
             if (line.StartsWith("**Full Changelog**")) continue;         // the trailing link
             if (line.StartsWith("https://")) continue;                   // a bare url on its own line
 
@@ -186,16 +197,60 @@ internal sealed class UpdateDialog : Form
             int by = line.LastIndexOf(" by @", StringComparison.Ordinal);
             if (by > 0) line = line[..by];
 
-            line = line.TrimStart('*', '-', ' ');
+            bool heading = line.StartsWith("#");
+            if (heading) line = line.TrimStart('#').Trim();
+
+            bool bullet = line.Length > 1
+                       && (line[0] == '-' || line[0] == '*' || line[0] == '+')
+                       && line[1] == ' ';
+
+            if (bullet) line = line[2..].Trim();
+
+            line = Plain(line);
             if (line.Length == 0) continue;
 
-            lines.Add("•  " + line);
+            // Air before a heading, and between blocks that had it in the source. Without this every
+            // section runs into the one above it and the whole thing reads as one paragraph.
+            if ((blankPending || heading) && lines.Count > 0 && lines[^1].Length > 0) lines.Add("");
+
+            blankPending = false;
+
+            lines.Add(heading ? $"**{line}**" : bullet ? $"•  {line}" : line);
 
             // A ceiling, because a release that merged eighty branches is not a list anyone reads.
-            if (lines.Count == 12) { lines.Add(Words.UpdateMoreChanges); break; }
+            // Counted on content rather than on lines, so the spacing above does not spend it.
+            if (++shown == 40) { lines.Add(""); lines.Add(Words.UpdateMoreChanges); break; }
         }
 
+        while (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count - 1);
+
         return lines.Count > 0 ? string.Join("\n", lines) : Words.UpdateNoNotes;
+    }
+
+    /// <summary>
+    /// Markdown this window cannot draw, reduced to the words it was wrapping.
+    ///
+    /// Bold is left alone: RichNote understands ** and it is the one piece of emphasis worth keeping.
+    /// Everything else here would otherwise be read out as punctuation — a link as its own bracketed
+    /// url, a keyboard key as an HTML tag, inline code as backticks.
+    /// </summary>
+    private static string Plain(string line)
+    {
+        // [text](url) — the text is the point; the address is not clickable here anyway.
+        line = System.Text.RegularExpressions.Regex.Replace(line, @"\[([^\]]+)\]\([^)]+\)", "$1");
+
+        // <kbd>Alt</kbd> and any other simple tag.
+        line = System.Text.RegularExpressions.Regex.Replace(line, @"</?[A-Za-z][^>]*>", "");
+
+        line = line.Replace("`", "").Replace("~~", "");
+
+        // Single-asterisk italics, without disturbing the double-asterisk bold around them.
+        const string keep = "";
+        line = line.Replace("**", keep);
+        line = line.Replace("*", "");
+        line = line.Replace(keep, "**");
+
+        return line.Trim();
     }
 
     protected override void OnPaint(PaintEventArgs e)
