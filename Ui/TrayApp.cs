@@ -825,9 +825,25 @@ public sealed class TrayApp : IDisposable
                     // The game is still there behind the desktop, so the PS button means "back to it".
                     _leftRunning = true;
 
+                    // Big Picture stays open, minimized, rather than being closed.
+                    //
+                    // [BUG] This was the only swap-to-desktop path that took the default and closed
+                    // it. The disconnect swap passes false, and the Big Picture prompt's own version
+                    // did too — MinimizeToDesktop's comment even describes keeping it "alive
+                    // (minimized) to drop back into" as the point of the parameter.
+                    //
+                    // Closing it costs more than a window. Steam reads its controller configuration
+                    // from the foreground window, so with Big Picture gone Steam is no longer in Big
+                    // Picture mode and the guide button stops opening the overlay — which is the
+                    // thing that takes the pad off the game so the session prompt can be answered.
+                    // Resuming then finds the game already running and does not reopen Big Picture,
+                    // so the session never gets back into the mode it was in.
+                    //
+                    // Leaving the game running and taking its shell away is not what "swap to
+                    // desktop" says or what tabbing out means.
                     RunBackground("Minimizing to the desktop", () =>
                     {
-                        _session.MinimizeToDesktop();
+                        _session.MinimizeToDesktop(closeBigPicture: false);
                         MuteIfWanted();
                     });
                     break;
