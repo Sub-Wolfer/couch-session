@@ -1618,10 +1618,11 @@ public sealed class SettingsForm : Form
         //
         // Drawn rather than set as a Label, because bright text alone was not enough separation.
         // Every caption on this grid is small dim text, so a heading in small text differing only in
-        // shade is a heading you have to hunt for. Three things set it apart instead: a rule across
+        // shade is a heading you have to hunt for. Four things set it apart instead: a rule across
         // the full width above it, which *closes* the group before rather than merely labelling the
-        // one after; bright ink where a caption is dim; and air above the rule so the groups read as
-        // blocks with gaps between them rather than as a continuous grid with labels sprinkled in.
+        // one after; accent ink, which nothing else on this card uses; a point more size and the
+        // semibold weight; and air above the rule so the groups read as blocks with gaps between
+        // them rather than as a continuous grid with labels sprinkled in.
         //
         // The first heading has no rule. There is nothing above it to close, and a line under the
         // card's own top edge is just a second border.
@@ -1633,9 +1634,9 @@ public sealed class SettingsForm : Form
 
             var head = new Panel
             {
-                Size = new Size(RowWidth, first ? 18 : 30),
+                Size = new Size(RowWidth, first ? 22 : 36),
                 BackColor = Color.Transparent,
-                Margin = new Padding(0, first ? 0 : 10, 0, 6),
+                Margin = new Padding(0, first ? 0 : 14, 0, 9),
             };
 
             string caption = name.ToUpperInvariant();
@@ -1651,9 +1652,14 @@ public sealed class SettingsForm : Form
                     g.DrawLine(rule, 0, 0, head.Width, 0);
                 }
 
-                TextRenderer.DrawText(g, caption, Theme.Caption,
-                                      new Rectangle(0, first ? 0 : 12, head.Width, 18),
-                                      Theme.Text,
+                // Color carries this now, not just weight. In Theme.Text these headings were the
+                // same ink as every value on the grid and only a point smaller than the captions, so
+                // the eye had nothing to lock onto and the rule was doing the whole job on its own.
+                // Accent ink appears nowhere else on this card, which is exactly what makes it read
+                // as a different kind of line rather than as one more setting.
+                TextRenderer.DrawText(g, caption, Theme.SmallBold,
+                                      new Rectangle(0, first ? 0 : 15, head.Width, 20),
+                                      Theme.Info,
                                       TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix
                                     | TextFormatFlags.VerticalCenter);
             };
