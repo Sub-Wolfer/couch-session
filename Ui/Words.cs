@@ -407,34 +407,15 @@ internal static class Words
         "For the whole session",
     ];
 
-    // Both displays are named, not just the primary one. Settings are read at a desk, where the
-    // primary display is the monitor — so a warning about "your display" would be about the wrong
-    // screen for a page whose whole subject is the television.
-    /// <summary>
-    /// {0} is the display's name, {1} what it is, {2} what is known about its HDR.
-    ///
-    /// A dash rather than a second bracket: the name already carries its resolution in brackets, so
-    /// "**AW3423DWF** (3440×1440) (main display now)" put two bracketed asides back to back, and
-    /// stacking the lines lined those pairs up underneath each other where the repetition shows.
-    /// </summary>
-    public const string HdrDisplayPart = "**{0}** — {1}: {2}.";
-    public const string HdrDisplayMain = "main display now";
-    public const string HdrDisplayCouch = "Couch Session display";
-    public const string HdrDisplayUnnamed = "Unnamed display";
-    // These read the monitor's EDID, which is the honest answer about the panel. What actually gates
-    // switching is Windows' own advancedColorSupported (HdrControl.SetPrimaryHdr), and the two can
-    // disagree — that disagreement is the entire reason the EDID check was written. So the note says
-    // what the display reports and stops short of promising what will or will not happen, which it is
-    // not the thing that decides.
-    // Both fill the same {2} in HdrDisplayPart, so they have to be the same kind of phrase. One was a
-    // noun ("HDR supported") and the other a verb ("does not report HDR support"), which read as two
-    // different sentences depending on which display you looked at. Both report now, because
-    // reporting is exactly what this is: the panel's own answer, not a promise about what will happen.
-    public const string HdrSupported = "reports HDR support";
-    public const string HdrNotSupported = "does not report HDR support";
-    public const string HdrDisplayOff = "not connected, so it cannot be checked";
-    public const string HdrDisplaysUnknown =
-        "No display could be identified just now, so HDR support is unknown.";
+    // Eight strings stood here, describing each display and whether it reported HDR support:
+    // HdrDisplayPart and its three role names, the two support answers, the switched-off case and
+    // the nothing-found case.
+    //
+    // Gone with the note that used them. Somebody who owns a display knows whether it does HDR, and
+    // a page whose subject is which games to tick opened with four lines telling them about their
+    // own hardware. The disagreement those strings were carefully worded around — the panel's EDID
+    // answer against Windows' own — has not gone anywhere, and is still in the log once per display
+    // per run for anyone diagnosing a display that will not switch.
 
     // Shown in place of a live games list when HDR is set to run for the whole session.
     // The priority-boost sentence that used to end this is gone. It said this list was what

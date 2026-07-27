@@ -140,7 +140,6 @@ public sealed class SettingsForm : Form
     private RichNote? _padPresence;
 
     /// <summary>Live text naming both displays and what each can do about HDR.</summary>
-    private RichNote? _hdrDisplayNote;
 
     /// <summary>
     /// Groups of rows that only exist on screen while the setting above them is on.
@@ -2960,15 +2959,15 @@ public sealed class SettingsForm : Form
         SetOptions(_hdrMode, Words.HdrModeOptions);
         AddPick(card, Words.HdrMode, _hdrMode, Words.HdrModeWhy, Words.HdrModeOptions[(int)HdrMode.Off]);
 
-        // Whether either display can do HDR at all — the fact that decides whether anything on this
-        // page does anything, and the one thing it never said.
-        _hdrDisplayNote = AddNote(card, Words.HdrDisplaysUnknown);
-        RefreshHdrDisplayNote();
-
-        // Re-read on the way back in: a television that was off when this window opened is the
-        // ordinary case, and the answer changes the moment it is switched on.
-        page.VisibleChanged += (_, _) => { if (page.Visible) RefreshHdrDisplayNote(); };
-
+        // A note reporting what each display says about its own HDR support used to sit here, with a
+        // per-display override underneath it. Both are gone.
+        //
+        // The note told the reader something they already knew — whether their own monitor does HDR —
+        // and the override existed to correct the note when it was wrong, which is a control that only
+        // has a job because of the line above it. Removing the claim removes the need to overrule it.
+        //
+        // What they cost is the argument for taking them out. Four lines of card sat above the game
+        // list, which is what this page is actually for, on a page opened to tick games.
         NewSection(page, Words.SectionGames);
 
         var listCard = NewCard(page);
@@ -4784,73 +4783,15 @@ public sealed class SettingsForm : Form
     private HdrSupport SupportOf(GameEntry game) =>
         Config.HdrTags.TryGetValue(game.Key, out var tag) ? (HdrSupport)tag : HdrDatabase.Lookup(game);
 
-    /// <summary>
-    /// Name the displays this page can act on, and say whether each can do HDR at all.
-    ///
-    /// Both, rather than just the primary. The primary display while anyone is reading this is the
-    /// monitor in front of them, and the display the page is really about is the television — so a
-    /// warning about "your display" would routinely be about the wrong screen, and be wrong in the
-    /// direction that makes a working feature look broken.
-    ///
-    /// A television that is switched off is reported as unknown, never as unsupported. It has said
-    /// nothing about HDR; nobody has been able to ask it, and printing a guess as a fact is exactly
-    /// what this app does not do.
-    /// </summary>
-    private void RefreshHdrDisplayNote()
-    {
-        if (_hdrDisplayNote is null) return;
-
-        try
-        {
-            string? primary = DisplayManager.CurrentPrimaryDevicePath();
-            string couch = Config.TvDisplayPath;
-
-            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var d in DisplayManager.ListDisplays()) names[d.DevicePath] = d.FriendlyName;
-
-            // One line when the television is already the main display — during a session, or for
-            // anyone who plays on it at the desk. Saying the same panel twice under two headings
-            // reads as two displays.
-            bool same = primary is not null && !string.IsNullOrWhiteSpace(couch)
-                     && string.Equals(primary, couch, StringComparison.OrdinalIgnoreCase);
-
-            var parts = new List<string>();
-
-            if (primary is not null)
-                parts.Add(Part(primary, same ? $"{Words.HdrDisplayMain} · {Words.HdrDisplayCouch}"
-                                             : Words.HdrDisplayMain));
-
-            if (!same && !string.IsNullOrWhiteSpace(couch)) parts.Add(Part(couch, Words.HdrDisplayCouch));
-
-            // One display per line. Run together they read as a single sentence about one screen,
-            // which is the opposite of the point — and RichNote honours \n as a real break.
-            _hdrDisplayNote.SetMarkup(parts.Count == 0
-                                          ? Words.HdrDisplaysUnknown
-                                          : string.Join("\n", parts));
-
-            string Part(string path, string role)
-            {
-                var status = Display.HdrControl.StatusFor(path);
-
-                // ReallySupported, not Supported: Windows reports advanced colour, which a plain SDR
-                // panel with a wide gamut also claims. The display's own EDID is the honest answer.
-                string state = !status.Found          ? Words.HdrDisplayOff
-                             : status.ReallySupported ? Words.HdrSupported
-                                                      : Words.HdrNotSupported;
-
-                string name = names.TryGetValue(path, out var found) && !string.IsNullOrWhiteSpace(found)
-                                  ? found
-                                  : Words.HdrDisplayUnnamed;
-
-                return string.Format(Words.HdrDisplayPart, name, role, state);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Could not read HDR support for the displays: {ex.Message}");
-            _hdrDisplayNote.SetMarkup(Words.HdrDisplaysUnknown);
-        }
-    }
+    // RefreshHdrDisplayNote lived here. It named the main display and the couch display and said
+    // whether each reported HDR support, refreshed whenever the page was reopened so a television
+    // switched on later updated the line.
+    //
+    // Removed along with the note it filled in. Display.HdrControl.StatusFor and
+    // MonitorNames.AdvertisesHdr were written for it and now have no caller. Both are left in place
+    // deliberately: the EDID parsing behind them (the CTA-861 HDR static metadata block) is the
+    // hard-won part, it is documented as such, and reading a panel's own answer is one call away
+    // from being useful again. Nothing runs it today.
 
     /// <summary>Repaint, relabel and re-sort after a tag was set by either route.</summary>
     private void TagChanged()
