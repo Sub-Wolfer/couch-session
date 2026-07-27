@@ -1350,6 +1350,9 @@ public sealed class SettingsForm : Form
     /// <summary>The at-a-glance tiles, rebuilt from settings rather than written once.</summary>
     private FlowLayoutPanel? _homeGlance;
 
+    /// <summary>The glance tiles in the order they were made, apart from the group headings.</summary>
+    private readonly List<GlanceTile> _glanceTiles = [];
+
     /// <summary>
     /// Everything the home page reports, in the order it matters from a sofa.
     ///
@@ -1369,6 +1372,8 @@ public sealed class SettingsForm : Form
         // whose text actually differs is invalidated, so a page nobody is interacting with sits still.
         bool building = _homeGlance.Controls.Count == 0;
         int index = 0;
+
+        if (building) _glanceTiles.Clear();
 
         // Four across, and the arithmetic matters.
         //
@@ -1440,7 +1445,13 @@ public sealed class SettingsForm : Form
         bool tvSoundLive = audio && tvDevice is { IsActive: true };
         bool deskSoundLive = deskDevice is { IsActive: true };
 
-        // ── the session ──
+        // Headed groups, rather than thirty-odd tiles in one undifferentiated grid.
+        //
+        // The tiles were already ordered by subject; nothing said so, so the reader had to infer the
+        // boundaries from the captions and re-find them on every visit. A heading costs one row and
+        // turns scanning into jumping. Group() writes a full-width caption, which also forces the
+        // wrap — so each group starts on a fresh line whatever the group before it left behind.
+        Group("Display and sound");
         Tile("Couch display", display ?? "not chosen", displayLive, page: DisplayPage, anchor: _tvDisplay);
         Tile("Resolution", _tvVideoMode.SelectedItem?.ToString() ?? "whatever it is", true, page: DisplayPage,
              anchor: _tvVideoMode);
@@ -1448,7 +1459,6 @@ public sealed class SettingsForm : Form
         Tile("TV on exit", tvOff ? "disconnects" : "stays connected", true, page: DisplayPage,
              anchor: _turnOffTvOnExit);
 
-        // ── sound ──
         Tile("Sound in session", audio ? tvSound ?? "TV (not detected)" : "unchanged", tvSoundLive,
              page: DisplayPage, anchor: _tvAudio, wide: true);
         Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
@@ -1458,7 +1468,7 @@ public sealed class SettingsForm : Form
 
         Tile("Steam after Big Picture", SteamAfterText(), true, page: GeneralPage, anchor: _steamAfter);
 
-        // ── controls ──
+        Group("Controller");
         Tile("Controller", pads ?? "none connected", pads is not null, page: ControllerPage);
 
         // Which pad, not just whether one is connected.
@@ -1487,6 +1497,17 @@ public sealed class SettingsForm : Form
              page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
         Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
              keyCombo != 0, page: HotkeysPage, anchor: _shortcutKeyboard);
+        // "on" was not the whole answer.
+        //
+        // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
+        // will not move" is the commonest thing to come back about. A tile that says "on" while the
+        // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
+        // here answers it without opening anything.
+        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
+                           : _mouseHold.Checked ? $"hold {HoldButtonName()}"
+                                                : "on, always",
+             _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
+
         Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
              anchor: _guideEndsSession);
 
@@ -1512,7 +1533,7 @@ public sealed class SettingsForm : Form
             _ => "nothing",
         };
 
-        // ── HDR ──
+        Group("HDR");
         // One tile, because it is now one setting. Two tiles for two switches that cancelled each
         // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
         // described a state the app has never actually been in.
@@ -1546,7 +1567,7 @@ public sealed class SettingsForm : Form
                                       ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
              _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
 
-        // ── starting and stopping ──
+        Group("Starting a session");
         Tile("Start with Windows", onBoot ? "yes" : "no", onBoot, page: GeneralPage, anchor: _startWithWindows);
         Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
              page: ControllerPage, anchor: _startOnController);
@@ -1558,7 +1579,7 @@ public sealed class SettingsForm : Form
         Tile("Start when the app opens", _startOnLaunch.Checked ? "yes" : "no",
              _startOnLaunch.Checked, page: GeneralPage, anchor: _startOnLaunch);
 
-        // ── performance and pointer ──
+        Group("Performance");
         Tile("Power plan", _changePowerPlan.Checked
                                ? _powerPlan.SelectedItem?.ToString() ?? "chosen" : "unchanged",
              _changePowerPlan.Checked, page: PerformancePage, anchor: _changePowerPlan);
@@ -1569,18 +1590,8 @@ public sealed class SettingsForm : Form
         // that Windows Game Mode is off — which is a fact about the machine, not about this app.
         Tile("Game Mode", _enableGameMode.Checked ? "on" : "off", _enableGameMode.Checked,
              page: PerformancePage, anchor: _enableGameMode);
-        // "on" was not the whole answer.
-        //
-        // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
-        // will not move" is the commonest thing to come back about. A tile that says "on" while the
-        // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
-        // here answers it without opening anything.
-        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
-                           : _mouseHold.Checked ? $"hold {HoldButtonName()}"
-                                                : "on, always",
-             _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
 
-        // ── what the app changes about Windows ──
+        Group("Windows");
         //
         // These three were the only settings with nothing on this page, and they are the ones that most
         // deserved a line: every other tile describes something that happens for a session and is put
@@ -1600,13 +1611,38 @@ public sealed class SettingsForm : Form
         Tile("Game Bar", _disableGameBarButton.Checked ? "off" : "on",
              !_disableGameBarButton.Checked, page: PerformancePage, anchor: _disableGameBarButton);
 
-        // ── the two that decide what the app says and asks ──
+        Group("Messages");
         Tile("Before closing a game", _confirmClosingGame.Checked ? "asks first" : "no warning",
              _confirmClosingGame.Checked, page: GeneralPage, anchor: _confirmClosingGame);
         Tile("Notifications", _showNotifications.Checked ? "on" : "off", _showNotifications.Checked,
              page: GeneralPage, anchor: _showNotifications);
 
 
+
+        // A heading inside the grid, full width so it always starts its own row.
+        //
+        // Full width does two jobs: it reads as a heading rather than as another tile, and it
+        // guarantees the wrap. A part-width heading would sit in whatever column the group before it
+        // happened to end in, which is the one place a heading must never be.
+        void Group(string name)
+        {
+            if (!building) return;
+
+            _homeGlance!.Controls.Add(new Label
+            {
+                Text = name.ToUpperInvariant(),
+                Font = Theme.Caption,
+                ForeColor = Theme.TextFaint,
+                AutoSize = false,
+                Size = new Size(RowWidth, 20),
+                TextAlign = ContentAlignment.BottomLeft,
+                BackColor = Color.Transparent,
+
+                // No air above the first one; it already has the card's own padding.
+                Margin = new Padding(0, _homeGlance.Controls.Count == 0 ? 0 : 14, 0, 6),
+                UseMnemonic = false,
+            });
+        }
 
         // page:  where clicking this tile goes — the settings page that owns what it reports.
         // anchor: the control on that page holding this setting, so its row can be lit on arrival.
@@ -1642,12 +1678,22 @@ public sealed class SettingsForm : Form
 
                 _homeGlance!.Controls.Add(fresh);
 
+                // Kept in a list of its own as well as in the panel.
+                //
+                // The update pass walks tiles by position and used to index straight into Controls,
+                // which worked only while every child was a tile. The headings are children too, so
+                // from the second group onwards every tile would have been given the value belonging
+                // to a different one.
+                _glanceTiles.Add(fresh);
+
                 index++;
                 return;
             }
 
-            if (index < _homeGlance!.Controls.Count && _homeGlance.Controls[index] is GlanceTile tile)
+            if (index < _glanceTiles.Count)
             {
+                var tile = _glanceTiles[index];
+
                 // Repainted only when something is different. Invalidating regardless is the same
                 // flicker by another route.
                 // The pad the glyphs are drawn for is re-read every time as well: picking up the other
