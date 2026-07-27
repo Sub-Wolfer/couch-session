@@ -422,7 +422,11 @@ internal static class Words
     // disagree — that disagreement is the entire reason the EDID check was written. So the note says
     // what the display reports and stops short of promising what will or will not happen, which it is
     // not the thing that decides.
-    public const string HdrSupported = "HDR supported";
+    // Both fill the same {2} in HdrDisplayPart, so they have to be the same kind of phrase. One was a
+    // noun ("HDR supported") and the other a verb ("does not report HDR support"), which read as two
+    // different sentences depending on which display you looked at. Both report now, because
+    // reporting is exactly what this is: the panel's own answer, not a promise about what will happen.
+    public const string HdrSupported = "reports HDR support";
     public const string HdrNotSupported = "does not report HDR support";
     public const string HdrDisplayOff = "not connected, so it cannot be checked";
     public const string HdrDisplaysUnknown =
