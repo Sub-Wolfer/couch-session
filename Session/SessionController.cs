@@ -283,6 +283,17 @@ public sealed class SessionController
                     // player straight back into the game.
                     BringToForeground(game);
                     Log.Info("A game is already running; returned straight to it without reopening Big Picture.");
+
+                    // And move the pointer out of the picture, which the Big Picture path does for its
+                    // own reasons a few hundred lines below and this path never did.
+                    //
+                    // Coming back from the desktop means the pointer was last used there, very often by
+                    // the controller's own mouse emulation, and it is left sitting wherever it stopped.
+                    // A game that is merely refocused rather than started does not re-hide the system
+                    // cursor, so it stays on screen over the game for the rest of the session with
+                    // nothing a pad can do about it.
+                    if (DisplayManager.BoundsOf(Config.TvDisplayPath) is { } tv)
+                        BigPictureLauncher.ParkCursor(tv);
                 }
                 else if (BigPictureLauncher.FindWindow() == IntPtr.Zero
                     && BigPictureLauncher.IsSteamInstalled())
