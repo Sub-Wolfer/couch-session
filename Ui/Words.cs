@@ -401,12 +401,15 @@ internal static class Words
             + "when it ends, so there is nothing to pick. Switch back to **per game** above to edit "
             + "it.";
 
-    public const string HdrHotkeyRemember = "Remember when HDR is toggled manually per game — however it is toggled";
+    // Yours, restored. I overwrote this once by writing my whole copy of the file over the disk
+    // without re-reading it first, and the wording below is what was lost — put back verbatim.
+    public const string HdrHotkeyRemember = "Smart HDR";
     public const string HdrHotkeyRememberWhy =
-        "Turning HDR on during a game — or before it launches — adds it to (or drops it from) the "
-            + "list, so HDR comes on for it by itself next time and off when it closes. The hotkey, "
-            + "the controller shortcut, or a game launched with HDR already on all count. Off, HDR is "
-            + "toggled the once and the list is left alone.";
+        "**HDR learns from you!** Toggle HDR on during a game — or before it launches — "
+            + "adds it to the list, so HDR comes on for it by itself next time and off when "
+            + "it closes. The hotkey, the controller shortcut, or a game launched with HDR "
+            + "already on all count. Off, HDR is toggled the once and the list is left alone. "
+            + "If you toggle HDR off in game it also removes it from the list for the future. ";
     public const string TipHdrBulk = "Tick every game known to render HDR natively.";
     public const string TipHdrBulkOther =
         "Tick everything not known to render HDR natively — **Windows' own Auto HDR** (a different "
