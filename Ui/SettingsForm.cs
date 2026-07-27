@@ -1513,9 +1513,15 @@ public sealed class SettingsForm : Form
         // will not move" is the commonest thing to come back about. A tile that says "on" while the
         // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
         // here answers it without opening anything.
+        //
+        // The other state said "on, always" and now says "on". "Always" was there to mean "without
+        // holding anything", which is a meaning nobody can take from the word unless they have
+        // already seen the "hold R2" state and worked out what it is being contrasted with. It was
+        // also a claim the app does not keep: the pointer stands down over a fullscreen game unless
+        // that is allowed separately. "on" beside "hold R2" carries the contrast on its own.
         Tile("Controller as mouse", !_mouseControl.Checked ? "off"
                            : _mouseHold.Checked ? $"hold {HoldButtonName()}"
-                                                : "on, always",
+                                                : "on",
              _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
 
         // The two disconnect answers, beside the controller settings they belong to rather than in
