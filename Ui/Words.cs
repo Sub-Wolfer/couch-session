@@ -799,6 +799,61 @@ internal static class Words
     public const string NoticeHdrRemembered = "{0} will turn HDR on by itself from now on.";
     public const string NoticeHdrForgotten = "{0} will no longer turn HDR on by itself.";
 
+    // ── The session messages, and the rest that were written into the code ─────────
+    //
+    // These nine were the exception to the promise at the top of this file. They lived as literals in
+    // SessionController, TrayApp and Program, so anybody who came here to change what the app says —
+    // which is the entire reason this file exists — would have searched, found nothing, and concluded
+    // the words were not theirs to change.
+    //
+    // The first two pairs are the most-seen text in the whole application. They appear every time
+    // somebody sits down and every time they get up again.
+
+    /// <summary>Shown on the television as a session begins. Title, then the line under it.</summary>
+    public const string NoticeSessionOn = "Couch Session is on";
+    public const string NoticeSessionOnDetail = "Display and audio moved to the TV.";
+
+    /// <summary>Shown on the desktop as a session ends.</summary>
+    public const string NoticeSessionOff = "Back on the desktop";
+    public const string NoticeSessionOffDetail = "Displays, audio and windows restored.";
+
+    /// <summary>The HDR hotkey, when the display cannot do HDR at all.</summary>
+    public const string WarnHdrUnsupported = "The main display does not support HDR.";
+
+    /// <summary>The HDR hotkey, when Windows refused the change.</summary>
+    public const string WarnHdrRefused = "Windows would not change HDR on the main display.";
+
+    /// <summary>A session was asked for before a television had been chosen.</summary>
+    public const string NoticeNotSetUp = "Couch Session is not set up yet. Opening settings.";
+
+    /// <summary>{0} is the reason Windows gave.</summary>
+    public const string WarnDiagnosticsWriteFailed = "Could not write the diagnostics report: {0}";
+
+    /// <summary>{0} is what was being attempted, {1} the reason it stopped.</summary>
+    public const string WarnBackgroundFailed = "{0} failed.\n{1}";
+
+    /// <summary>
+    /// The box shown when the app cannot start at all. {0} is the reason, {1} the settings folder.
+    ///
+    /// This one is not governed by the notification switches and cannot be: it is shown before the
+    /// settings have been read, so there is nothing yet to consult.
+    /// </summary>
+    public const string FatalStart =
+        "Couch Session hit an error and had to stop.\n\n{0}\n\nDetails were written to:\n{1}";
+
+    /// <summary>
+    /// The failsafe: the television never showed a picture, so everything was put back. {0} is why.
+    ///
+    /// Shown as a proper dialog rather than a corner card, because it is the one message that asks
+    /// the reader to go and do something about it, and a toast that times out cannot ask anything.
+    /// Not governed by the notification switches for the same reason.
+    /// </summary>
+    public const string WarnTvNotLive =
+        "Couch Session could not get a picture on the TV, so your displays and audio "
+      + "have been restored.\n\n"
+      + "Reason: {0}.\n\n"
+      + "Check that the TV is switched on and set to the correct input, then try again.";
+
     public const string ReportBug = "Report a bug";
     // Shown on the About page, under the row of buttons there — none of which is Report a bug, which
     // lives in the footer. It used to describe that footer button and sat directly beneath "Save

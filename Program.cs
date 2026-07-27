@@ -10,9 +10,8 @@ internal static class Program
     private static void Fatal(Exception? ex)
     {
         Log.Error("Couch Session could not start", ex ?? new Exception("Unknown error"));
-        MessageBox.Show($"Couch Session hit an error and had to stop.\n\n{ex?.Message}\n\n"
-                      + $"Details were written to:\n{AppConfig.Directory}",
-                        "Couch Session", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show(string.Format(Ui.Words.FatalStart, ex?.Message, AppConfig.Directory),
+                        AppInfo.Name, MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
     private static readonly IntPtr HWND_BROADCAST = new(0xFFFF);

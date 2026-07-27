@@ -1678,7 +1678,7 @@ public sealed class TrayApp : IDisposable
             // who turned them off *because* of that message could not make it stop.
             if (!status.Found || !status.Supported)
             {
-                Notify("The main display does not support HDR.", ToolTipIcon.Warning);
+                Notify(Words.WarnHdrUnsupported, ToolTipIcon.Warning);
                 return;
             }
 
@@ -1686,7 +1686,7 @@ public sealed class TrayApp : IDisposable
 
             if (!Display.HdrControl.SetPrimaryHdr(wanted))
             {
-                Notify("Windows would not change HDR on the main display.", ToolTipIcon.Warning);
+                Notify(Words.WarnHdrRefused, ToolTipIcon.Warning);
                 return;
             }
 
@@ -2241,7 +2241,7 @@ public sealed class TrayApp : IDisposable
         catch (Exception ex)
         {
             Log.Error("Writing diagnostics failed", ex);
-            Notify($"Could not write the diagnostics report: {ex.Message}", ToolTipIcon.Error);
+            Notify(string.Format(Words.WarnDiagnosticsWriteFailed, ex.Message), ToolTipIcon.Error);
         }
     }
 
@@ -3092,7 +3092,7 @@ public sealed class TrayApp : IDisposable
     {
         if (_session.Config.IsConfigured) return true;
 
-        Notify("Couch Session is not set up yet. Opening settings.", ToolTipIcon.Info);
+        Notify(Words.NoticeNotSetUp, ToolTipIcon.Info);
         OpenSettings();
         return _session.Config.IsConfigured;
     }
@@ -3114,13 +3114,14 @@ public sealed class TrayApp : IDisposable
                 // for the user and explains what to fix, so show it properly rather than
                 // flashing it past in a balloon.
                 Log.Error($"{what}: {ex.Message}");
-                OnUi(() => MessageBox.Show(ex.Message, "Couch Session",
+                OnUi(() => MessageBox.Show(ex.Message, AppInfo.Name,
                                            MessageBoxButtons.OK, MessageBoxIcon.Warning));
             }
             catch (Exception ex)
             {
                 Log.Error($"{what} failed", ex);
-                OnUi(() => Notify($"{what} failed.\n{ex.Message}", ToolTipIcon.Error));
+                OnUi(() => Notify(string.Format(Words.WarnBackgroundFailed, what, ex.Message),
+                                  ToolTipIcon.Error));
             }
             finally
             {

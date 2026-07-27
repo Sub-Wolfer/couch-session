@@ -294,8 +294,8 @@ public sealed class SessionController
 
             if (Config.ShowNotifications && Config.ShowSessionNotifications)
             {
-                Toast.Show("Couch Session is on", "Display and audio moved to the TV.",
-                           System.Drawing.Color.FromArgb(62, 191, 122));
+                Toast.Show(Ui.Words.NoticeSessionOn, Ui.Words.NoticeSessionOnDetail,
+                           Ui.Theme.Good);
             }
         }
         catch (Exception ex)
@@ -459,11 +459,7 @@ public sealed class SessionController
         var detail = string.Join("; ", problems);
         Log.Error($"TV verification failed: {detail}");
 
-        throw new TvNotLiveException(
-            "Couch Session could not get a picture on the TV, so your displays and audio "
-          + "have been restored.\n\n"
-          + $"Reason: {detail}.\n\n"
-          + "Check that the TV is switched on and set to the correct input, then try again.");
+        throw new TvNotLiveException(string.Format(Ui.Words.WarnTvNotLive, detail));
     }
 
     /// <summary>Undo everything and go back to the desktop. Safe to call repeatedly.</summary>
@@ -677,9 +673,9 @@ public sealed class SessionController
         Log.Session("=== back on desktop ===");
 
         if (Config.ShowNotifications && Config.ShowSessionNotifications)
-            Toast.Show("Back on the desktop",
-                       "Displays, audio and windows restored.",
-                       System.Drawing.Color.FromArgb(124, 106, 247));
+            Toast.Show(Ui.Words.NoticeSessionOff,
+                       Ui.Words.NoticeSessionOffDetail,
+                       Ui.Theme.Accent);
 
         _tuning.Restore();
     }
