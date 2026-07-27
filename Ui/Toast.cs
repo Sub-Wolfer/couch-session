@@ -102,8 +102,17 @@ internal sealed class Toast : Form
         // A fixed height meant a longer message was quietly clipped or ellipsised — and the
         // message is the entire point of the notification. The detail wraps and the box grows
         // to fit however many lines that turns out to be.
-        int titleHeight = TextRenderer.MeasureText(_title, _titleFont, Size.Empty,
-                                                   TextFlags).Height;
+        // [BUG] The title was measured at Size.Empty, which asks "how wide would this be on one
+        // line?" and answers without reference to the box it has to fit in. Anything longer than the
+        // toast was then drawn into a rectangle narrower than its own measurement and simply cut off
+        // mid-word, which is the failure the note above says was fixed — it was fixed for the detail
+        // only, and the title kept the old behaviour for a while afterwards.
+        //
+        // Measured against the real width now, with the same wrapping the detail gets, so a long
+        // title takes two lines and the box grows for them.
+        int titleHeight = TextRenderer.MeasureText(_title, _titleFont,
+                                                   new Size(TextWidth, 0),
+                                                   TextFlags | TextFormatFlags.WordBreak).Height;
 
         int detailHeight = TextRenderer.MeasureText(_detail, _detailFont,
                                                     new Size(TextWidth, 0),
@@ -383,12 +392,13 @@ internal sealed class Toast : Form
 
         // Drawn with exactly the flags and width the height was measured with, so what fits in
         // the measurement fits on screen. No ellipsis: the box was sized to hold all of it.
-        int titleHeight = TextRenderer.MeasureText(g, _title, _titleFont, Size.Empty,
-                                                   TextFlags).Height;
+        int titleHeight = TextRenderer.MeasureText(g, _title, _titleFont,
+                                                   new Size(TextWidth, 0),
+                                                   TextFlags | TextFormatFlags.WordBreak).Height;
 
         TextRenderer.DrawText(g, _title, _titleFont,
                               new Rectangle(_textLeft, _pad, TextWidth, titleHeight),
-                              Theme.Text, TextFlags);
+                              Theme.Text, TextFlags | TextFormatFlags.WordBreak);
 
         TextRenderer.DrawText(g, _detail, _detailFont,
                               new Rectangle(_textLeft, _pad + titleHeight + S(4),
