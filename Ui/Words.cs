@@ -208,8 +208,8 @@ internal static class Words
     public const string CheckForUpdates = "Look for new versions";
     public const string CheckForUpdatesWhy =
         
-            "Asks GitHub shortly after the app starts, whenever you open this window, and "
-            + "once a day otherwise. **Nothing is ever installed on its own.** A new version "
+            "Asks GitHub shortly after the app starts, when you open this window, and once "
+            + "a day otherwise. **Nothing is ever installed on its own.** A new version "
             + "appears on the Home page with a button, and there is one on this page too; an "
             + "update only happens when you press one of them.";
 
