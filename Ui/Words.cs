@@ -94,16 +94,17 @@ internal static class Words
     public const string SectionWindows = "Windows";
     public const string SectionStartup = "Startup";
     public const string SectionNotifications = "Notifications";
-    // Was "Starting a session", which stopped being the whole truth when the disconnect setting
-    // moved into this card: coming back to the desktop is ending one. A heading that names half of
-    // what is under it is worse than a vague one, because the reader stops looking at the half it
-    // does not mention.
-    // The controller page, reorganised into one question per card.
+    // The controller page, reorganized into one question per card.
     //
     // It was two headings over five settings, with "Starting a session" sitting above a card that
     // also decided what happens when a controller is lost. Grouping by the question each card
     // answers is the whole of the improvement: a reader looking for one of these can find the right
     // card without reading the one above it, and every heading is now true of everything under it.
+    //
+    // Which is why "Starting a session" is still here and is no longer a problem. The paragraph that
+    // used to open this comment argued it named only half of what sat under it — true when the
+    // disconnect setting shared its card, and left standing after the split moved that setting to
+    // SectionDisconnect. It read as an unfixed complaint about the line directly beneath it.
     public const string SectionYourController = "Your controller";
     public const string SectionController = "Starting a session";
     public const string SectionDisconnect = "If it disconnects";
@@ -727,10 +728,13 @@ internal static class Words
     public const string DisconnectLeave = "Leave it for now";
     public const string DisconnectLeaveWhat = "Stays on the desktop with the game running.";
 
-    // Named for what it does rather than "Don't show this again", which does not say whether the
-    // coming-back stops too. It does not: the setting drops one step, to "Come back to the desktop".
     // The tick on the "are you sure" prompt. Named for the setting it switches off rather than
     // "don't show this again", so it is clear the check is going away and not just this one window.
+    //
+    // A second paragraph here belonged to DisconnectDontAsk below and described the disconnect
+    // setting dropping "one step, to 'Come back to the desktop'" — an option renamed to "Switch back
+    // to the desktop" when that list was rewritten. Two settings' worth of reasoning over one
+    // constant, half of it naming something that no longer exists.
     public const string SureCloseDontAsk = "Stop double-checking before closing a game";
 
     public const string DisconnectDontAsk = "Stop asking me this — just switch back to the desktop";
@@ -827,9 +831,9 @@ internal static class Words
     // Appended to displays that are known about but not currently switched on.
     public const string DisplayDisconnected = "— disconnected";
 
-    // Appended to whichever active display is currently the Windows primary. Says "currently" so it
-    // is not mistaken for the display that becomes primary during a couch session.
-
+    // A comment here described a suffix appended to whichever display was currently the Windows
+    // primary. That constant is gone; the comment outlived it and sat directly above TvDisplay,
+    // reading as a description of the wrong thing.
     public const string TvDisplay = "Couch Session display";
     // Was: "Only displays Windows can see right now are listed — switch your TV on and it appears
     // here." ListDisplays queries AllPaths and keeps inactive ones, sorted live-first and shown dimmed
@@ -1258,11 +1262,11 @@ internal static class Words
             + "start or end a session. {0}";
 
     public const string PadsChosenAwayNothing = "Nothing else is connected either.";
-    /// <summary>
-    /// What happens on a disconnect. Worth stating outright rather than leaving to be discovered:
-    /// the fear is that a controller going flat mid-game drops the television back to the desktop,
-    /// and it does not — the prompt asks, and does nothing at all if nobody answers.
-    /// </summary>
+
+    /// <summary>How a connected controller is powered, shown after its name in the list.</summary>
+    // The summary here described what happens on a disconnect, which belonged to a constant that has
+    // since gone. Left in place it documented these two as though they were about the disconnect
+    // prompt, when they are two words appended to a controller's name.
     public const string PadOnBattery = "on battery";
     public const string PadCharging = "charging";
 
