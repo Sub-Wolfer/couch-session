@@ -299,7 +299,7 @@ internal static class Words
     public const string ShortcutControllerNote =
         
             "Tested with Xbox pads and the PS5 DualSense; other controllers Windows "
-            + "recognises should work too. No extra software either way. Your controller is "
+            + "recognizes should work too. No extra software either way. Your controller is "
             + "**never taken over** — it is opened for reading only and never exclusively, so "
             + "it runs alongside Steam Input, DS4Windows and games.";
 
@@ -494,7 +494,7 @@ internal static class Words
     // and written directly, so the title is the name of the thing rather than an instruction.
     public const string EnableGameModeWhy =
         
-            "Asks Windows to prioritise whichever game is running and hold back background "
+            "Asks Windows to prioritize whichever game is running and hold back background "
             + "work. **This is the same switch as Windows Settings ▸ Gaming ▸ Game Mode**, "
             + "changed here as soon as you press it — it is not tied to a session and nothing "
             + "puts it back afterwards.";

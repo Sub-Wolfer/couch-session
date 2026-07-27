@@ -5,7 +5,7 @@
 **Your gaming PC on the TV, and back again, with one press.**
 
 [![Release](https://img.shields.io/github/v/release/Sub-Wolfer/couch-session?label=download&color=6d5bff)](https://github.com/Sub-Wolfer/couch-session/releases/latest)
-[![Licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)](#-what-you-need)
 [![Beta](https://img.shields.io/badge/status-beta-orange)](#-a-word-about-beta)
 
@@ -98,7 +98,7 @@ switch them on. **Every one of these is off until you turn it on**, and each say
 
 ### 👍 Recommended, and they stay on
 
-🏎️ **Windows Game Mode** asks Windows to prioritise the game and hold back background work. Worth
+🏎️ **Windows Game Mode** asks Windows to prioritize the game and hold back background work. Worth
 having on. Couch Session switches it on and then leaves it alone, because it's a Windows-wide
 preference and flipping it back off afterwards would fight anyone who'd turned it on themselves.
 
@@ -124,7 +124,7 @@ it. If Win+G has stopped working at your desk, this is why. Closing the app puts
 
 **Tested with:** Xbox controllers and the PS5 DualSense.
 
-Anything else Windows recognises should work. The app reads standard HID and XInput rather than
+Anything else Windows recognizes should work. The app reads standard HID and XInput rather than
 anything vendor-specific, and buttons are handled by position, so a combination set on one pad is the
 same physical buttons on another. But "should work" is not "tested", and right now those two are the
 only ones that have been. If you have a DualShock 4, a Switch Pro controller, an 8BitDo or anything

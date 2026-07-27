@@ -124,7 +124,7 @@ public static class HdrControl
 
             if (Reported.Add(id))
                 Log.Info($"HDR capability for {id}: raw 0x{status.Raw:X} "
-                       + $"(advanced colour {status.Supported}, on {status.Enabled}), "
+                       + $"(advanced color {status.Supported}, on {status.Enabled}), "
                        + $"encoding {status.Encoding}, {status.Bits} bits per channel; "
                        + $"EDID says HDR {status.Capable?.ToString() ?? "unknown"}. "
                        + $"Windows build {Environment.OSVersion.Version.Build}.");

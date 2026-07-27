@@ -75,7 +75,7 @@ public static class FirewallControl
         }
         catch (Win32Exception)
         {
-            Log.Info("The firewall change was cancelled at the elevation prompt.");
+            Log.Info("The firewall change was canceled at the elevation prompt.");
             return false;
         }
         catch (Exception ex)

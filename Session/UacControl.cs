@@ -100,7 +100,7 @@ public static class UacControl
         }
         catch (Win32Exception)
         {
-            Log.Info("The UAC change was cancelled at the elevation prompt.");
+            Log.Info("The UAC change was canceled at the elevation prompt.");
             return false;
         }
         catch (Exception ex)

@@ -837,7 +837,7 @@ internal sealed class SessionEndPrompt : Form
         if (where == Location) return;
 
         Location = where;
-        Log.Info($"Session prompt re-centred after a display change, to {where.X},{where.Y}.");
+        Log.Info($"Session prompt re-centered after a display change, to {where.X},{where.Y}.");
     }
 
     /// <summary>Body text wraps; everything else on this window is short enough not to.</summary>
