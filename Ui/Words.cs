@@ -935,12 +935,18 @@ internal static class Words
     // Was "Sit down, switch a controller on, and your PC moves to the television", which describes a
     // trigger that ships switched off — so the app's own headline sentence was untrue of a fresh
     // install. One press is true of every install: the guide button, the hotkey, or Big Picture.
+    // The list was "display, sound, HDR, resolution and power plan, all at once", and three of those
+    // five ship switched off: AutoHdrEnabled and ChangePowerPlan both default to false and TvVideoMode
+    // defaults to empty, which is "Leave it to Windows". So the sentence directly above the version
+    // number was untrue of every new install, in the same way the opening line was before it — see the
+    // note this replaces. Display and sound are what one press moves out of the box; the rest is real
+    // and worth naming, as something you switch on.
     public const string AboutBlurb =
-        
-            "One press and your PC moves to the television — display, sound, HDR, "
-            + "resolution and power plan, all at once. Get up and it puts every one of them "
-            + "back exactly as it was.\nNo mouse, no keyboard, no settling for the wrong "
-            + "screen. Just the couch.";
+
+            "One press and your PC moves to the television — display and sound together, "
+            + "and HDR, resolution and the power plan too once you switch them on. Get up and "
+            + "it puts every one of them back exactly as it was.\nNo mouse, no keyboard, no "
+            + "settling for the wrong screen. Just the couch.";
 
     // Warnings. \n is a line break.
 
