@@ -118,7 +118,6 @@ public sealed class SettingsForm : Form
     private readonly Dropdown _triggerPad = NewDropdown();
     private readonly Dropdown _tvVideoMode = NewDropdown();
 
-
     private readonly ToggleSwitch _switchAudio = new();
     private readonly ToggleSwitch _guideEndsSession = new();
     private readonly ToggleSwitch _restartSteam = new();
@@ -489,10 +488,6 @@ public sealed class SettingsForm : Form
     /// the window to a full library would produce a window taller than the screen.
     /// </summary>
 
-
-
-
-
     /// <summary>
     /// Nothing is rebuilt while the mouse is down. That is the whole trick.
     ///
@@ -819,8 +814,6 @@ public sealed class SettingsForm : Form
         if (!RestorePlacement())
             Location = new Point(work.Left + (work.Width - Width) / 2,
                                  work.Top + (work.Height - Height) / 2);
-
-
 
         // Whatever the window ended up as, the pages have to agree with it.
         Rebuild(WidthForWindow());
@@ -1386,7 +1379,6 @@ public sealed class SettingsForm : Form
 
         int tileWidth = (RowWidth - Gap * Columns) / Columns;
 
-
         // Read from the controls, not from Config.
         //
         // Config is what was last *saved*. Every other page shows the live control, so a toggle changed
@@ -1412,6 +1404,9 @@ public sealed class SettingsForm : Form
                         && !display.Contains(Words.DisplayDisconnected, StringComparison.Ordinal)
                         && !display.Contains("(not detected)", StringComparison.Ordinal);
 
+        // SafePadNames still called, though no tile shows it any more: the controller line at the top
+        // of the Controller page is built from the same read, and dropping it here would only move
+        // the work rather than remove it.
         var pads = SafePadNames();
 
         bool audio = _switchAudio.Checked;
@@ -1422,7 +1417,6 @@ public sealed class SettingsForm : Form
 
         int padCombo = _shortcutController.Value;
         int keyCombo = _shortcutKeyboard.Value;
-
 
         // Named devices, not "the TV" and "your speakers".
         //
@@ -1445,6 +1439,14 @@ public sealed class SettingsForm : Form
         bool tvSoundLive = audio && tvDevice is { IsActive: true };
         bool deskSoundLive = deskDevice is { IsActive: true };
 
+        // Display and sound, HDR, and the controller. Nothing else.
+        //
+        // This grid used to report every setting in the app — thirty-odd tiles, most of them about
+        // Windows tuning or notifications, none of which decides whether a session works. The three
+        // subjects left are the ones that do: which screen and speakers a session moves to, when HDR
+        // switches, and what the controller starts and ends. Everything dropped is still one click
+        // away on its own page, and this page is better at its job for not restating it.
+        //
         // ── the session ──
         Tile("Couch display", display ?? "not chosen", displayLive, page: DisplayPage, anchor: _tvDisplay);
         Tile("Resolution", _tvVideoMode.SelectedItem?.ToString() ?? "whatever it is", true, page: DisplayPage,
@@ -1454,16 +1456,19 @@ public sealed class SettingsForm : Form
              anchor: _turnOffTvOnExit);
 
         Tile("Sound in session", audio ? tvSound ?? "TV (not detected)" : "unchanged", tvSoundLive,
-             page: DisplayPage, anchor: _tvAudio, wide: true);
+             page: DisplayPage, anchor: _tvAudio);
         Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
              anchor: _desktopAudio);
         Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
              _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
 
-        Tile("Steam after Big Picture", SteamAfterText(), true, page: GeneralPage, anchor: _steamAfter);
-
         // ── controls ──
-        Tile("Controller", pads ?? "none connected", pads is not null, page: ControllerPage);
+        //
+        // "Controller — PlayStation DualSense" used to open this group and has gone. Every other tile
+        // here reports a setting; that one reported live state, which under a heading reading
+        // "Settings at a glance" is the one thing on the grid that is not one. The Controller page
+        // already carries a status card saying the same thing, in the place somebody goes to act on
+        // it.
 
         // Which pad, not just whether one is connected.
         //
@@ -1489,10 +1494,20 @@ public sealed class SettingsForm : Form
 
         Tile("Session hotkey (pad)", padCombo != 0 ? PadText(padCombo) : "not set", padCombo != 0,
              page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
-        Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
-             keyCombo != 0, page: HotkeysPage, anchor: _shortcutKeyboard);
         Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
              anchor: _guideEndsSession);
+        Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
+             page: ControllerPage, anchor: _startOnController);
+        // "on" was not the whole answer.
+        //
+        // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
+        // will not move" is the commonest thing to come back about. A tile that says "on" while the
+        // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
+        // here answers it without opening anything.
+        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
+                           : _mouseHold.Checked ? $"hold {HoldButtonName()}"
+                                                : "on, always",
+             _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
 
         // The two disconnect answers, beside the controller settings they belong to rather than in
         // the startup group four tiles later. They were down there because the single tile they
@@ -1550,79 +1565,10 @@ public sealed class SettingsForm : Form
                                       ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
              _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
 
-        // ── starting and stopping ──
-        Tile("Start with Windows", onBoot ? "yes" : "no", onBoot, page: GeneralPage, anchor: _startWithWindows);
-        Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
-             page: ControllerPage, anchor: _startOnController);
-        Tile("Start on wake", _startOnWake.Checked ? "yes" : "no", _startOnWake.Checked, page: GeneralPage,
-             anchor: _startOnWake);
-        // Was missing entirely, and it is the fourth member of the group above it — the app opening
-        // is a way a session starts, exactly like the machine booting, a controller connecting or a
-        // wake. Three of the four were reported here and the fourth was not.
-        Tile("Start when the app opens", _startOnLaunch.Checked ? "yes" : "no",
-             _startOnLaunch.Checked, page: GeneralPage, anchor: _startOnLaunch);
-
-        // ── performance and pointer ──
-        Tile("Power plan", _changePowerPlan.Checked
-                               ? _powerPlan.SelectedItem?.ToString() ?? "chosen" : "unchanged",
-             _changePowerPlan.Checked, page: PerformancePage, anchor: _changePowerPlan);
-        Tile("Game priority", _gamePriority.Checked ? "raised" : "normal", _gamePriority.Checked, page: PerformancePage,
-             anchor: _gamePriority);
-        // "on" or "off", not "on" or "unchanged". Unchanged was true when this only ever switched
-        // Game Mode on for a session; the toggle turns it off now, so the tile has to be able to say
-        // that Windows Game Mode is off — which is a fact about the machine, not about this app.
-        Tile("Game Mode", _enableGameMode.Checked ? "on" : "off", _enableGameMode.Checked,
-             page: PerformancePage, anchor: _enableGameMode);
-        // "on" was not the whole answer.
-        //
-        // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
-        // will not move" is the commonest thing to come back about. A tile that says "on" while the
-        // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
-        // here answers it without opening anything.
-        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
-                           : _mouseHold.Checked ? $"hold {HoldButtonName()}"
-                                                : "on, always",
-             _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
-
-
-        // ── what the app changes about Windows ──
-        //
-        // These three were the only settings with nothing on this page, and they are the ones that most
-        // deserved a line: every other tile describes something that happens for a session and is put
-        // back afterwards, while these change Windows itself and stay changed. Two of them lower the
-        // machine's security. Somebody skimming this page to see what the app is doing to their PC was
-        // being shown everything except the part that outlives the session.
-        Tile("Admin prompts", _disableUac.Checked ? "silenced" : "normal", _disableUac.Checked,
-             page: PerformancePage, anchor: _disableUac);
-        Tile("Windows Firewall", _disableFirewall.Checked ? "switched off" : "on", _disableFirewall.Checked,
-             page: PerformancePage, anchor: _disableFirewall);
-
-        // Named for the whole feature, not the button. Switching this on also stops background clip
-        // recording, and "Game Bar: off" is what someone reads before going to hunt through Windows for
-        // why Win+G stopped working at their desk.
-        // "off" rather than "off while the app runs": it is a Windows setting now and stays however
-        // it is left, so describing it in terms of this app's lifetime would be a plain untruth.
-        Tile("Game Bar", _disableGameBarButton.Checked ? "off" : "on",
-             !_disableGameBarButton.Checked, page: PerformancePage, anchor: _disableGameBarButton);
-
-        // ── the two that decide what the app says and asks ──
-        Tile("Before closing a game", _confirmClosingGame.Checked ? "asks first" : "no warning",
-             _confirmClosingGame.Checked, page: GeneralPage, anchor: _confirmClosingGame);
-        Tile("Notifications", _showNotifications.Checked ? "on" : "off", _showNotifications.Checked,
-             page: GeneralPage, anchor: _showNotifications);
-
-
-
         // page:  where clicking this tile goes — the settings page that owns what it reports.
         // anchor: the control on that page holding this setting, so its row can be lit on arrival.
-        // wide: give this tile two columns instead of one.
-        //
-        // For the audio devices, whose names this grid cannot hold. Windows reports them as the
-        // channel prefix, the interface and the model — "Game (8- TC-HELICON GoXLR…" — and a quarter
-        // of a row cuts that off before the useful half, so the tile answers "which output?" with
-        // the part every output has in common. Nothing else here is long enough to need it.
         void Tile(string caption, string value, bool set, int page, Control? anchor = null,
-                  int combo = 0, bool wide = false)
+                  int combo = 0)
         {
             if (building)
             {
@@ -1635,9 +1581,7 @@ public sealed class SettingsForm : Form
                     Vendor = _shortcutController.Vendor,
                     Product = _shortcutController.Product,
                     Actionable = true,
-                    // Two columns is two tiles plus the gap that would have been between them, so a
-                    // wide tile lines up with the grid rather than merely being bigger than it.
-                    Size = new Size(wide ? tileWidth * 2 + Gap : tileWidth, GlanceTile.PreferredHeight()),
+                    Size = new Size(tileWidth, GlanceTile.PreferredHeight()),
                     Margin = new Padding(0, 0, Gap, 10),
                 };
 
@@ -1914,13 +1858,11 @@ public sealed class SettingsForm : Form
         catch { return null; }
     }
 
-
     private static int SafePadCount()
     {
         try { return ControllerWatcher.Attached().Count; }
         catch { return 0; }
     }
-
 
     /// <summary>The chosen couch display's friendly name, or null when it is not set or not present.</summary>
     private static string? DisplayName(string devicePath)
@@ -1950,7 +1892,6 @@ public sealed class SettingsForm : Form
 
         return parts.Count == 0 ? "not set" : string.Join("  ·  ", parts);
     }
-
 
     private Card? _litCard;
 
@@ -2477,7 +2418,6 @@ public sealed class SettingsForm : Form
 
         return page;
     }
-
 
     /// <summary>
     /// Everything to do with Steam, on its own.
@@ -3192,8 +3132,6 @@ public sealed class SettingsForm : Form
         Rows(listCard).Controls.Add(options);
         listHolder.Margin = new Padding(0);
 
-
-
         Stack(page).Controls.Add(new Label
         {
             Text = Words.GamesListNote,
@@ -3296,7 +3234,6 @@ public sealed class SettingsForm : Form
         // belongs with the rest of the Windows tuning anyway.
         AddToggle(windows, Words.GamePriority, _gamePriority, Words.GamePriorityWhy, setting: nameof(AppConfig.GamePriorityEnabled),
                   check: PerformanceCheck.CheckPriority);
-
 
         // The Game Bar toggle lives here, not on the Controller page: it is an Xbox-controller
         // quirk — the Guide button opening the overlay — and belongs with the rest of the Windows
@@ -3676,7 +3613,6 @@ public sealed class SettingsForm : Form
         var diag = new FlatButton { Text = "Save diagnostics", Size = new Size(140, 34) };
         diag.Click += (_, _) => SaveDiagnosticsReport();
         diag.Margin = new Padding(0, 0, 8, 0);
-
 
         var repo = new FlatButton { Text = Words.OpenRepository, Size = new Size(150, 34) };
         repo.Click += (_, _) => OpenExternally(AppInfo.RepositoryUrl);
@@ -4296,7 +4232,6 @@ public sealed class SettingsForm : Form
             ShowToggleNote(Words.DisableFirewall, PerformanceCheck.CheckFirewall());
         }
     }
-
 
     /// <summary>Title, explanation, then a full-width dropdown.</summary>
     /// <returns>
@@ -5309,7 +5244,6 @@ public sealed class SettingsForm : Form
         Warn(Words.UpdateFailed);
     }
 
-
     /// <summary>
     /// A standalone note inside a card, for something the reader needs rather than a setting.
     ///
@@ -5665,7 +5599,6 @@ public sealed class SettingsForm : Form
         _powerPlan.Enabled = _changePowerPlan.Checked;
         _powerPlan.Invalidate();
     }
-
 
     /// <summary>The plan the dropdown is on, as a key: a scheme's GUID, or Automatic for the top item.</summary>
     private string SelectedPowerPlan() =>
@@ -6261,7 +6194,6 @@ public sealed class SettingsForm : Form
                 : Math.Max(0, IndexOf(_triggerPad,
                     o => o is ControllerDevice d && d.Id == Config.TriggerControllerId));
 
-
             _switchAudio.Checked = Config.SwitchAudio;
             _guideEndsSession.Checked = Config.EndSessionOnGuideButton;
             _restartSteam.Checked = Config.RestartSteamForAudio;
@@ -6324,7 +6256,6 @@ public sealed class SettingsForm : Form
             _onControllerLost.SelectedIndex = Math.Min((int)Config.OnControllerLost,
                                                        (int)DisconnectAction.ComeBackAndAsk);
             _muteOnDesktop.Checked = Config.MuteGameOnDesktop;
-
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
             _startWithWindows.Checked = StartupRegistration.IsEnabled()
@@ -6483,7 +6414,6 @@ public sealed class SettingsForm : Form
         // from and back. TvVideoMode stays the single value a session reads.
         if (_tvDisplay.SelectedItem is DisplayInfo chosenDisplay)
             Config.VideoModeByDisplay[chosenDisplay.DevicePath] = Config.TvVideoMode;
-
 
         Config.HdrSwitching = HdrModeOf(_hdrMode);
         if (_hdrHotkeyRemember is not null) Config.HdrHotkeyRemembersGame = _hdrHotkeyRemember.Checked;
@@ -6732,7 +6662,6 @@ public sealed class SettingsForm : Form
         if (_actingRow is not null) _actingRow.Enabled = perGame;
         if (_browseButton is not null) _browseButton.Enabled = perGame;
         if (_scanButton is not null) _scanButton.Enabled = perGame;
-
 
         // Live only while something reads it. With neither end switched on, the choice of controller
         // decides nothing — see UpdateTriggerPadTitle for the same three states in words.
@@ -7027,7 +6956,6 @@ public sealed class SettingsForm : Form
         OpenExternally(AppConfig.Directory);
     }
 
-
     /// <summary>
     /// Gather everything a maintainer would ask for, then open the issue form.
     ///
@@ -7134,7 +7062,6 @@ public sealed class SettingsForm : Form
             if (_currentPage == 0 && AlertsChanged()) RebuildPage(0);
         };
         _deviceWatch.Start();
-
 
         _gameWatch.Tick += (_, _) => LoadGames();
         _gameWatch.Start();
