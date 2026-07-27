@@ -200,7 +200,7 @@ internal sealed class Toast : Form
     /// cost of it lingering is small, while a notification that never leaves on its own becomes
     /// something to close rather than something to read.
     /// </summary>
-    public static readonly TimeSpan ProblemDuration = TimeSpan.FromSeconds(25);
+    public static readonly TimeSpan ProblemDuration = TimeSpan.FromSeconds(15);
 
     /// <summary>
     /// Show a toast, by default in the corner of the primary display.
