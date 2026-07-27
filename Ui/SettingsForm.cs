@@ -1236,9 +1236,9 @@ public sealed class SettingsForm : Form
             //
             // A ToolTip keeps its own table of control-to-text, and nothing about disposing a control
             // takes its entry out of that table. Every rebuild therefore added a fresh set and
-            // abandoned the last — and rebuilds are not rare: RebuildAt runs one on each step of a
-            // window-edge drag, so a single slow drag across the desk could leave hundreds of entries
-            // pointing at controls that no longer exist.
+            // abandoned the last. Rebuilds are not rare either — every resize that is not a drag,
+            // every return to a page left stale by one, and every change to the Home page's alerts —
+            // so the table grew for as long as the window stayed open.
             //
             // Runs after the persistent controls have been lifted clear above, so their tooltips
             // survive; anything still inside the old page is on its way out with it.
