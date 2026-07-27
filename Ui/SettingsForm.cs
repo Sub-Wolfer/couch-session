@@ -1669,6 +1669,34 @@ public sealed class SettingsForm : Form
 
             index++;
         }
+
+        // The card's height, worked out from where the tiles actually landed.
+        //
+        // [BUG] The panel was left to size itself, and FlowLayoutPanel's own preferred-size maths
+        // only holds up while every child is the same width. Give one tile two columns and it
+        // overestimates how many rows it needs, so the card grew a third of its height in empty
+        // space below the last row — the grid was correct and the box around it was not.
+        //
+        // Measured after a layout pass instead: the tiles are placed, the lowest edge is found, and
+        // that is the height. Nothing to be wrong about, and it stays right whatever mix of widths
+        // the grid ends up with.
+        if (building)
+        {
+            _homeGlance.PerformLayout();
+
+            int bottom = 0;
+
+            foreach (Control tile in _homeGlance.Controls)
+                bottom = Math.Max(bottom, tile.Bottom + tile.Margin.Bottom);
+
+            if (bottom > 0)
+            {
+                _homeGlance.AutoSize = false;
+                _homeGlance.MinimumSize = new Size(RowWidth, bottom);
+                _homeGlance.MaximumSize = new Size(RowWidth, bottom);
+                _homeGlance.Height = bottom;
+            }
+        }
     }
 
     /// <summary>The hold-to-activate button in the short form the glance tile has room for.</summary>
