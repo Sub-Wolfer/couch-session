@@ -1231,6 +1231,19 @@ public sealed class SettingsForm : Form
         try
         {
             _pageHost.Controls.Remove(old);
+
+            // Hand the tooltips back before the controls holding them are destroyed.
+            //
+            // A ToolTip keeps its own table of control-to-text, and nothing about disposing a control
+            // takes its entry out of that table. Every rebuild therefore added a fresh set and
+            // abandoned the last — and rebuilds are not rare: RebuildAt runs one on each step of a
+            // window-edge drag, so a single slow drag across the desk could leave hundreds of entries
+            // pointing at controls that no longer exist.
+            //
+            // Runs after the persistent controls have been lifted clear above, so their tooltips
+            // survive; anything still inside the old page is on its way out with it.
+            ForgetToolTips(old);
+
             old.Dispose();
 
             var page = Builders[index]();
@@ -1284,6 +1297,22 @@ public sealed class SettingsForm : Form
 
         _contentWidth = contentWidth;
         RebuildPage(_currentPage);
+    }
+
+    /// <summary>
+    /// Clear the tooltip entries for a control and everything under it.
+    ///
+    /// Setting the text to null is how a ToolTip is told to forget a control; there is no Remove.
+    /// Deliberately not RemoveAll, which would also wipe the footer and navigation tooltips that are
+    /// set once when the window is built and never set again.
+    /// </summary>
+    private void ForgetToolTips(Control parent)
+    {
+        foreach (Control child in parent.Controls)
+        {
+            _tips.SetToolTip(child, null);
+            if (child.HasChildren) ForgetToolTips(child);
+        }
     }
 
     /// <summary>Controls that outlive a rebuild: everything holding a setting.</summary>
