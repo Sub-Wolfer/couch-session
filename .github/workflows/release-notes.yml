@@ -1,0 +1,56 @@
+# Publishes release notes from a file in this repository.
+#
+# Editing a release body by hand means pasting Markdown into a web form, and pasting rendered text
+# instead of the source is how a carefully formatted set of notes arrives as one flat paragraph.
+# Keeping the notes in the repository avoids the paste entirely: the file is the notes, git has its
+# history, and a correction is a commit rather than a re-paste.
+#
+#     docs/release-notes/0.9.13.md   ->   the body of release v0.9.13
+#
+# The file is named after the version without the "v"; the tag it belongs to is the name with it.
+# A push that touches one of these files republishes that release's body and nothing else. No build
+# runs and no asset is touched, so this is safe to run against a release people have already
+# downloaded.
+#
+# Authentication is the GITHUB_TOKEN that Actions provides to its own runners, which is why this
+# lives here rather than in a script on a desktop: nobody has to hold a credential for it.
+
+name: Release notes
+
+on:
+  push:
+    paths:
+      - 'docs/release-notes/*.md'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update each release from its notes file
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+
+          for file in docs/release-notes/*.md; do
+            tag="v$(basename "$file" .md)"
+
+            # Only releases that already exist. A notes file written ahead of its release is not an
+            # error worth failing the run over; the tag push will publish the release, and the next
+            # touch of this file will fill in its body.
+            if ! gh release view "$tag" >/dev/null 2>&1; then
+              echo "no release $tag yet, skipping $file"
+              continue
+            fi
+
+            echo "updating $tag from $file"
+            gh release edit "$tag" --notes-file "$file"
+          done
