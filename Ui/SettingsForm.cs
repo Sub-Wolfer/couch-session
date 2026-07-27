@@ -2841,9 +2841,15 @@ public sealed class SettingsForm : Form
                 Words.DisconnectOptions[(int)DisconnectAction.ComeBack]);
 
         // The shorter list: no "close the game" for an event nobody chose. See DisconnectOptions.
+        //
+        // The default label is read from the same list the picker was filled from. It used to come
+        // from DisconnectOptions while the picker took DisconnectOptionsLost, and printed the right
+        // words only because both lists happen to open with "Do nothing" — a coincidence, and one
+        // that would have started quietly mislabelling the default the moment either list changed at
+        // the front. An index into one list is only meaningful against that list.
         SetOptions(_onControllerLost, Words.DisconnectOptionsLost);
         AddPick(losing, Words.DisconnectLost, _onControllerLost, Words.DisconnectLostWhy,
-                Words.DisconnectOptions[(int)DisconnectAction.Ignore]);
+                Words.DisconnectOptionsLost[(int)DisconnectAction.Ignore]);
 
         // ── the mouse ──
         //
