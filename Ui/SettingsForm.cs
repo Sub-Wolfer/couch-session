@@ -3584,16 +3584,16 @@ public sealed class SettingsForm : Form
         //
         // A whole tab for a single dropdown was a tab people opened once, and what it controls is not
         // really about Steam — it is what happens to a window when a session ends, which is what this
-        // page is for. The note above it stays with it: it explains why Big Picture is the session, and
-        // that is worth reading exactly once, wherever it lives.
+        // page is for.
         NewSection(page, Words.SectionBigPicture);
         var bigPicture = NewCard(page);
 
-        // Put back. This is the one place the app explains that Big Picture and a couch session are
-        // the same thing, and it was orphaned when the Steam page it lived on was folded into this
-        // one — leaving several other descriptions relying on a fact nothing states any more.
-        AddNote(bigPicture, Words.BigPictureIsSessionNote);
-
+        // The explanatory note that stood here is gone, with Words.BigPictureIsSessionNote. It opened
+        // a card whose only control is a dropdown about the Steam window, and four lines of background
+        // on what a couch session *is* are not what somebody came to this card to find out. The one
+        // fact in it worth keeping — that closing Big Picture closes the game — was only ever true of
+        // the moment it happens, not of a settings page read at the desk, and the session-end prompt
+        // is where a reader meets that decision with the game actually running.
         SetOptions(_steamAfter, Words.SteamAfterOptions);
         AddPick(bigPicture, Words.SteamAfter, _steamAfter, Words.SteamAfterWhy,
                 Words.SteamAfterOptions[(int)Defaults.SteamAfterBigPicture]);

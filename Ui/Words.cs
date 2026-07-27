@@ -117,25 +117,17 @@ internal static class Words
 
     // ── Display & Audio ───────────────────────────────────────────────────────────
 
-    // Was: "Closing it always brings your desktop back, exactly as you left it." Both halves of that
-    // were wrong, and the sentence was the only thing the app said about closing Big Picture.
+    // BigPictureIsSessionNote lived here: four lines at the top of the Big Picture card explaining
+    // that opening Big Picture is what starts a couch session, and what closing it does.
     //
-    // OnBigPictureClosed calls _hdr.CloseRunningGame() before _session.ReturnToDesktop()
-    // (TrayApp.cs:1482), so quitting Big Picture from the Steam menu shuts the game down with it —
-    // the opposite of "exactly as you left it". It also skips the confirm-close check every other
-    // route to closing a game goes through, deliberately: there is no shell left on the television
-    // to put a prompt over and nobody holding a controller who could answer one. That is defensible
-    // behavior, but it has to be said out loud rather than left to be discovered by losing a save.
+    // Removed as unnecessary where it stood. The card holds one dropdown about the Steam window, and
+    // a reader who has reached the Display & Audio page has already started sessions; a definition of
+    // what a session is was answering a question nobody had open at that moment.
     //
-    // "Always" was wrong too — TrayApp.cs:1459 returns early while _busy, or when the session is
-    // not on the TV at all.
-    public const string BigPictureIsSessionNote =
-
-            "Steam Big Picture **is** the couch session. Opening it — however you do: a "
-            + "shortcut, Steam starting, or the Steam button on your pad — moves everything "
-            + "to the TV. Closing it brings your desktop back and **closes the game you were "
-            + "playing** — with Big Picture gone there is nothing left on the TV to ask the "
-            + "question with, so it does not ask.";
+    // Worth knowing if it is ever reinstated: the last sentence claimed closing Big Picture brought
+    // the desktop back "exactly as you left it", and OnBigPictureClosed calls _hdr.CloseRunningGame()
+    // before _session.ReturnToDesktop() (TrayApp.cs:1482) — it closes the game. Any replacement has
+    // to say so.
 
     // ── Session-end confirmation popup ─────────────────────────────────────────────
     // Each answer is two lines now: what it does, then what that costs. The action stays short enough
