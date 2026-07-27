@@ -2657,19 +2657,16 @@ public sealed class SettingsForm : Form
     /// on, calling it "starts and ends a session" describes something that is not happening. The
     /// title is the only place that can say so — the dropdown itself looks identical either way.
     /// </summary>
-    /// <summary>
-    /// Nothing to update any more — the picker's title is fixed.
-    ///
-    /// It used to be rewritten from two other controls' states, and got that wrong twice: once by
-    /// assuming disconnect handling was always on, and once by titling the picker "Controller to
-    /// watch" while nothing was watching. A title kept in step with settings elsewhere on the page
-    /// is a title with a bug waiting in it. The note under the picker carries the "this is deciding
-    /// nothing" case now, where it can say so in a sentence rather than by implication.
-    ///
-    /// Kept as a no-op method because several places call it after changing a switch, and the call
-    /// sites are the reminder that this used to need doing.
-    /// </summary>
-    private static void UpdateTriggerPadTitle() { }
+    // UpdateTriggerPadTitle stood here as an empty method. It used to rewrite the trigger picker's
+    // title from two other controls' states and got that wrong twice — once by assuming disconnect
+    // handling was always on, once by titling the picker "Controller to watch" while nothing was
+    // watching. TriggerPad is a fixed title now and TriggerPadIdle carries the "this is deciding
+    // nothing" case in a sentence, so there was nothing left for it to do.
+    //
+    // It was kept as a no-op on the grounds that "several places call it after changing a switch,
+    // and the call sites are the reminder that this used to need doing". There was one call site,
+    // and a method that does nothing is a poor reminder — it reads at every call as though something
+    // is being kept in step. This comment is the reminder instead.
 
     /// <summary>
     /// The hold button is stored as a PadControl; the picker is a short fixed list. These two map
@@ -6797,7 +6794,6 @@ public sealed class SettingsForm : Form
         _mouseHoldButton.Enabled = mouse && _mouseHold.Checked;
         _cursorStick.Enabled = mouse;
         _useTrackpad.Enabled = mouse;
-        UpdateTriggerPadTitle();
     }
 
     // ================= actions =================
