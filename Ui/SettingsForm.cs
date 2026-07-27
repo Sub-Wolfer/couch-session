@@ -279,44 +279,79 @@ public sealed class SettingsForm : Form
     /// <summary>Air inside a tip, around the text.</summary>
     private const int TipPadX = 10, TipPadY = 7;
 
+    /// <summary>How wide a tip is allowed to get before it wraps, in pixels.</summary>
+    private const int TipMaxWidth = 380;
+
+    /// <summary>
+    /// One set of flags for measuring and for drawing.
+    ///
+    /// [BUG] They were different — NoPadding when measured, no WordBreak when drawn — and the text
+    /// was pre-wrapped by counting *characters* on top of that. Three ways of deciding where a line
+    /// ends, none of them agreeing, and the visible result was every line clipped a word short of
+    /// its own right edge. Measure and draw now use the same flags on the same string, which is the
+    /// only arrangement that cannot disagree.
+    /// </summary>
+    private const TextFormatFlags TipFlags =
+        TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.WordBreak
+      | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+
+    /// <summary>
+    /// The tip's text as one paragraph, for the layout below to break by pixel.
+    ///
+    /// The line breaks in it were put there by Wrapped(), which counts characters — so a line of
+    /// narrow letters came out far short of the edge and a line of wide ones ran past it. Undone
+    /// here rather than at every call site, because a tooltip that measures its own text does not
+    /// need help deciding where the lines go.
+    /// </summary>
+    private static string TipText(string? text) =>
+        text is null ? "" : text.Replace("\r\n", " ").Replace('\n', ' ');
+
     /// <summary>
     /// Measure a tip at the app's own font, so the window Windows makes is the size we will fill.
     ///
-    /// Popup runs before the tooltip window is sized; whatever is put in ToolTipSize here is what the
-    /// Draw handler gets to paint into. Measured with NoPadding so the number is the text and nothing
-    /// else, then the padding is added once and deliberately.
+    /// Popup runs before the tooltip window is sized: whatever is put in ToolTipSize here is exactly
+    /// what the Draw handler gets to paint into, and anything that does not fit is simply lost.
     /// </summary>
     private void OnTipPopup(object? sender, PopupEventArgs e)
     {
-        string? text = _tips.GetToolTip(e.AssociatedControl);
-        if (string.IsNullOrEmpty(text)) return;
+        string? raw = _tips.GetToolTip(e.AssociatedControl);
+        if (string.IsNullOrEmpty(raw)) return;
 
-        var size = TextRenderer.MeasureText(text, Theme.Small, Size.Empty,
-                                            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+        string text = TipText(raw);
 
-        e.ToolTipSize = new Size(size.Width + TipPadX * 2, size.Height + TipPadY * 2);
+        var size = TextRenderer.MeasureText(text, Theme.Small,
+                                            new Size(TipMaxWidth, 0), TipFlags);
+
+        // A pixel of slack on each side. GDI's measure and its draw can differ by one at a word
+        // boundary, and when they do it is the last word of a line that vanishes.
+        e.ToolTipSize = new Size(size.Width + TipPadX * 2 + 2, size.Height + TipPadY * 2 + 2);
     }
 
     private void OnTipDraw(object? sender, DrawToolTipEventArgs e)
     {
         var g = e.Graphics;
 
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+        // Square corners, and not for want of trying rounded ones.
+        //
+        // [BUG] This drew a rounded card, which left the four corners showing whatever the tooltip
+        // window had been filled with before the draw — black. A tooltip is a plain top-level window
+        // with no alpha channel and no way to reach its handle from here, so the area outside a
+        // rounded path cannot be made transparent: there is nothing behind it to show through. The
+        // choices are a rounded shape with black corners or a rectangle with none, and a crisp
+        // bordered rectangle is what every tooltip on Windows already looks like.
+        //
+        // Filled edge to edge for the same reason. Any pixel this handler does not paint is a pixel
+        // the shell already painted, and it will not match.
+        using (var back = new SolidBrush(Theme.SurfaceHi)) g.FillRectangle(back, e.Bounds);
 
-        // A card, not a label: the same surface, hairline and radius as everything else in the window.
-        var body = new RectangleF(e.Bounds.X + 0.5f, e.Bounds.Y + 0.5f,
-                                  e.Bounds.Width - 1f, e.Bounds.Height - 1f);
+        using (var edge = new Pen(Theme.Line))
+            g.DrawRectangle(edge, e.Bounds.X, e.Bounds.Y, e.Bounds.Width - 1, e.Bounds.Height - 1);
 
-        Theme.FillRounded(g, body, 8, Theme.SurfaceHi);
-        Theme.DrawRounded(g, body, 8, Theme.Line);
-
-        TextRenderer.DrawText(g, e.ToolTipText, Theme.Small,
+        TextRenderer.DrawText(g, TipText(e.ToolTipText), Theme.Small,
                               new Rectangle(e.Bounds.X + TipPadX, e.Bounds.Y + TipPadY,
                                             e.Bounds.Width - TipPadX * 2,
                                             e.Bounds.Height - TipPadY * 2),
-                              Theme.Text,
-                              TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.NoPrefix);
+                              Theme.Text, TipFlags);
     }
 
     /// <summary>Characters per line before a tooltip is broken. Roughly 70 is comfortable.</summary>
