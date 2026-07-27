@@ -13,9 +13,10 @@
 
 ---
 
-You want to play on the television connected to your PC? That means changing your display, moving the
-sound, setting the right resolution, turning HDR on, opening Big Picture, and then undoing all of it
-when you're done, usually while wondering which window went where.
+**Your desk PC is also your living room console. Getting between the two is the tedious part.**
+
+Switch the display. Move the sound. Fix the resolution. Turn on HDR. Open Big Picture. Then undo every
+one of them when you're done, while working out which window ended up where.
 
 Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
 it.
