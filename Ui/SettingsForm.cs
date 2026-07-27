@@ -268,7 +268,14 @@ public sealed class SettingsForm : Form
     /// </summary>
     private readonly ToolTip _tips = new()
     {
-        AutoPopDelay = 25000,
+        // As long as Windows will allow, which is not "forever".
+        //
+        // AutoPopDelay goes to the shell through TTM_SETDELAYTIME, whose value is a signed 16-bit
+        // number — so 32767 milliseconds is the ceiling and anything larger is silently clamped or
+        // rejected. There is no flag for a tip that never retires. In practice half a minute of
+        // hovering is longer than anyone spends reading one of these, and it is a large multiple of
+        // the five seconds Windows uses by default.
+        AutoPopDelay = 32767,
         InitialDelay = 400,
         ReshowDelay = 100,
         OwnerDraw = true,
@@ -2451,7 +2458,10 @@ public sealed class SettingsForm : Form
         // properly — the watcher sees it, closes the game and ends the session — so the advice
         // described a limitation that no longer exists.
 
-        AddNote(card, Words.HotkeyHdrNote);
+        // The "HDR hotkeys act on your main display only" note is gone. The HDR hotkey's own
+        // description already opens with "Toggles HDR on your main display", so the note was the
+        // same fact said twice on one page — and it was the wider of the two, so it read as the more
+        // important one.
 
         AddNote(card, Words.ShortcutControllerNote);
 
