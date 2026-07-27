@@ -690,10 +690,23 @@ internal static class Words
     // a card ends up in when the options are unclear and the fix is attempted above them instead of
     // inside them. With the options rewritten there is exactly one thing left worth saying, and it
     // is the one thing a first-time reader would get wrong: switching back does not close anything.
+    //
+    // The closing clause was added because the sentence above was true of what it described and
+    // untrue of the card it headed. AddNote puts this above both pickers (SettingsForm.cs:2837) and
+    // the first of them is fed DisconnectOptions, whose fourth answer closes the game — so a card
+    // left on "Close the game and end the session" opened by promising the game would keep running,
+    // in bold, an inch above the control set to close it.
+    //
+    // Qualified rather than moved, and rather than rewritten as the picker changes. The second
+    // picker takes DisconnectOptionsLost, which has no close option, so the note is true of that
+    // list as it stands and only ever needed the exception named for the first. And text that
+    // rewrites itself when you touch a different control is text you have to watch rather than
+    // read — see the note above TriggerPad, which is the same argument.
     public const string DisconnectNote =
-        
-            "**Switching back to the desktop leaves your game running.** Turn the "
-            + "controller on again and you are straight back where you were.";
+
+            "**Switching back to the desktop leaves your game running** — turn the "
+            + "controller on again and you are straight back where you were. Closing the "
+            + "game is the one answer that does not.";
 
     // ── The prompt that lands on the desk after a controller disconnects ──────────
     public const string DisconnectTitle = "Your controller disconnected";
