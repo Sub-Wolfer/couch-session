@@ -500,18 +500,29 @@ public sealed class SettingsForm : Form
 
             Config.DeskOnly = _deskOnly.Checked;
 
-            // Whole-session HDR cannot happen without sessions, and leaving it selected would mean
-            // switching this mode on quietly switched HDR off — the one feature most of these users
-            // came for. Per game is the setting that does the same job at a desk.
-            if (Config.DeskOnly && Config.HdrSwitching == HdrMode.WholeSession)
+            // Switching this mode on selects per-game HDR, whatever it was set to before.
+            //
+            // Not only when it was on whole-session, which was the narrow version of this: that
+            // covered the setting becoming invalid but left somebody who had HDR off arriving at a
+            // desk-only app with its main feature switched off. Per-game HDR is why most people
+            // would run this without a television at all — on when a game starts, off when it
+            // quits, so the desktop is never left washed out — so choosing this mode is as close
+            // to asking for it as makes no difference.
+            //
+            // Only on the way in. Turning it off again later is a decision, and this must not
+            // undo it every time the app starts — see ApplyDeskOnly, which repairs the invalid
+            // whole-session case and nothing else.
+            if (Config.DeskOnly && Config.HdrSwitching != HdrMode.PerGame)
             {
+                var was = Config.HdrSwitching;
+
                 // Through the picker rather than around it, so the page, the glance tile and the
                 // dirty tracking all hear about it the same way they would from a click.
                 _hdrMode.SelectedIndex = (int)HdrMode.PerGame;
                 Config.HdrSwitching = HdrMode.PerGame;
 
-                Log.Info("Desk-only mode: HDR switched from whole-session to per game, "
-                       + "because there are no sessions to switch it for.");
+                Log.Info($"Desk-only mode: HDR set to per game (was {was}), which is what this "
+                       + "mode is mostly for.");
             }
 
             ApplyDeskOnly();
