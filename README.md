@@ -4,6 +4,8 @@
 
 **Your gaming PC on the TV, and back again, with one press.**
 
+<sub>For a gaming PC with a TV plugged into it. Not a streaming app.</sub>
+
 [![Release](https://img.shields.io/github/v/release/Sub-Wolfer/couch-session?label=download&color=6d5bff)](https://github.com/Sub-Wolfer/couch-session/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)](#-what-you-need)
@@ -15,8 +17,9 @@
 
 **Your desk PC is also your living room console. Getting between the two is the tedious part.**
 
-Switch the display. Move the sound. Fix the resolution. Turn on HDR. Open Big Picture. Then undo every
-one of them when you're done, while working out which window ended up where.
+You already have the TV wired to the PC. The games already run. What you do every single time is the
+chore: switch the display. Move the sound. Fix the resolution. Turn on HDR. Open Big Picture. Then undo
+every one of them when you're done, while working out which window ended up where.
 
 Couch Session does the whole round trip. One press and the living room TV behaves like a console:
 the right picture and sound, HDR on, Big Picture waiting, a controller in your hand and nothing that
@@ -43,6 +46,21 @@ wants a keyboard. One press back and the desk is exactly as you left it.
 > away: no display switching, no sessions, no controller triggers, and the pages for them leave the
 > window. What's left is HDR that switches itself around your games, and the performance settings.
 > Plenty of people will want the app for that alone, and it asks which you are the first time it opens.
+
+> ### 🔌 What this is not
+>
+> **This is not game streaming.** Not Steam Link, not Moonlight and Sunshine, not GeForce NOW. There
+> is no second device, no encoder and no network in the middle, so there is nothing to add latency,
+> nothing to compress your picture and nothing to drop a frame.
+>
+> **Your TV is a monitor.** It is plugged into the same graphics card your desk monitor is, by an HDMI
+> or DisplayPort cable you have already run. Games render on that card and go straight out to the set,
+> at full quality, exactly as they do at your desk.
+>
+> **All this app does is the switching.** Every step above is something you can already do by hand,
+> through Windows display settings, the sound menu, the HDR toggle and Steam. Doing all of it twice an
+> evening is the part nobody keeps up. That is the whole job: automate the trip, and put everything
+> back the way it was.
 
 ---
 
@@ -251,6 +269,9 @@ anti-cheat. It reads HID devices directly and asks Windows about its own windows
 
 ## 💻 What you need
 
+- **A TV connected to the PC**, by HDMI or DisplayPort, showing up in Windows as a second display.
+  If your TV is not plugged into this machine, this app has nothing to switch to. (The HDR and
+  performance half still works on its own. See **At my desk only** above.)
 - **Windows 11**, which is what it's developed and tested against. Windows 10 works, and the only
   difference you'll notice is square window corners instead of rounded ones.
 - **Steam**, for the Big Picture half of a session. The HDR and display features work without it.
