@@ -572,6 +572,23 @@ public sealed class AppConfig
     public List<KnownController> KnownControllers { get; set; } = [];
 
     /// <summary>
+    /// The kind of controller last seen, so shortcut symbols are right with nothing plugged in.
+    ///
+    /// A shortcut is stored as positions rather than as printed symbols, so it can be drawn in
+    /// either family — and with a pad in your hands the app draws the one you are holding. With
+    /// nothing connected it used to draw whatever family the shortcut was recorded in, which for
+    /// a shortcut never recorded on a pad is Xbox by default. Somebody who only owns a DualSense
+    /// was shown ABXY on a cold start.
+    ///
+    /// Remembered here rather than worked out again, because the point is the moment before any
+    /// controller has been switched on.
+    /// </summary>
+    public Input.PadFamily LastPadFamily { get; set; } = Input.PadFamily.Xbox;
+
+    /// <summary>Whether <see cref="LastPadFamily"/> means anything yet.</summary>
+    public bool HasSeenAPad { get; set; }
+
+    /// <summary>
     /// Modes each display reported the last time it was switched on, keyed by device path.
     ///
     /// Windows only enumerates modes for a display it is currently driving, so a television

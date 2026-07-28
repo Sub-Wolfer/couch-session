@@ -187,16 +187,51 @@ public sealed class PadShortcut : IDisposable
         // other controller redraws the buttons as that pad's symbols. HID used to win unconditionally,
         // which left an Xbox pad in your hands being described in circles and triangles.
         if (hid && xinput)
-            return HidPad.LastActivityUtc >= LastXInputActivityUtc
-                 ? HidPad.FamilyOf(vendor, product)
-                 : PadFamily.Xbox;
+            return Seen(HidPad.LastActivityUtc >= LastXInputActivityUtc
+                            ? HidPad.FamilyOf(vendor, product)
+                            : PadFamily.Xbox);
 
-        if (hid) return HidPad.FamilyOf(vendor, product);
+        if (hid) return Seen(HidPad.FamilyOf(vendor, product));
 
         // XInput seeing a pad means an Xbox-style one, which is what it presents everything as.
-        if (xinput) return PadFamily.Xbox;
+        if (xinput) return Seen(PadFamily.Xbox);
 
-        return recorded;
+        // [BUG] Nothing connected used to fall straight back to the family recorded with the
+        // shortcut, which is PadFamily.Xbox for any shortcut never recorded on a pad — so a
+        // DualSense owner with no controller switched on was shown A, B, X and Y for buttons
+        // their controller does not have. The recorded family is only the truth about how the
+        // shortcut was entered; the last pad actually seen is the better guess at what is in
+        // the drawer, and it survives a restart because the app writes it down.
+        return HasSeenAPad ? LastSeen : recorded;
+    }
+
+    /// <summary>
+    /// The family last actually detected, remembered for when nothing is connected.
+    ///
+    /// Loaded from the config at startup and written back when it changes, so the symbols are
+    /// right on the first paint of a cold start rather than only once a pad has been switched on.
+    /// </summary>
+    public static PadFamily LastSeen { get; set; } = PadFamily.Xbox;
+
+    /// <summary>False until a controller has been seen at least once, ever.</summary>
+    public static bool HasSeenAPad { get; set; }
+
+    /// <summary>Raised when <see cref="LastSeen"/> changes, so it can be persisted.</summary>
+    public static event Action<PadFamily>? FamilySeen;
+
+    /// <summary>
+    /// Record a positive detection and pass it straight back, so the call sites above stay one
+    /// line each. Only fires the event on a real change: this runs on every repaint of a shortcut
+    /// box, and saving the config at that rate would be absurd.
+    /// </summary>
+    private static PadFamily Seen(PadFamily family)
+    {
+        if (HasSeenAPad && LastSeen == family) return family;
+
+        LastSeen = family;
+        HasSeenAPad = true;
+        FamilySeen?.Invoke(family);
+        return family;
     }
 
     /// <summary>

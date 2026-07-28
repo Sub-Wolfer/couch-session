@@ -126,6 +126,29 @@ public sealed class TrayApp : IDisposable
         // A pad switching on is usually the moment someone sits down to play.
         // Each refusal says why. A trigger that silently does nothing is indistinguishable
         // from one that is broken, and every one of these conditions is invisible from outside.
+        // The symbols the shortcut boxes draw in, remembered across restarts.
+        //
+        // Seeded from the config before anything is detected, so a cold start with no pad
+        // switched on already draws the right family rather than defaulting to Xbox. Written
+        // back only when it actually changes — PadShortcut raises this from its detection, which
+        // runs on every repaint of a shortcut box.
+        Input.PadShortcut.LastSeen = config.LastPadFamily;
+        Input.PadShortcut.HasSeenAPad = config.HasSeenAPad;
+
+        Input.PadShortcut.FamilySeen += family => OnUi(() =>
+        {
+            var cfg = _session.Config;
+            if (cfg.HasSeenAPad && cfg.LastPadFamily == family) return;
+
+            cfg.LastPadFamily = family;
+            cfg.HasSeenAPad = true;
+
+            try { cfg.Save(); }
+            catch (Exception ex) { Log.Warn($"Could not remember the controller kind: {ex.Message}"); }
+
+            Log.Info($"Controller symbols will show as {family} from now on.");
+        });
+
         _pads.Connected += device => OnUi(() =>
         {
             // Switching a pad on at a desk is somebody about to play at that desk.
