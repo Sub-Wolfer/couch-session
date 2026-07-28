@@ -628,6 +628,60 @@ internal static class Words
     public const string BrowseAppTitle = "Choose an application";
     public const string BrowseAppFilter = "Applications (*.exe)|*.exe";
 
+    // ── Session preview ───────────────────────────────────────────────────────────
+    // Written as things that will happen, in the order they happen, because that is what the reader
+    // is about to authorise. No step here may describe a setting that is switched off — see
+    // SessionPreview, where the list is built by asking the config rather than by listing features.
+    public const string PreviewButton = "Preview what a session does";
+    public const string PreviewButtonTip =
+        "Lists every change starting a session would make, and whether each one is put back "
+        + "afterwards. Nothing happens until you press Start.";
+
+    public const string PreviewTitle = "What starting a session will do";
+    public const string PreviewWhy =
+        "Worked out from your settings as they stand right now. Nothing has happened yet.";
+
+    public const string PreviewClose = "Close";
+    public const string PreviewStart = "Start it now";
+
+    public const string PreviewRestored = "put back after";
+    public const string PreviewKept = "stays after";
+
+    public const string PreviewNothing =
+        "**Nothing would happen.** Every setting that changes something is switched off.";
+
+    public const string PreviewDisplay = "Move the picture to {0}";
+    public const string PreviewTvOnly = "your monitors disconnect";
+    public const string PreviewKeepMonitors = "your monitors stay connected";
+
+    public const string PreviewAudio = "Move sound to {0}";
+    public const string PreviewAudioSteam = "Steam is restarted so it picks the device up";
+
+    public const string PreviewHdrSession = "Turn HDR on for the whole session";
+    public const string PreviewHdrPerGame = "Turn HDR on while a ticked game runs";
+    public const string PreviewHdrGames = "{0} game(s) ticked";
+
+    public const string PreviewBigPicture = "Open Steam Big Picture";
+    public const string PreviewBigPictureRestart = "restarting Steam first";
+
+    public const string PreviewPowerPlan = "Switch the Windows power plan";
+    public const string PreviewPowerSkipped = "skipped: this machine is on battery";
+
+    public const string PreviewNotifications = "Silence Windows notifications";
+    public const string PreviewPriority = "Raise the running game's priority";
+
+    public const string PreviewCloseApps = "Ask {0} app(s) to close";
+
+    public const string PreviewNoDisplay = "No couch display chosen";
+    public const string PreviewNoDisplayWhy =
+        "A session has nowhere to go until you pick your TV on the Display & Audio page.";
+
+    public const string PreviewNoAudio = "No couch sound device chosen";
+    public const string PreviewNoAudioWhy =
+        "Sound switching is on, but no device is picked, so audio would be left where it is.";
+
+    public const string PreviewUnknownDevice = "a device that is no longer here";
+
     public const string SilenceNotifications = "Silence Windows notifications";
     public const string SilenceNotificationsWhy =
         

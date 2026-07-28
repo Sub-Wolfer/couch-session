@@ -3937,6 +3937,28 @@ public sealed class SettingsForm : Form
         RefreshHomeGlance();
         AddRow(glance, _homeGlance, 0, elbow: false);
 
+        // The preview sits under the grid rather than beside the Start button.
+        //
+        // The grid answers "how is this set up" and the preview answers "so what happens when I press
+        // it", which is the next question and not a different one. Putting it in the footer would
+        // have made it a third button competing with the one it describes.
+        //
+        // Not offered in desk-only mode: there are no sessions there to preview.
+        if (!Config.DeskOnly)
+        {
+            var preview = new FlatButton
+            {
+                Text = Words.PreviewButton,
+                Size = new Size(190, 34),
+                Margin = new Padding(0, 10, 0, 0),
+            };
+
+            preview.Click += (_, _) => ShowSessionPreview();
+            _tips.SetToolTip(preview, Wrapped(Words.PreviewButtonTip));
+
+            AddRow(glance, preview, 0, elbow: false);
+        }
+
         // Said once, under the grid it explains, and only while the grid is half the size it was.
         // Without it the couch tiles and two pages of the rail simply vanish, which reads as the app
         // having lost them rather than as a mode somebody chose.
@@ -4346,6 +4368,28 @@ public sealed class SettingsForm : Form
     /// unlabelled, so a page read as an undifferentiated run of switches. Naming each group is
     /// what makes a long page scannable.
     /// </summary>
+    /// <summary>
+    /// Show what starting a session would do, from the settings as they stand.
+    ///
+    /// Saved first, silently. The window keeps edits in its controls until the debounced save fires,
+    /// so a preview built straight from Config would describe the settings as they were a few seconds
+    /// ago — which on the one screen whose entire job is to be accurate would be the worst possible
+    /// place for it.
+    /// </summary>
+    private void ShowSessionPreview()
+    {
+        Save(silent: true);
+
+        var preview = Session.SessionPreview.For(Config);
+
+        using var dialog = new PreviewDialog(preview, canStart: !SessionNow);
+
+        if (dialog.ShowDialog(this) != DialogResult.OK || !dialog.StartNow) return;
+
+        StartRequested = true;
+        Close();
+    }
+
     /// <summary>The apps chosen to be closed, held here while the window is open.</summary>
     private readonly List<string> _appsToClose = [];
 
