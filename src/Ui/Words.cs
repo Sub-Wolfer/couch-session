@@ -149,7 +149,7 @@ internal static class Words
     public const string HdrAuto = "Turn HDR on automatically";
     public const string HdrAutoWhy =
 
-            "**On when a game from the list below starts, off when it closes.** Your main display "
+            "**On when a game you have ticked below starts, off when it closes.** Your main display "
             + "only. HDR you had on beforehand is left alone — unless **Smart HDR** below has tied "
             + "it to the game you are playing, in which case it goes off when that game does.";
 
@@ -493,7 +493,7 @@ internal static class Words
             "Primary display only — the TV in a session, or your monitor at the desk. HDR you "
             + "had on beforehand is left alone, unless **Smart HDR** has tied it to the game "
             + "you are playing. **Per "
-            + "game** switches it on when a game from the list below starts, and off when "
+            + "game** switches it on when a game you have ticked below starts, and off when "
             + "that game closes. **For the whole session** switches it on as the session "
             + "begins and leaves it there until the session ends.";
     public static readonly string[] HdrModeOptions = [
