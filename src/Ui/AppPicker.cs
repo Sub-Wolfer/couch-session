@@ -30,11 +30,21 @@ internal sealed class AppPicker : Form
     private const int Pad = 24;
     private const int Wide = 700;
 
+    /// <summary>The width a row actually gets: the dialog, less its padding and the scrollbar.</summary>
+    private const int RowW = Wide - Pad * 2 - 26;
+
+    // [BUG] These were fixed pixel offsets that added up to more than a row is wide, so STATUS
+    // drew as "STATU" and every protected row said "Prote". Laid out from the right edge
+    // backwards now, which is the only way a last column can be guaranteed to fit.
     private const int TickX = 10;
-    private const int NameX = 40;
-    private const int ProcX = 330;
-    private const int MemX = 500;
-    private const int StatusX = 590;
+    private const int NameX = 42;
+    private const int StatusW = 78;
+    private const int MemW = 84;
+    private const int ProcW = 150;
+
+    private const int StatusX = RowW - StatusW - 10;
+    private const int MemX = StatusX - MemW - 10;
+    private const int ProcX = MemX - ProcW - 10;
 
     /// <summary>The executables chosen. Empty if the dialog was dismissed.</summary>
     public IReadOnlyList<string> Chosen { get; private set; } = [];
@@ -45,6 +55,8 @@ internal sealed class AppPicker : Form
     private readonly SearchBox _search;
     private readonly ToggleSwitch _background = new();
     private readonly FlatButton _add;
+    private readonly Dictionary<string, InlineCheck> _ticks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Control> _boxes = new(StringComparer.OrdinalIgnoreCase);
 
     public AppPicker(IEnumerable<string> already)
     {
@@ -217,6 +229,30 @@ internal sealed class AppPicker : Form
         RefreshAddButton();
     }
 
+    /// <summary>
+    /// Tick or untick one app from anywhere: the box, the row, or a label on it.
+    ///
+    /// One place rather than three, so the box and the row's shading can never disagree about
+    /// what is chosen.
+    /// </summary>
+    private void Set(RunningApp app, bool on)
+    {
+        if (on) _ticked.Add(app.Path);
+        else _ticked.Remove(app.Path);
+
+        if (_ticks.TryGetValue(app.Path, out var box) && box.Checked != on) box.SetQuietly(on);
+        if (_boxes.TryGetValue(app.Path, out var row)) Shade(row, app);
+
+        RefreshAddButton();
+    }
+
+    /// <summary>Shade a chosen row, so the choice is legible without reading down the tick column.</summary>
+    private void Shade(Control row, RunningApp app)
+    {
+        row.BackColor = _ticked.Contains(app.Path) ? Theme.SurfaceHi : Color.Transparent;
+        row.Invalidate();
+    }
+
     private void RefreshAddButton()
     {
         _add.Text = string.Format(Words.AppPickerAdd, _ticked.Count);
@@ -228,7 +264,7 @@ internal sealed class AppPicker : Form
     {
         var row = new BufferedPanel
         {
-            Size = new Size(Wide - Pad * 2 - 24, note.Length > 0 ? 40 : 28),
+            Size = new Size(RowW, note.Length > 0 ? 40 : 28),
             BackColor = Theme.Surface,
             Margin = new Padding(0, 6, 0, 2),
         };
@@ -263,7 +299,7 @@ internal sealed class AppPicker : Form
     {
         var row = new BufferedPanel
         {
-            Size = new Size(Wide - Pad * 2 - 24, 20),
+            Size = new Size(RowW, 20),
             BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 2),
         };
@@ -290,9 +326,10 @@ internal sealed class AppPicker : Form
     {
         var row = new BufferedPanel
         {
-            Size = new Size(Wide - Pad * 2 - 24, 32),
+            Size = new Size(RowW, 34),
             BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 1),
+            Cursor = app.Protectable ? Cursors.Hand : Cursors.Default,
         };
 
         void Cell(string text, int x, Font font, Color ink, int width = 0) =>
@@ -313,29 +350,40 @@ internal sealed class AppPicker : Form
             var tick = new InlineCheck
             {
                 Text = "",
-                Location = new Point(TickX, 4),
+                Location = new Point(TickX, 5),
                 Size = new Size(22, 24),
             };
 
             tick.SetQuietly(_ticked.Contains(app.Path));
-
-            tick.CheckedChanged += (_, _) =>
-            {
-                if (tick.Checked) _ticked.Add(app.Path);
-                else _ticked.Remove(app.Path);
-
-                RefreshAddButton();
-            };
+            tick.CheckedChanged += (_, _) => Set(app, tick.Checked);
 
             row.Controls.Add(tick);
+            _ticks[app.Path] = tick;
         }
 
         var ink = app.Protectable ? Theme.Text : Theme.TextFaint;
 
         Cell(app.Name, NameX, Theme.BodySemi, ink, ProcX - NameX - 12);
-        Cell(app.Process, ProcX, Theme.Small, Theme.TextDim, MemX - ProcX - 12);
-        Cell(Memory(app.WorkingSet), MemX, Theme.Small, Theme.TextDim);
-        Cell(app.Protectable ? "" : Words.AppPickerProtected, StatusX, Theme.Small, Theme.Warn);
+        Cell(app.Process, ProcX, Theme.Small, Theme.TextDim, ProcW);
+        Cell(Memory(app.WorkingSet), MemX, Theme.Small, Theme.TextDim, MemW);
+        Cell(app.Protectable ? "" : Words.AppPickerProtected, StatusX, Theme.Small, Theme.Warn, StatusW);
+
+        // The whole row is the target, not the tick box.
+        //
+        // A 22-pixel square at the far left of a 620-pixel row is a small thing to hit for a list
+        // people go down ticking several of. Every label is given the same handler rather than
+        // disabled, because a disabled label greys its text and these have to stay readable.
+        if (app.Protectable)
+        {
+            void Toggle(object? sender, EventArgs e) => Set(app, !_ticked.Contains(app.Path));
+
+            row.Click += Toggle;
+            foreach (Control child in row.Controls)
+                if (child is Label) child.Click += Toggle;
+        }
+
+        _boxes[app.Path] = row;
+        Shade(row, app);
 
         return row;
     }
@@ -398,7 +446,7 @@ internal sealed class AppPicker : Form
                     continue;
                 }
 
-                byPath[path] = new RunningApp(Nice(name), name, path, set, !windowed,
+                byPath[path] = new RunningApp(DisplayName(path), name, path, set, !windowed,
                                               Protectable: !Session.ResourceControl.IsProtected(name));
             }
         }
@@ -408,7 +456,29 @@ internal sealed class AppPicker : Form
                      .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase);
     }
 
-    /// <summary>"chrome" reads as a process; "Chrome" reads as the thing on the taskbar.</summary>
-    private static string Nice(string processName) =>
-        processName.Length == 0 ? processName : char.ToUpper(processName[0]) + processName[1..];
+    /// <summary>
+    /// What the app calls itself, taken from the executable's own version information.
+    ///
+    /// [BUG] This used to capitalise the process name, which produced "Msedge", "EXCEL" and
+    /// "Applicationframehost" — names no one has ever seen on their taskbar. The description a
+    /// publisher compiles into the file is where "Microsoft Edge" and "Microsoft Excel" come from,
+    /// and it is what every task manager shows.
+    ///
+    /// Falls back to the tidied process name, because plenty of executables carry no description
+    /// and a blank row would be worse than an ugly one.
+    /// </summary>
+    public static string DisplayName(string path)
+    {
+        string fallback = Tidy(Path.GetFileNameWithoutExtension(path));
+
+        try
+        {
+            var described = FileVersionInfo.GetVersionInfo(path).FileDescription?.Trim();
+            return string.IsNullOrEmpty(described) ? fallback : described;
+        }
+        catch { return fallback; }
+    }
+
+    private static string Tidy(string name) =>
+        name.Length == 0 ? name : char.ToUpper(name[0]) + name[1..];
 }

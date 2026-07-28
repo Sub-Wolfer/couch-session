@@ -2526,7 +2526,7 @@ public sealed class SettingsForm : Form
         _preview = new FlatButton
         {
             Text = Words.PreviewFooterButton,
-            Size = new Size(178, BigButton),
+            Size = new Size(138, BigButton),
 
             // Top margin puts it back on the primary button's line — see the note below.
             //
@@ -4414,6 +4414,16 @@ public sealed class SettingsForm : Form
 
     private FlowLayoutPanel? _appRows;
 
+    /// <summary>
+    /// Room the chosen-apps list actually has.
+    ///
+    /// [BUG] It was built against RowWidth, which is the width of a row at no indent. This list
+    /// sits at one, so every row was an Indent too wide and the Remove button on the end of it was
+    /// clipped off by the card. Sized from the same constant the indent uses, so the two cannot
+    /// drift apart.
+    /// </summary>
+    private int AppListWidth => RowWidth - Indent;
+
     private void OnCloseAppsToggled(object? sender, EventArgs e) => MarkDirty();
 
     /// <summary>
@@ -4431,7 +4441,7 @@ public sealed class SettingsForm : Form
             WrapContents = false,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MinimumSize = new Size(RowWidth, 0),
+            MinimumSize = new Size(AppListWidth, 0),
             BackColor = Color.Transparent,
             Margin = new Padding(0, 2, 0, 6),
         };
@@ -4444,7 +4454,7 @@ public sealed class SettingsForm : Form
             WrapContents = false,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MinimumSize = new Size(RowWidth, 0),
+            MinimumSize = new Size(AppListWidth, 0),
             BackColor = Color.Transparent,
             Margin = new Padding(0, 6, 0, 6),
         };
@@ -4512,20 +4522,25 @@ public sealed class SettingsForm : Form
     /// <summary>One chosen app: what it is called, where it lives, and a way to take it off again.</summary>
     private Control AppRow(string path)
     {
+        const int RemoveW = 84;
+        const int Gap = 12;
+
         var row = new BufferedPanel
         {
-            Size = new Size(RowWidth, 42),
+            Size = new Size(AppListWidth, 44),
             BackColor = Theme.Surface,
             Margin = new Padding(0, 0, 0, 4),
         };
 
         var name = new Label
         {
-            Text = Path.GetFileNameWithoutExtension(path),
+            Text = AppPicker.DisplayName(path),
             Font = Theme.BodySemi,
             ForeColor = Theme.Text,
-            AutoSize = true,
-            Location = new Point(10, 4),
+            AutoSize = false,
+            Size = new Size(AppListWidth - RemoveW - Gap * 3, 18),
+            AutoEllipsis = true,
+            Location = new Point(12, 5),
             BackColor = Color.Transparent,
         };
 
@@ -4537,8 +4552,8 @@ public sealed class SettingsForm : Form
             Font = Theme.Small,
             ForeColor = Theme.TextFaint,
             AutoSize = false,
-            Size = new Size(RowWidth - 120, 16),
-            Location = new Point(10, 22),
+            Size = new Size(AppListWidth - RemoveW - Gap * 3, 16),
+            Location = new Point(12, 23),
             AutoEllipsis = true,
             BackColor = Color.Transparent,
         };
@@ -4546,8 +4561,8 @@ public sealed class SettingsForm : Form
         var remove = new FlatButton
         {
             Text = Words.RemoveApp,
-            Size = new Size(84, 28),
-            Location = new Point(RowWidth - 94, 7),
+            Size = new Size(RemoveW, 28),
+            Location = new Point(AppListWidth - RemoveW - Gap, 8),
             Font = Theme.Small,
         };
 
