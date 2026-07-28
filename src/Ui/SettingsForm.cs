@@ -182,6 +182,7 @@ public sealed class SettingsForm : Form
     private readonly ShortcutBox _shortcutControllerHdr = new(ShortcutBox.Source.Controller);
     private readonly Dropdown _padLink = new();
     private readonly ToggleSwitch _changePowerPlan = new();
+    private readonly ToggleSwitch _powerPlanMainsOnly = new();
     private readonly Dropdown _powerPlan = NewDropdown();
 
     /// <summary>Explains an empty mode list. Rebuilt with the page, so it is not readonly.</summary>
@@ -3607,6 +3608,18 @@ public sealed class SettingsForm : Form
         {
             AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy,
                     Words.PowerPlanAuto, indent: Indent);
+
+            // Only where it can do something. A desktop has no battery to run down, so on one this
+            // is a switch whose description is about a state the machine can never be in — and a
+            // setting that cannot change anything is worse than no setting, because it invites the
+            // reader to work out why it did nothing.
+            if (Session.PowerLine.HasBattery())
+            {
+                AddToggle(windows, Words.PowerPlanMainsOnly, _powerPlanMainsOnly,
+                          Words.PowerPlanMainsOnlyWhy,
+                          setting: nameof(AppConfig.PowerPlanOnlyWhenPluggedIn),
+                          indent: Indent);
+            }
         });
 
         _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
@@ -6712,6 +6725,7 @@ public sealed class SettingsForm : Form
             _padLink.SelectedIndex = (int)Config.StartOnControllerLink;
 
             _changePowerPlan.Checked = Config.ChangePowerPlan;
+            _powerPlanMainsOnly.Checked = Config.PowerPlanOnlyWhenPluggedIn;
             _powerPlan.Enabled = Config.ChangePowerPlan;
 
             _powerPlan.SelectedIndex = Guid.TryParse(Config.SessionPowerPlan, out _)
@@ -6852,6 +6866,7 @@ public sealed class SettingsForm : Form
         Config.StartOnControllerLink = (PadLink)Math.Max(0, _padLink.SelectedIndex);
 
         Config.ChangePowerPlan = _changePowerPlan.Checked;
+        Config.PowerPlanOnlyWhenPluggedIn = _powerPlanMainsOnly.Checked;
         Config.SessionPowerPlan = _powerPlan.SelectedItem is PowerPlan plan
                                 ? plan.Id.ToString()
                                 : AppConfig.Automatic;

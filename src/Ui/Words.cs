@@ -578,6 +578,16 @@ internal static class Words
             + "you're already faster. Or name your own and it's used as-is.";
     public const string PowerPlanAuto = "Automatic — the fastest one you have";
 
+    // Only shown on a machine that has a battery. On a desktop it would be a switch that cannot
+    // change anything, which is worse than no switch at all — see SettingsForm, where the row is
+    // built behind PowerLine.HasBattery().
+    public const string PowerPlanMainsOnly = "Only when plugged in";
+    public const string PowerPlanMainsOnlyWhy =
+
+            "Leaves your power plan alone while this machine is on battery, where holding boost "
+            + "clocks costs more than it gives. **Checked once, as the session starts** — plugging "
+            + "in later won't switch it.";
+
     public const string SilenceNotifications = "Silence Windows notifications";
     public const string SilenceNotificationsWhy =
         

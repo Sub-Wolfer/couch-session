@@ -235,6 +235,18 @@ public sealed class AppConfig
     /// <summary>The value of <see cref="SessionPowerPlan"/> that means "pick the fastest".</summary>
     public const string Automatic = "auto";
 
+    /// <summary>
+    /// Leave the power plan alone while the machine is running on battery.
+    ///
+    /// For a laptop or a handheld docked to the television. High Performance on battery is a real
+    /// cost — it holds boost clocks and stops the CPU parking cores — and the machine that most
+    /// wants a couch session is often the one least able to afford it.
+    ///
+    /// Off by default, so the setting behaves as it always has unless somebody asks for this.
+    /// A desktop reports itself as permanently on mains, so switching it on there changes nothing.
+    /// </summary>
+    public bool PowerPlanOnlyWhenPluggedIn { get; set; }
+
     /// <summary>Stop the TV blanking while a session is running.</summary>
     /// <summary>
     /// Off, like every other performance option.

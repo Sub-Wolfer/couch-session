@@ -29,7 +29,7 @@ public sealed class PerformanceTuning
         if (_applied) return;
         _applied = true;
 
-        if (config.ChangePowerPlan) ApplyPower(config.SessionPowerPlan);
+        if (config.ChangePowerPlan && MainsOkFor(config)) ApplyPower(config.SessionPowerPlan);
         // Not honoured while the setting is withdrawn from the UI. Left in place rather than deleted
         // because the machinery is fine — it is the default that was wrong for this app, where far more
         // reports are about a display refusing to sleep than one sleeping mid-cutscene.
@@ -57,6 +57,29 @@ public sealed class PerformanceTuning
     }
 
     // ---------------------------------------------------------------- power
+
+    /// <summary>
+    /// Whether the power plan may be changed given where the machine's power is coming from.
+    ///
+    /// Only asked when the user has switched the condition on. Unknown counts as yes: a machine
+    /// that will not say what it is running on is almost always a desktop, and the failure worth
+    /// avoiding is a setting that silently stops working rather than one that occasionally applies.
+    /// </summary>
+    private static bool MainsOkFor(AppConfig config)
+    {
+        if (!config.PowerPlanOnlyWhenPluggedIn) return true;
+
+        var state = PowerLine.Now();
+
+        if (state == PowerLine.State.OnBattery)
+        {
+            Log.Info("Not changing the power plan: running on battery, and the plan is set to "
+                   + "mains only.");
+            return false;
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// High Performance plan plus the Windows 11 "Best performance" slider.
