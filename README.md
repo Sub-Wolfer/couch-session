@@ -1,5 +1,7 @@
 <div align="center">
 
+![Couch Session](docs/screenshots/banner.jpg)
+
 # 🛋️ Couch Session
 
 **Your gaming PC on the TV, and back again, with one press.**
@@ -24,14 +26,6 @@ every one of them when you're done, while working out which window ended up wher
 Couch Session does the whole round trip. One press and the living room TV behaves like a console:
 the right picture and sound, HDR on, Big Picture waiting, a controller in your hand and nothing that
 wants a keyboard. One press back and the desk is exactly as you left it.
-
-<div align="center">
-
-![The session prompt over a running game](docs/screenshots/session-prompt-in-game.jpg)
-
-<sub>Press the Guide button mid-game and this is what the TV shows. Answered with the pad, never the keyboard.</sub>
-
-</div>
 
 > ### 👥 Who this is for
 >
