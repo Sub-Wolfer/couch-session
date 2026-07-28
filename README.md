@@ -30,10 +30,10 @@ it.
 > If you have a dedicated living-room PC that never leaves the television, most of this is solving a
 > problem you don't have.
 >
-> **And you don't have to use all of it.** The HDR features work on their own at the desk, with no
-> session involved. Switch HDR on and off with a hotkey, or have it come on automatically for the
-> games you choose and go off when they close. Whichever display is primary at that moment is the one
-> it touches, so at your desk that's your monitor. Plenty of people will want the app for that alone.
+> **No television? There's a mode for that.** Pick **At my desk only** and the couch half is put
+> away: no display switching, no sessions, no controller triggers, and the pages for them leave the
+> window. What's left is HDR that switches itself around your games, and the performance settings.
+> Plenty of people will want the app for that alone, and it asks which you are the first time it opens.
 
 ---
 
@@ -43,10 +43,11 @@ it.
 |---|---|
 | 🖥️&nbsp;**Display** | Switches to your TV, on its own or alongside your monitors, at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
 | 🔊&nbsp;**Sound** | Moves audio to the TV on the way out and back to your desk on the way in. Can mute a game you left running behind you. |
-| 🌈&nbsp;**HDR** | On for the whole session, or only while a game from your list is running. Off again when it closes. The list can learn from your hotkey presses. |
+| 🌈&nbsp;**HDR** | On for the whole session, or only while a game you ticked is running. Off again when it closes, even if it was already on beforehand. The list learns from your hotkey presses. |
 | 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Decide what happens if it disconnects. Tested on Xbox and PS5 pads. |
 | ⚡&nbsp;**Performance** | Power plan, game priority, and silencing notifications for the session. Shortcuts to a few Windows settings that are not. |
 | 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. Never while you're playing. |
+| 🖱️&nbsp;**Desk only** | Turn the couch half off entirely and keep HDR and performance. One switch, and the settings it hides are remembered. |
 
 ---
 
@@ -56,11 +57,14 @@ it.
 [latest release](https://github.com/Sub-Wolfer/couch-session/releases/latest). There's no installer
 and no .NET to install. It's one file with everything inside.
 
-**2. Pick your TV and your speakers.** Settings opens on first run. Go to **Display & Audio** and
-choose them. Your TV doesn't need to be switched on to appear in the list. It's there, dimmed, marked
-disconnected.
+**2. Say how you'll use it.** The first time settings opens it asks: on a television, or at your
+desk only. Choosing the desk puts the couch features away and leaves HDR and performance. Either
+answer can be changed later under **General**.
 
-**3. Set a way to start a session.** On the **Hotkeys** page, record a keyboard combination, a
+**3. Pick your TV and your speakers.** Go to **Display & Audio** and choose them. Your TV doesn't
+need to be switched on to appear in the list. It's there, dimmed, marked disconnected.
+
+**4. Set a way to start a session.** On the **Hotkeys** page, record a keyboard combination, a
 controller combination, or both. The PlayStation and Xbox Guide buttons already work without setting
 anything up.
 
