@@ -420,6 +420,18 @@ internal static class HdrDatabase
                 // Answered, but with nothing to record. Remember it so it is not asked again,
                 // and treat the connection as healthy.
                 unavailable = 0;
+
+                // [BUG] Recording only the question was not enough to survive a restart, and the
+                // two halves of this file were quietly undoing each other. This wrote "asked" with
+                // no verdict; LoadCache then treats an "asked" that has no verdict beside it as a
+                // casualty of an older bug and throws it away so it can be re-checked. So these
+                // games were fetched, discarded, and fetched again on every single launch, forever.
+                // The log said so 26 times over: "Discarded 2 incomplete HDR cache entries".
+                //
+                // Unknown is the honest verdict here — Steam answered and holds nothing on this
+                // game — and it is what Lookup already assumes for an app id it has never heard of,
+                // so recording it changes no badge. It only stops the question being asked twice.
+                ByAppId[appId] = HdrSupport.Unknown;
                 Tried[appId] = 1;
 
                 await Task.Delay(Spacing).ConfigureAwait(false);
