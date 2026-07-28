@@ -96,6 +96,45 @@ internal static class Words
     public const string DeskOnlyNote =
         "Couch session features are off. The switch above brings them back.";
 
+    // ── The same pages, described without sessions ────────────────────────────────
+    //
+    // Desk-only mode leaves several pages standing whose subtitles and descriptions all explain
+    // themselves in terms of a session. A page called Performance that opens "Speed Windows up for a
+    // session" is describing something the reader has switched off, which is the same defect as any
+    // other wording that does not match what the app does.
+    //
+    // Written as alternates rather than made vague enough to cover both. "While a game is running"
+    // and "for a session" are different promises, and blurring them to save six strings would cost
+    // the precision that makes these descriptions worth reading.
+
+    public const string PageHomeWhyDesk = "Everything at a glance, and the switch that turns it all on.";
+
+    public const string PageAutoHDRWhyDesk =
+        "Switch your display's HDR on while chosen games are running, and off again when they quit.";
+
+    public const string PagePerformanceWhyDesk =
+
+            "Speed Windows up while a game is running. Some of these go back to how you had them "
+            + "when it closes and some are Windows' own settings that stay however they are left — "
+            + "each one says which.";
+
+    public const string ShortcutHdrWhyDesk =
+
+            "Toggles HDR on your main display — for the games and apps that look wrong in HDR, "
+            + "without going into Windows settings.";
+
+    public const string HdrModeWhyDesk =
+
+            "Your main display only, and it only ever switches HDR back off if it was the one that "
+            + "turned it on. **Per game** switches it on when a game from the list below starts, and "
+            + "off when that game closes.";
+
+    /// <summary>The same choice without the session entry. Indexes match HdrMode: Off, PerGame.</summary>
+    public static readonly string[] HdrModeOptionsDesk = [
+        "Off",
+        "Per game",
+    ];
+
     // ── Home / dashboard ──────────────────────────────────────────────────────────
     public const string PageHome = "Home";
     public const string PageHomeWhy = "Your couch session at a glance — start it here, and set what turns it on.";
@@ -475,6 +514,22 @@ internal static class Words
     public const string NoticeScanNothing = "No new games found";
 
     // ── Performance ───────────────────────────────────────────────────────────────
+
+    // Two of each, because in desk-only mode these hang off a running game rather than a session and
+    // the shipped wording would be a plain untruth. The setting is the same setting; what it waits
+    // for is not, and a description that names the wrong trigger is the kind of thing this file
+    // exists to stop.
+    public const string ChangePowerPlanDesk = "Change the Windows power plan while a game runs";
+    public const string ChangePowerPlanDeskWhy =
+
+            "Switches to the plan below while a game is running and restores yours when it closes, "
+            + "slider included. Off leaves your power settings untouched.";
+
+    public const string SilenceNotificationsDesk = "Silence Windows notifications while a game runs";
+    public const string SilenceNotificationsDeskWhy =
+
+            "Hides Windows notifications until the game closes, so a corner card cannot land over "
+            + "something fullscreen.";
 
     public const string ChangePowerPlan = "Change the Windows power plan for a session";
     public const string ChangePowerPlanWhy =

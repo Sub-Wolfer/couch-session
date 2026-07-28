@@ -2691,13 +2691,26 @@ public sealed class SettingsForm : Form
         var card = NewCard(page);
 
         // One action, two boxes: set a keyboard combination, a controller one, or both.
-        AddShortcutPair(card, Words.ShortcutSession, _shortcutKeyboard, _shortcutController, Words.ShortcutSessionWhy);
+        //
+        // Both of these start and end a session, and the guide button switch below is the same action
+        // by another name. None of the three has anything to do at a desk, and the guide button one
+        // matters most: leaving it on would mean this mode still took the pad's most important button
+        // away from Steam and from the game.
+        if (!Config.DeskOnly)
+        {
+            AddShortcutPair(card, Words.ShortcutSession, _shortcutKeyboard, _shortcutController,
+                            Words.ShortcutSessionWhy);
+        }
 
-        AddShortcutPair(card, Words.ShortcutHdr, _shortcutKeyboardHdr, _shortcutControllerHdr, Words.ShortcutHdrWhy);
+        AddShortcutPair(card, Words.ShortcutHdr, _shortcutKeyboardHdr, _shortcutControllerHdr,
+                        Config.DeskOnly ? Words.ShortcutHdrWhyDesk : Words.ShortcutHdrWhy);
 
-        AddToggle(card, Words.GuideEndsSession + Words.BadgeRecommended, _guideEndsSession,
-                  Words.GuideEndsSessionWhy,
-                  setting: nameof(AppConfig.EndSessionOnGuideButton), titleEmphasis: Theme.Good);
+        if (!Config.DeskOnly)
+        {
+            AddToggle(card, Words.GuideEndsSession + Words.BadgeRecommended, _guideEndsSession,
+                      Words.GuideEndsSessionWhy,
+                      setting: nameof(AppConfig.EndSessionOnGuideButton), titleEmphasis: Theme.Good);
+        }
 
         // The "always end with your hotkey" warning is gone. Quitting Big Picture is now handled
         // properly — the watcher sees it, closes the game and ends the session — so the advice
@@ -3065,15 +3078,20 @@ public sealed class SettingsForm : Form
 
     private Panel BuildHdrPage()
     {
-        var page = NewPage(Words.PageAutoHDR, Words.PageAutoHDRWhy);
+        var page = NewPage(Words.PageAutoHDR,
+                           Config.DeskOnly ? Words.PageAutoHDRWhyDesk : Words.PageAutoHDRWhy);
 
         NewSection(page, Words.SectionAutomaticHDR);
         var card = NewCard(page);
         // One three-way choice rather than two switches. They were never independent — whole-session
         // HDR made the per-game switch do nothing — and a pair of toggles that cancel each other can
         // only say so in prose. Off / per game / whole session says it in the shape of the control.
-        SetOptions(_hdrMode, Words.HdrModeOptions);
-        AddPick(card, Words.HdrMode, _hdrMode, Words.HdrModeWhy, Words.HdrModeOptions[(int)HdrMode.Off]);
+        // "For the whole session" is dropped rather than left selectable and inert. The indexes
+        // still line up with HdrMode, because the entry removed is the last one.
+        SetOptions(_hdrMode, Config.DeskOnly ? Words.HdrModeOptionsDesk : Words.HdrModeOptions);
+        AddPick(card, Words.HdrMode, _hdrMode,
+                Config.DeskOnly ? Words.HdrModeWhyDesk : Words.HdrModeWhy,
+                Words.HdrModeOptions[(int)HdrMode.Off]);
 
         // A note reporting what each display says about its own HDR support used to sit here, with a
         // per-display override underneath it. Both are gone.
@@ -3399,7 +3417,8 @@ public sealed class SettingsForm : Form
 
     private Panel BuildPerformancePage()
     {
-        var page = NewPage(Words.PagePerformance, Words.PagePerformanceWhy);
+        var page = NewPage(Words.PagePerformance,
+                           Config.DeskOnly ? Words.PagePerformanceWhyDesk : Words.PagePerformanceWhy);
 
         NewSection(page, Words.SectionWindows);
         var windows = NewCard(page);
@@ -3434,29 +3453,26 @@ public sealed class SettingsForm : Form
             SetFirewallQuietly(!FirewallControl.IsEnabled());
         }
 
-        // The power plan is switched for a session and put back at the end of one, so without
-        // sessions it has nothing to act on. Offering it here would be offering a setting that
-        // silently never applies.
-        if (!Config.DeskOnly)
-        {
-            AddToggle(windows, Words.ChangePowerPlan, _changePowerPlan, Words.ChangePowerPlanWhy, setting: nameof(AppConfig.ChangePowerPlan),
-                      check: () => PerformanceCheck.CheckPowerPlan(SelectedPowerPlan()));
+        AddToggle(windows,
+                  Config.DeskOnly ? Words.ChangePowerPlanDesk : Words.ChangePowerPlan,
+                  _changePowerPlan,
+                  Config.DeskOnly ? Words.ChangePowerPlanDeskWhy : Words.ChangePowerPlanWhy,
+                  setting: nameof(AppConfig.ChangePowerPlan),
+                  check: () => PerformanceCheck.CheckPowerPlan(SelectedPowerPlan()));
 
-            RefreshPowerPlans();
-            AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy, Words.PowerPlanAuto, indent: Indent);
+        RefreshPowerPlans();
+        AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy, Words.PowerPlanAuto, indent: Indent);
 
-            // The picker follows the toggle, so a list of plans is not offered to someone who has
-            // just said they do not want their power plan touched.
-            _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
-            _changePowerPlan.CheckedChanged += OnChangePowerPlanToggled;
-            _powerPlan.Enabled = _changePowerPlan.Checked;
+        // The picker follows the toggle, so a list of plans is not offered to someone who has
+        // just said they do not want their power plan touched.
+        _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
+        _changePowerPlan.CheckedChanged += OnChangePowerPlanToggled;
+        _powerPlan.Enabled = _changePowerPlan.Checked;
 
-            // Re-run the power check when a different plan is picked, so its line under the toggle
-            // updates to whether that plan can be switched to on this machine.
-            _powerPlan.SelectedIndexChanged -= OnPowerPlanChanged;
-            _powerPlan.SelectedIndexChanged += OnPowerPlanChanged;
-        }
-
+        // Re-run the power check when a different plan is picked, so its line under the toggle
+        // updates to whether that plan can be switched to on this machine.
+        _powerPlan.SelectedIndexChanged -= OnPowerPlanChanged;
+        _powerPlan.SelectedIndexChanged += OnPowerPlanChanged;
         // "Keep the TV awake" is not offered at the moment.
         //
         // It solves the rarer half of the problem. The trouble people actually hit with this app is
@@ -3466,13 +3482,12 @@ public sealed class SettingsForm : Form
         // games already handle. The setting and its plumbing are still here; only the way in is gone,
         // and it is forced off on save so a previously saved "on" cannot outlive the switch.
 
-        // Silenced until the session ends, which is a sentence with nothing in it here.
-        if (!Config.DeskOnly)
-        {
-            AddToggle(windows, Words.SilenceNotifications, _silenceNotifications, Words.SilenceNotificationsWhy, setting: nameof(AppConfig.SilenceNotifications),
-                      check: PerformanceCheck.CheckNotifications);
-        }
-
+        AddToggle(windows,
+                  Config.DeskOnly ? Words.SilenceNotificationsDesk : Words.SilenceNotifications,
+                  _silenceNotifications,
+                  Config.DeskOnly ? Words.SilenceNotificationsDeskWhy : Words.SilenceNotificationsWhy,
+                  setting: nameof(AppConfig.SilenceNotifications),
+                  check: PerformanceCheck.CheckNotifications);
         // Badged, because it is the one setting on this page that is a plain recommendation. The rest
         // are trades — security for reach, or a Windows-wide preference for a quieter session — and
         // sitting unlabelled among them made a switch worth having look like another thing to weigh up.
@@ -3594,7 +3609,8 @@ public sealed class SettingsForm : Form
 
     private Panel BuildHomePage()
     {
-        var page = NewPage(Words.PageHome, Words.PageHomeWhy);
+        var page = NewPage(Words.PageHome,
+                           Config.DeskOnly ? Words.PageHomeWhyDesk : Words.PageHomeWhy);
 
         // The status card that used to sit here is gone.
         //
@@ -3674,7 +3690,11 @@ public sealed class SettingsForm : Form
         // "the PS or Xbox button" is a phrase people read past, while the shapes are recognised without
         // reading at all.
         // Shown until it is dismissed, and again after an update. See GuideBannerDismissedAt.
-        if (!string.Equals(Config.GuideBannerDismissedAt, AppInfo.Version, StringComparison.Ordinal))
+        // Never in desk-only mode. The banner's whole message is "press this button to start a Couch
+        // Session", which is the one thing this mode exists to switch off — and the guide button is
+        // left alone entirely, so the instruction would also be false.
+        if (!Config.DeskOnly
+                && !string.Equals(Config.GuideBannerDismissedAt, AppInfo.Version, StringComparison.Ordinal))
         {
             var banner = NewCard(page);
 
@@ -3767,10 +3787,19 @@ public sealed class SettingsForm : Form
         // screen and always in the same place; a second copy of it only adds something to read.
 
         // ---- the two things nobody would guess ----
-        var tips = NewCard(page);
+        //
+        // Both are advice about sessions. The borderless tip exists because an exclusive-fullscreen
+        // game minimizes when the session prompt appears, and there is no prompt here; HDR still
+        // changes under a running game, but that is Windows behaving normally rather than something
+        // this app does to the reader, and it is not worth a card of its own on a page it no longer
+        // belongs on.
+        if (!Config.DeskOnly)
+        {
+            var tips = NewCard(page);
 
-        // The guide button is the banner's job now, so only the one thing left that nobody guesses.
-        AddNote(tips, Words.HomeBorderlessTip, tight: true);
+            // The guide button is the banner's job now, so only the one thing left that nobody guesses.
+            AddNote(tips, Words.HomeBorderlessTip, tight: true);
+        }
 
         return page;
     }
@@ -3784,9 +3813,13 @@ public sealed class SettingsForm : Form
         // No "Default:" line: this one lives in Task Scheduler and is read back from there, so what
         // it ships as is Windows' business rather than a default this app can claim.
         AddToggle(start, Words.StartWithWindows, _startWithWindows, Words.StartWithWindowsWhy);
-        AddToggle(start, Words.StartOnLaunch, _startOnLaunch, Words.StartOnLaunchWhy, setting: nameof(AppConfig.StartSessionOnLaunch));
-        AddToggle(start, Words.StartOnWake, _startOnWake, Words.StartOnWakeWhy, setting: nameof(AppConfig.StartSessionOnWake));
-        AddToggle(start, Words.StartOnWakeControllerOnly, _startOnWakeControllerOnly, Words.StartOnWakeControllerOnlyWhy, Indent, setting: nameof(AppConfig.StartOnWakeControllerOnly));
+        // All three start a session, one on launch and two on waking. Nothing to start here.
+        if (!Config.DeskOnly)
+        {
+            AddToggle(start, Words.StartOnLaunch, _startOnLaunch, Words.StartOnLaunchWhy, setting: nameof(AppConfig.StartSessionOnLaunch));
+            AddToggle(start, Words.StartOnWake, _startOnWake, Words.StartOnWakeWhy, setting: nameof(AppConfig.StartSessionOnWake));
+            AddToggle(start, Words.StartOnWakeControllerOnly, _startOnWakeControllerOnly, Words.StartOnWakeControllerOnlyWhy, Indent, setting: nameof(AppConfig.StartOnWakeControllerOnly));
+        }
 
         AddToggle(start, Words.MinimizeOnClose, _minimizeOnClose, Words.MinimizeOnCloseWhy, setting: nameof(AppConfig.MinimizeToTrayOnClose));
 
@@ -3818,11 +3851,16 @@ public sealed class SettingsForm : Form
         // This is not a notification. A notification tells you something happened; this stands in front
         // of something happening and refuses to let it until it is answered. Filing it with the toasts
         // would put the one setting that protects unsaved work under a heading people turn off wholesale.
-        NewSection(page, Words.SectionEndingSession);
-        var ending = NewCard(page);
-        AddToggle(ending, Words.ConfirmClosingGame + Words.BadgeRecommended, _confirmClosingGame,
-                  Words.ConfirmClosingGameWhy, setting: nameof(AppConfig.ConfirmClosingGame),
-                  titleEmphasis: Theme.Good);
+        // The whole section is about ending a session: the check it governs stands in front of the
+        // prompt that closes a running game as a session tears down.
+        if (!Config.DeskOnly)
+        {
+            NewSection(page, Words.SectionEndingSession);
+            var ending = NewCard(page);
+            AddToggle(ending, Words.ConfirmClosingGame + Words.BadgeRecommended, _confirmClosingGame,
+                      Words.ConfirmClosingGameWhy, setting: nameof(AppConfig.ConfirmClosingGame),
+                      titleEmphasis: Theme.Good);
+        }
 
         NewSection(page, Words.SectionNotifications);
         var notify = NewCard(page);
@@ -3837,9 +3875,13 @@ public sealed class SettingsForm : Form
 
         WhenOn(() => _showNotifications.Checked, notify, () =>
         {
-            AddToggle(notify, Words.ShowSessionNotifications, _showSessionNotifications,
-                      Words.ShowSessionNotificationsWhy, Indent,
-                      setting: nameof(AppConfig.ShowSessionNotifications));
+            // "When a session starts and ends" has nothing to announce without sessions.
+            if (!Config.DeskOnly)
+            {
+                AddToggle(notify, Words.ShowSessionNotifications, _showSessionNotifications,
+                          Words.ShowSessionNotificationsWhy, Indent,
+                          setting: nameof(AppConfig.ShowSessionNotifications));
+            }
 
             AddToggle(notify, Words.ShowHdrNotifications, _showHdrNotifications,
                       Words.ShowHdrNotificationsWhy, Indent,
@@ -7032,6 +7074,16 @@ public sealed class SettingsForm : Form
         if (_pages.Count <= ControllerPage) return;
 
         bool couch = !Config.DeskOnly;
+
+        // A config saved in couch mode can arrive here still asking for whole-session HDR, and the
+        // picker on this mode's HDR page has no such entry. Coerced on the way in rather than only
+        // when the switch is pressed, so a settings file edited by hand or carried from another
+        // machine cannot leave the picker showing an index it does not have.
+        if (!couch && Config.HdrSwitching == HdrMode.WholeSession)
+        {
+            Config.HdrSwitching = HdrMode.PerGame;
+            Log.Info("Desk-only mode: whole-session HDR is not available, so it reads as per game.");
+        }
 
         _pages[DisplayPage].Nav.Visible = couch;
         _pages[ControllerPage].Nav.Visible = couch;

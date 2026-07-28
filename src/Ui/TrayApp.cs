@@ -108,6 +108,11 @@ public sealed class TrayApp : IDisposable
             // A game closing is one of the two ways the machine goes quiet. Marshalled because this
             // fires on the watcher thread and a toast belongs to the UI thread.
             if (!running) OnUi(ReleaseHeldUpdateNotice);
+
+            // In desk-only mode the game is what the performance settings hang off, because there is
+            // no session to hang them off. Does nothing in the ordinary mode, where the session
+            // applies and restores them itself.
+            _session.TuneAroundGame(running);
         };
 
         // Close the game as the session tears down.

@@ -150,6 +150,27 @@ public sealed class SessionController
     }
 
     /// <summary>Switch to the TV. No-op if already there or mid-transition.</summary>
+    /// <summary>
+    /// Apply the performance settings around a running game rather than around a session.
+    ///
+    /// Desk-only mode has no sessions, so the two settings that are switched on at the start of one
+    /// and put back at the end would simply never fire. The game is the only event left worth hanging
+    /// them on, and it is the better one anyway: a power plan raised for the whole time somebody is
+    /// sat at their desk is a power plan raised for reading email.
+    ///
+    /// The tuner itself is unchanged and still refuses to apply or restore twice, so a game that
+    /// reports its start more than once costs nothing.
+    /// </summary>
+    public void TuneAroundGame(bool running)
+    {
+        // Sessions do this themselves, and doing it from both would mean a game closing mid-session
+        // put the power plan back while the session was still going.
+        if (!Config.DeskOnly) return;
+
+        if (running) _tuning.Apply(Config);
+        else _tuning.Restore();
+    }
+
     public void EnterTvMode()
     {
         // The one gate that cannot be got around.
