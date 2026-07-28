@@ -135,6 +135,27 @@ public sealed class TrayApp : IDisposable
         Input.PadShortcut.LastSeen = config.LastPadFamily;
         Input.PadShortcut.HasSeenAPad = config.HasSeenAPad;
 
+        // Nothing remembered yet, but the controller page may already know a pad.
+        //
+        // KnownControllers is written the first time a controller is seen and survives forever,
+        // so on an existing install it answers the question this setting was added for without
+        // waiting for the user to plug anything in. Without this the fix would not take effect
+        // until the next time a pad was switched on, which on the cold start it exists for is
+        // exactly the wrong moment.
+        if (!config.HasSeenAPad && config.KnownControllers.Count > 0)
+        {
+            foreach (var known in config.KnownControllers)
+            {
+                if (!Input.PadShortcut.TryFamilyFromId(known.Id, out var family)) continue;
+
+                Input.PadShortcut.LastSeen = family;
+                Input.PadShortcut.HasSeenAPad = true;
+                Log.Info($"No controller seen yet this install; taking {family} symbols from "
+                       + $"the remembered '{known.Name}'.");
+                break;
+            }
+        }
+
         Input.PadShortcut.FamilySeen += family => OnUi(() =>
         {
             var cfg = _session.Config;

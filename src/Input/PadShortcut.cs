@@ -213,6 +213,32 @@ public sealed class PadShortcut : IDisposable
     /// </summary>
     public static PadFamily LastSeen { get; set; } = PadFamily.Xbox;
 
+    /// <summary>
+    /// Work out a family from a stored controller id such as "VID_054C&amp;PID_0CE6#16351a64".
+    ///
+    /// For seeding the remembered family from controllers the app already knows about, so an
+    /// install that has been running for months does not have to see a pad again before the
+    /// symbols are right.
+    /// </summary>
+    public static bool TryFamilyFromId(string id, out PadFamily family)
+    {
+        family = PadFamily.Xbox;
+        if (string.IsNullOrWhiteSpace(id)) return false;
+
+        int v = id.IndexOf("VID_", StringComparison.OrdinalIgnoreCase);
+        int p = id.IndexOf("PID_", StringComparison.OrdinalIgnoreCase);
+        if (v < 0 || p < 0 || id.Length < v + 8 || id.Length < p + 8) return false;
+
+        if (!ushort.TryParse(id.AsSpan(v + 4, 4), System.Globalization.NumberStyles.HexNumber,
+                             null, out ushort vendor)) return false;
+
+        if (!ushort.TryParse(id.AsSpan(p + 4, 4), System.Globalization.NumberStyles.HexNumber,
+                             null, out ushort product)) return false;
+
+        family = HidPad.FamilyOf(vendor, product);
+        return true;
+    }
+
     /// <summary>False until a controller has been seen at least once, ever.</summary>
     public static bool HasSeenAPad { get; set; }
 
