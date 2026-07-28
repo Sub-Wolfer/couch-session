@@ -36,4 +36,6 @@ TextEditor.html
 .vscode/
 
 # Raw screenshots, kept out of the repository. The processed ones live in docs/.
-Screenshots/
+# Anchored to the root on purpose. Git on Windows matches ignore rules without regard to case,
+# so an unanchored "Screenshots/" also swallowed docs/screenshots/ — the ones the README shows.
+/Screenshots/
