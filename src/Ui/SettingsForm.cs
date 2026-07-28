@@ -2568,6 +2568,10 @@ public sealed class SettingsForm : Form
             Visible = false,
         };
 
+        // Recorded as hidden, not merely set hidden — the strip is measured from this set, and it
+        // starts out of the sum until a running game asks for it.
+        _footerHidden.Add(_closeGame);
+
         // One bitmap, made once and let go once. The primary button replaces its icon as the session
         // state moves and disposes the old one for the same reason; this one never changes, so the
         // window closing is the only moment it can be released.
@@ -7293,11 +7297,7 @@ public sealed class SettingsForm : Form
         // main button hanging off the right edge, half of it past the window.
         bool wanted = !Config.DeskOnly;
 
-        if (_action.Visible != wanted)
-        {
-            _action.Visible = wanted;
-            SizeFooterButtons();
-        }
+        ShowFooterButton(_action, wanted);
 
         if (!wanted) return;
 
@@ -7373,10 +7373,7 @@ public sealed class SettingsForm : Form
         // to close nothing.
         bool wanted = state == FooterState.Resume && GameRunningNow;
 
-        if (_closeGame.Visible == wanted) return;
-
-        _closeGame.Visible = wanted;
-        SizeFooterButtons();
+        ShowFooterButton(_closeGame, wanted);
     }
 
     /// <summary>
@@ -7398,9 +7395,44 @@ public sealed class SettingsForm : Form
         int wide = _footerButtons.Padding.Horizontal;
 
         foreach (Control child in _footerButtons.Controls)
-            if (child.Visible) wide += child.Width + child.Margin.Horizontal;
+            if (FooterShown(child)) wide += child.Width + child.Margin.Horizontal;
 
         if (_footerButtons.Width != wide) _footerButtons.Width = wide;
+    }
+
+    /// <summary>
+    /// Which footer buttons are meant to be on show.
+    ///
+    /// [BUG] This used to read Control.Visible, which answers a different question than it appears
+    /// to. A child of a window that has not been shown yet reports false whatever it was last set
+    /// to — Visible is the effective state, not the requested one. Every call during construction
+    /// therefore summed nothing, the strip came out as its padding alone, and Reset and Start were
+    /// clipped away to a width of eleven pixels. They only appeared once something re-measured the
+    /// strip on a window that was by then on screen, which is exactly what switching desk mode on
+    /// and off again did — and why the buttons were missing until somebody did.
+    ///
+    /// Kept as a set of what is hidden rather than what is shown, so a button added to the strip
+    /// later is on show by default, which is what every one of them wants.
+    /// </summary>
+    private readonly HashSet<Control> _footerHidden = [];
+
+    private bool FooterShown(Control button) => !_footerHidden.Contains(button);
+
+    /// <summary>
+    /// Show or hide a footer button and re-measure the strip, recording the request rather than
+    /// reading it back off the control. Returns true if anything changed.
+    /// </summary>
+    private bool ShowFooterButton(Control button, bool show)
+    {
+        if (FooterShown(button) == show) return false;
+
+        button.Visible = show;
+
+        if (show) _footerHidden.Remove(button);
+        else _footerHidden.Add(button);
+
+        SizeFooterButtons();
+        return true;
     }
 
     private void OnCloseGameButton()
