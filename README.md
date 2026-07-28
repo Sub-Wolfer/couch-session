@@ -27,10 +27,10 @@ it.
 > from the sofa. That's the whole reason this exists: the going-to-the-TV part is easy enough to do by
 > hand, and it's *coming back* that nobody wants to do twice a day.
 >
-> If you have a dedicated living-room PC that never leaves the television, most of this is solving a
+> If you have a dedicated living-room PC that never leaves the TV, most of this is solving a
 > problem you don't have.
 >
-> **No television? There's a mode for that.** Pick **At my desk only** and the couch half is put
+> **No TV? There's a mode for that.** Pick **At my desk only** and the couch half is put
 > away: no display switching, no sessions, no controller triggers, and the pages for them leave the
 > window. What's left is HDR that switches itself around your games, and the performance settings.
 > Plenty of people will want the app for that alone, and it asks which you are the first time it opens.
@@ -57,7 +57,7 @@ it.
 [latest release](https://github.com/Sub-Wolfer/couch-session/releases/latest). There's no installer
 and no .NET to install. It's one file with everything inside.
 
-**2. Say how you'll use it.** The first time settings opens it asks: on a television, or at your
+**2. Say how you'll use it.** The first time settings opens it asks: on a TV, or at your
 desk only. Choosing the desk puts the couch features away and leaves HDR and performance. Either
 answer can be changed later under **General**.
 
@@ -111,7 +111,7 @@ They're two separate settings, and either can be set to come back, to ask first,
 > ### ⚠️ Closing Big Picture closes your game
 >
 > Quitting Big Picture from Steam's own menu ends the session **and shuts down the game you were
-> playing**, without asking. That isn't an oversight. Big Picture is the only thing on the television
+> playing**, without asking. That isn't an oversight. Big Picture is the only thing on the TV
 > able to show a question, so once it's gone there's nothing left to ask with and nobody holding a
 > controller who could answer.
 >
