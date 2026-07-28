@@ -557,6 +557,11 @@ public sealed class SessionController
             catch (Exception ex) { Log.Warn($"Could not close Big Picture: {ex.Message}"); }
         }
 
+        // Whether the desktop arrangement genuinely came back, which decides at the end of this
+        // method whether the recovery file on disk is still needed. Assumed true only because a
+        // session with no snapshot to restore has nothing that can have gone wrong.
+        bool displaysRestored = true;
+
         // Each step is independently guarded. Failing to restore audio must never prevent the
         // displays coming back — that's the one the user can't fix without a working screen.
         if (_displaySnapshot is not null)
@@ -570,11 +575,28 @@ public sealed class SessionController
                 ReportDisplays("before the topology restore");
 
                 DisplayManager.Restore(_displaySnapshot);
-                DisplayManager.WaitFor(
+
+                // [BUG] The answer to this used to be thrown away and the line below logged
+                // regardless, so the log read "Display topology restored." in the one case worth
+                // knowing about — the case where they had not come back. A log that reports success
+                // it did not check is worse than no line at all: it sends the next person reading it
+                // somewhere else entirely.
+                bool back = DisplayManager.WaitFor(
                     () => DisplayManager.ActiveDisplayCount() >= _displaySnapshot.ActivePathCount,
                     TimeSpan.FromMilliseconds(Config.DisplaySettleTimeoutMs),
                     TimeSpan.FromMilliseconds(600));
-                Log.Info("Display topology restored.");
+
+                if (back)
+                {
+                    Log.Info("Display topology restored.");
+                }
+                else
+                {
+                    displaysRestored = false;
+                    Log.Warn($"The displays did not come back within "
+                           + $"{Config.DisplaySettleTimeoutMs}ms: {DisplayManager.ActiveDisplayCount()} "
+                           + $"active where {_displaySnapshot.ActivePathCount} were expected.");
+                }
 
                 ReportDisplays("after the topology restore");
 
@@ -661,7 +683,11 @@ public sealed class SessionController
                     Thread.Sleep(1200);
                 }
             }
-            catch (Exception ex) { Log.Error("Display restore failed", ex); }
+            catch (Exception ex)
+            {
+                displaysRestored = false;
+                Log.Error("Display restore failed", ex);
+            }
         }
 
         // Audio goes to the background; windows do not.
@@ -708,7 +734,25 @@ public sealed class SessionController
 
         // The displays are back, so the note saying how to put them back has nothing left to say.
         // Anything still on disk after this point means a run that did not reach here.
-        DisplayManager.DisarmRecovery();
+        //
+        // [BUG] It used to be cleared unconditionally. The restore above is wrapped in a catch that
+        // logs and carries on, so a restore that threw — or one that quietly never landed — arrived
+        // here and deleted the file describing how to undo it. The safety net was thrown away in
+        // exactly the situation it exists for, and the next launch had nothing to recover from: it
+        // saw a reduced desktop, no recovery file, and treated that arrangement as normal.
+        //
+        // Left in place instead, and RecoverFromCrash picks it up on the next start. It is harmless
+        // if the user puts the displays back by hand in the meantime — that check compares what is
+        // active now against what was saved and does nothing when the desktop is already whole.
+        if (displaysRestored)
+        {
+            DisplayManager.DisarmRecovery();
+        }
+        else
+        {
+            Log.Warn("The displays were not confirmed back, so the recovery file is being kept. "
+                   + "The next launch will put them back if the desktop is still short of one.");
+        }
 
         _ = SteamWindowMemory
                 // Generous, because it may have to sit through a Big Picture launch that is
