@@ -689,8 +689,13 @@ public sealed class AppConfig
     public int DisplaySettleTimeoutMs { get; set; } = 12000;
 
     public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(TvDisplayPath) &&
-        (!SwitchAudio || !string.IsNullOrWhiteSpace(TvAudioDeviceId));
+        // Nothing to set up in desk-only mode: there is no television to choose and no speakers to
+        // move sound to. Without this the app considers itself half-installed forever — which gates
+        // the start-with-Windows repair, and reads as a setup step that can never be completed
+        // because the page it would be completed on is not there.
+        DeskOnly ||
+        (!string.IsNullOrWhiteSpace(TvDisplayPath) &&
+         (!SwitchAudio || !string.IsNullOrWhiteSpace(TvAudioDeviceId)));
 
     // ---- persistence ----
 

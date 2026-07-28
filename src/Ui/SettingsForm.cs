@@ -789,8 +789,28 @@ public sealed class SettingsForm : Form
                 if (IsDisposed || Disposing) return;
 
                 using var welcome = new WelcomeDialog();
-                if (welcome.ShowDialog(this) == DialogResult.OK && welcome.GoToSetup)
+
+                // Escape or a close leaves both answers unchosen, and the app stays as it ships:
+                // the full thing, which is the safer default because nothing is hidden by it.
+                if (welcome.ShowDialog(this) != DialogResult.OK) return;
+
+                if (welcome.DeskOnly)
+                {
+                    // Through the switch, so the mode is applied by the same path a later press
+                    // would use: pages leave the rail, the footer button goes, the home page is
+                    // rebuilt without the couch tiles.
+                    _deskOnly.Checked = true;
+
+                    try { Config.Save(); }
+                    catch (Exception ex) { Log.Warn($"Could not save the first-run choice: {ex.Message}"); }
+
+                    Log.Info("First run: desk-only chosen, so the couch session features are off.");
+                }
+                else
+                {
+                    // The one page they now have to fill in.
                     ShowPage(DisplayPage);
+                }
             });
         }
     }
@@ -1989,8 +2009,14 @@ public sealed class SettingsForm : Form
 
         // ── things that are wrong ──
 
+        // Three of the alerts below are about a session: a television that cannot be found, Steam
+        // missing when Steam is only wanted for Big Picture, and no way to start something that
+        // cannot be started here. Two of them also link to pages this mode takes out of the rail,
+        // so pressing one would send the reader somewhere with no way back.
+        bool couch = !Config.DeskOnly;
+
         // The chosen display, asked of Windows rather than of the config.
-        if (Config.TvDisplayPath is { Length: > 0 } && DisplayName(Config.TvDisplayPath) is null)
+        if (couch && Config.TvDisplayPath is { Length: > 0 } && DisplayName(Config.TvDisplayPath) is null)
             list.Add(new("Couch display not detected",
                          Config.TvDisplayName is { Length: > 0 } n ? $"{n} — is the TV switched on?"
                                                                    : "is the TV switched on?",
@@ -2006,11 +2032,11 @@ public sealed class SettingsForm : Form
         }
         catch { /* asking is best effort */ }
 
-        if (!BigPictureLauncher.IsSteamInstalled())
+        if (couch && !BigPictureLauncher.IsSteamInstalled())
             list.Add(new("Steam was not found", "a session opens Big Picture, so Steam is required",
                          AlertKind.Problem, GeneralPage));
 
-        if (_shortcutController.Value == 0 && _shortcutKeyboard.Value == 0 && !_guideEndsSession.Checked)
+        if (couch && _shortcutController.Value == 0 && _shortcutKeyboard.Value == 0 && !_guideEndsSession.Checked)
             list.Add(new("No way to start a session from the couch",
                          "set a hotkey, or turn the Guide button on", AlertKind.Problem, HotkeysPage));
 
@@ -3461,13 +3487,22 @@ public sealed class SettingsForm : Form
                   check: () => PerformanceCheck.CheckPowerPlan(SelectedPowerPlan()));
 
         RefreshPowerPlans();
-        AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy, Words.PowerPlanAuto, indent: Indent);
 
-        // The picker follows the toggle, so a list of plans is not offered to someone who has
-        // just said they do not want their power plan touched.
+        // Hidden until the toggle above is on, rather than shown greyed.
+        //
+        // Greying it was the older behaviour and it read as a fault: a picker sitting there
+        // unusable invites a click, and the reason it will not respond is a switch three lines up
+        // that the eye has already passed. Every other dependent row in this window comes and goes
+        // with its parent — the hold button, the notification kinds — and this one was the odd one
+        // out in both modes.
+        WhenOn(() => _changePowerPlan.Checked, windows, () =>
+        {
+            AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy,
+                    Words.PowerPlanAuto, indent: Indent);
+        });
+
         _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
         _changePowerPlan.CheckedChanged += OnChangePowerPlanToggled;
-        _powerPlan.Enabled = _changePowerPlan.Checked;
 
         // Re-run the power check when a different plan is picked, so its line under the toggle
         // updates to whether that plan can be switched to on this machine.
@@ -5908,8 +5943,12 @@ public sealed class SettingsForm : Form
 
     private void OnChangePowerPlanToggled(object? sender, EventArgs e)
     {
+        // The picker is shown and hidden by the WhenOn group that wraps it, which listens to this same
+        // switch; this only has to keep the control itself consistent for the moment before that runs.
         _powerPlan.Enabled = _changePowerPlan.Checked;
         _powerPlan.Invalidate();
+
+        UpdateDependentStates();
     }
 
     /// <summary>The plan the dropdown is on, as a key: a scheme's GUID, or Automatic for the top item.</summary>

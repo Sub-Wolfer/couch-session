@@ -3233,6 +3233,15 @@ public sealed class TrayApp : IDisposable
     {
         bool tv = _session.IsInTvMode;
 
+        // The menu is the one place a session can still be started with every page and hotkey for it
+        // gone, so it has to answer to the mode as well. The status line goes with them: "On the
+        // desktop" is only worth saying when there is somewhere else to be.
+        bool desk = _session.Config.DeskOnly;
+
+        _statusItem.Visible = !desk;
+        _toggleItem.Visible = !desk;
+        _launchItem.Visible = !desk;
+
         _statusItem.Text = _busy ? "Switching…" : tv ? "On the TV" : "On the desktop";
         _toggleItem.Text = tv ? "Return to the desktop" : "Switch to the TV";
         _toggleItem.ToolTipText = tv
@@ -3246,7 +3255,8 @@ public sealed class TrayApp : IDisposable
         var previous = _icon.Icon;
         _icon.Icon = AppIcon.ForTray(active: tv);
         previous?.Dispose();
-        _icon.Text = _busy ? "Couch Session — switching…"
+        _icon.Text = desk ? "Couch Session"
+                   : _busy ? "Couch Session — switching…"
                    : tv ? "Couch Session — on the TV"
                         : "Couch Session — on the desktop";
     }

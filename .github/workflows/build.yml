@@ -15,8 +15,13 @@
 name: Build
 
 on:
-  push:
+  # Not every push. A run per commit was right when commits arrived a few times a day and wrong
+  # during a long stretch of work, where it means a Windows runner spinning up for a wording tweak
+  # and a queue of results nobody reads. Pull requests are where a build check earns its keep,
+  # because that is the one place code arrives without having been built on somebody's machine
+  # first. The manual trigger covers "check the branch before I tag it".
   pull_request:
+  workflow_dispatch:
 
 # A run per commit, not per push: pushing three times in a minute should leave one answer, not three
 # queued builds racing each other to report on work that has already moved on.

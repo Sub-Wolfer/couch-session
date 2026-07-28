@@ -372,25 +372,33 @@ internal static class Words
             "One press moves your PC to the television: display, sound, HDR and Big "
             + "Picture. One more brings it all back, exactly as you left it.";
 
-    // Names the destination the button actually goes to. The previous wording pointed at a setup
-    // checklist on the Home page, and that checklist had been deleted — see the note in BuildHomePage.
+    // The welcome asks one question instead of pointing at one page.
     //
-    // The second paragraph exists because the first sentence of this window describes a television,
-    // and someone who does not game on one will decide in that sentence that the app is not for
-    // them. HDR switching is worth having on its own — Windows leaves it on all the time or makes
-    // you dig through Settings before and after every game — and it needs nothing to do with a TV.
-    // Saying so here, rather than leaving it to be discovered, is the difference between a niche
-    // tool and one with a second reason to keep it.
-    public const string WelcomeSteps =
-        
-            "Start on **Display & Audio** and pick your television and your speakers. That "
-            + "is the whole setup; everything else already has a sensible default.\n\nNot "
-            + "gaming on a TV? You can use this for **HDR alone**. Have it switch HDR on when "
-            + "a game launches and off again when you quit, so the desktop never sits there "
-            + "looking washed out. Just leave the television side switched off.";
+    // It used to say "start on Display & Audio and pick your television", with a second paragraph
+    // for people who have no television explaining that they could use it for HDR alone and should
+    // "leave the television side switched off". That paragraph was doing the work a choice should
+    // do: it described a mode, in prose, and left the reader to assemble it by hand out of settings
+    // spread over four pages.
+    //
+    // Asking outright is better on both sides. Somebody with a TV gets sent to the one page they
+    // have to fill in, and somebody without one gets an app with the television half already gone
+    // rather than an app they have to prune. It is also the only moment the question is cheap: it is
+    // the first thing they see, nothing is set up yet, and either answer can be changed later on the
+    // Home page.
+    public const string WelcomeChoose = "**How will you use it?**";
 
-    public const string WelcomeGo = "Set up my TV";
-    public const string WelcomeSkip = "I'll look around myself";
+    public const string WelcomeCouch = "On my television";
+    public const string WelcomeCouchWhy =
+        "The full app. Pick your TV and speakers next; everything else has a sensible default.";
+
+    public const string WelcomeDesk = "At my desk only";
+    public const string WelcomeDeskWhy =
+
+            "HDR and performance, with the couch half switched off. HDR comes on when a game "
+            + "starts and goes off when it quits, so the desktop is never left washed out.";
+
+    /// <summary>Under both answers, so neither reads as a decision that cannot be undone.</summary>
+    public const string WelcomeEither = "You can change this at any time on the Home page.";
 
     // ── Home page guidance ────────────────────────────────────────────────────────
     // No ** in either of these, unlike every other string in this file.

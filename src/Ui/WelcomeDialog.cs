@@ -20,9 +20,6 @@ internal sealed class WelcomeDialog : Form
     private const int Pad = 24;
     private const int Wide = 470;
 
-    /// <summary>True when the user asked to be taken to the page that needs filling in.</summary>
-    public bool GoToSetup { get; private set; }
-
     public WelcomeDialog()
     {
         FormBorderStyle = FormBorderStyle.None;
@@ -79,62 +76,74 @@ internal sealed class WelcomeDialog : Form
         };
         Controls.Add(body);
 
-        y = body.Bottom + 14;
+        y = body.Bottom + 18;
 
-        var steps = new RichNote(Words.WelcomeSteps, wide, Theme.Body, Theme.BodySemi, Theme.TextDim)
+        var choose = new RichNote(Words.WelcomeChoose, wide, Theme.Body, Theme.BodySemi, Theme.Text)
         {
             Location = new Point(Pad, y),
         };
-        Controls.Add(steps);
+        Controls.Add(choose);
 
-        y = steps.Bottom + 24;
+        y = choose.Bottom + 10;
 
-        // The action that goes somewhere is the accented one, on the right.
+        // Two answers, each with its own line under it, stacked rather than side by side.
         //
-        // It was green, which in this app means "good" and is used for confirmations and healthy
-        // state. A primary action is not a confirmation, and the accent is what the rest of the app
-        // uses for the button it would like pressed.
-        var go = new FlatButton
+        // Side by side would make them look like OK and Cancel, where one is the action and the
+        // other is backing out. These are two equal readings of what the app is for, and the one on
+        // the right is not a lesser version of the one on the left.
+        y = AddChoice(Words.WelcomeCouch, Words.WelcomeCouchWhy, Theme.Accent, y, wide, () =>
         {
-            Text = Words.WelcomeGo,
-            Size = new Size(Math.Max(150, TextRenderer.MeasureText(Words.WelcomeGo, Theme.BodySemi).Width + 44), 40),
-            Fill = Theme.Accent,
-            ForeColor = Color.White,
-            Line = Color.Empty,
-        };
-        go.Click += (_, _) => { GoToSetup = true; DialogResult = DialogResult.OK; };
-        Controls.Add(go);
+            DeskOnly = false;
+            DialogResult = DialogResult.OK;
+        });
 
-        var skip = new FlatButton
+        y = AddChoice(Words.WelcomeDesk, Words.WelcomeDeskWhy, Theme.SurfaceHi, y + 6, wide, () =>
         {
-            Text = Words.WelcomeSkip,
-            Size = new Size(Math.Max(150, TextRenderer.MeasureText(Words.WelcomeSkip, Theme.BodySemi).Width + 40), 40),
-            Fill = Theme.SurfaceHi,
-            Line = Theme.Line,
+            DeskOnly = true;
+            DialogResult = DialogResult.OK;
+        });
+
+        var either = new RichNote(Words.WelcomeEither, wide, Theme.Small, Theme.SmallBold, Theme.TextFaint)
+        {
+            Location = new Point(Pad, y + 8),
         };
-        skip.Click += (_, _) => DialogResult = DialogResult.Cancel;
-        Controls.Add(skip);
+        Controls.Add(either);
 
-        // Centred as a pair, rather than pushed against the right edge.
-        //
-        // Right alignment is the convention for a dialog that interrupts you with a question, where
-        // the answer you are least likely to regret should sit under the hand. This window asks
-        // nothing and undoes nothing: both buttons retire it and one of them just opens a page. With
-        // no risky answer to protect, the pair reads as a choice between two equals, and a centred
-        // pair under centred-ish prose is the calmer arrangement of that.
-        const int Between = 12;
-
-        int pair = skip.Width + Between + go.Width;
-        int left = (Wide - pair) / 2;
-
-        skip.Location = new Point(left, y);
-        go.Location = new Point(left + skip.Width + Between, y);
-
-        Height = y + 40 + Pad;
+        Height = either.Bottom + Pad;
 
         // Escape leaves too. A welcome that traps anyone has failed at being welcoming.
         KeyPreview = true;
         KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) DialogResult = DialogResult.Cancel; };
+    }
+
+
+    /// <summary>True when the reader said they have no television. Read after the dialog closes.</summary>
+    public bool DeskOnly { get; private set; }
+
+    /// <summary>
+    /// One answer: a full-width button and the sentence explaining it. Returns the next free y.
+    /// </summary>
+    private int AddChoice(string label, string why, Color fill, int y, int wide, Action chosen)
+    {
+        var button = new FlatButton
+        {
+            Text = label,
+            Size = new Size(wide, 42),
+            Location = new Point(Pad, y),
+            Fill = fill,
+            ForeColor = fill == Theme.SurfaceHi ? Theme.Text : Color.White,
+            Line = fill == Theme.SurfaceHi ? Theme.Line : Color.Empty,
+        };
+        button.Click += (_, _) => chosen();
+        Controls.Add(button);
+
+        var note = new RichNote(why, wide, Theme.Small, Theme.SmallBold, Theme.TextDim)
+        {
+            Location = new Point(Pad, button.Bottom + 5),
+        };
+        Controls.Add(note);
+
+        return note.Bottom + 12;
     }
 
     protected override void OnPaint(PaintEventArgs e)
