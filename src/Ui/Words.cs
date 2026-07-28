@@ -641,6 +641,22 @@ internal static class Words
         "Everything with a window on screen right now. Anything running as administrator is not "
         + "listed, because this app runs without those rights and could not close it.";
     public const string AppPickerNothing = "Nothing is open that this could close.";
+    public const string AppPickerNoMatch = "Nothing here matches that.";
+    public const string AppPickerSearch = "Search apps...";
+    public const string AppPickerShowBackground = "Show background processes";
+
+    public const string AppPickerGroupApps = "Running apps";
+    public const string AppPickerGroupBackground = "Background processes";
+    public const string AppPickerGroupBackgroundWhy =
+        "No window on screen. Helpers, runtimes and updaters. Only tick one you recognize.";
+
+    public const string AppPickerColApp = "APP";
+    public const string AppPickerColProcess = "PROCESS";
+    public const string AppPickerColMemory = "MEMORY";
+    public const string AppPickerColStatus = "STATUS";
+
+    public const string AppPickerProtected = "Protected";
+    public const string AppPickerAdd = "Add selected ({0})";
     public const string AppPickerCancel = "Cancel";
 
     public const string BrowseAppTitle = "Choose an application";

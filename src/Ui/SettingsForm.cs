@@ -4568,10 +4568,15 @@ public sealed class SettingsForm : Form
     {
         using var picker = new AppPicker(_appsToClose);
 
-        if (picker.ShowDialog(this) != DialogResult.OK || picker.Chosen is not { Length: > 0 } path)
-            return;
+        if (picker.ShowDialog(this) != DialogResult.OK || picker.Chosen.Count == 0) return;
 
-        AddAppPath(path);
+        // The list is rebuilt once at the end rather than per app. Somebody setting this up ticks
+        // four or five things at a time, and rebuilding between each would be four or five flashes
+        // of a panel being torn down and put back.
+        foreach (var path in picker.Chosen) AddAppPath(path, rebuild: false);
+
+        RebuildAppRows();
+        MarkDirty();
     }
 
     private void AddAppByBrowse()
@@ -4588,11 +4593,14 @@ public sealed class SettingsForm : Form
         AddAppPath(dialog.FileName);
     }
 
-    private void AddAppPath(string path)
+    private void AddAppPath(string path, bool rebuild = true)
     {
         if (_appsToClose.Any(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase))) return;
 
         _appsToClose.Add(path);
+
+        if (!rebuild) return;
+
         RebuildAppRows();
         MarkDirty();
     }

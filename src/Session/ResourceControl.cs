@@ -206,6 +206,10 @@ public sealed class ResourceControl
     /// The shell and its parts, because closing Explorer takes the taskbar and the desktop with it,
     /// and Steam, because a session is about to need it.
     /// </summary>
+    /// <summary>Whether a process name is one this will never ask to close, so the picker can
+    /// show it greyed with a reason instead of silently leaving it out.</summary>
+    public static bool IsProtected(string processName) => Protected.Contains(processName);
+
     private static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase)
     {
         "explorer", "dwm", "csrss", "winlogon", "services", "svchost", "sihost",
