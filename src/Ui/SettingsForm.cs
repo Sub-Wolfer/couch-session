@@ -238,6 +238,7 @@ public sealed class SettingsForm : Form
     /// </summary>
     private readonly System.Windows.Forms.Timer _autoSave = new() { Interval = 400 };
     private FlatButton _action = null!;
+    private FlatButton _preview = null!;
     private FlatButton? _closeGame;
     private FlowLayoutPanel? _footerButtons;
     private Label _deviceNote = null!;
@@ -2522,7 +2523,7 @@ public sealed class SettingsForm : Form
         //
         // The preview takes the slot because it is about the button beside it: "what will Start
         // actually do" is a question asked at the moment of pressing, from whatever page you are on.
-        var preview = new FlatButton
+        _preview = new FlatButton
         {
             Text = Words.PreviewFooterButton,
             Size = new Size(178, BigButton),
@@ -2535,8 +2536,8 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0, FlatButton.Bleed, FlatButton.Bleed, 3),
         };
 
-        preview.Click += (_, _) => ShowSessionPreview();
-        _tips.SetToolTip(preview, Wrapped(Words.PreviewButtonTip));
+        _preview.Click += (_, _) => ShowSessionPreview();
+        _tips.SetToolTip(_preview, Wrapped(Words.PreviewButtonTip));
 
         // The one button this window exists for, so the one button drawn as a primary action.
         _action = new FlatButton
@@ -2620,7 +2621,7 @@ public sealed class SettingsForm : Form
         // The primary action belongs at the end of the row: it is where the eye finishes and where
         // the hand already is, and it puts the most-used button furthest from Reset, which is the one
         // in this pair worth never hitting by accident.
-        right.Controls.AddRange([_action, _closeGame, preview]);
+        right.Controls.AddRange([_action, _closeGame, _preview]);
 
         _footerButtons = right;
         SizeFooterButtons();
@@ -7597,8 +7598,16 @@ public sealed class SettingsForm : Form
         bool wanted = !Config.DeskOnly;
 
         ShowFooterButton(_action, wanted);
+        ShowFooterButton(_preview, wanted);
 
-        if (!wanted) return;
+        if (!wanted)
+        {
+            // Close Game goes too. It only appears with something parked behind the desktop, which
+            // can still be true at the moment desk-only mode is switched on — and the state machine
+            // below, which is the only other thing that hides it, stops here.
+            RefreshCloseGameButton(FooterState.Start);
+            return;
+        }
 
         var state = SessionNow ? FooterState.End
                   : LeftRunningNow ? FooterState.Resume
