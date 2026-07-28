@@ -3693,27 +3693,35 @@ public sealed class SettingsForm : Form
         AddToggle(windows, Words.DisableGameBarButton, _disableGameBarButton, Words.DisableGameBarButtonWhy,
                   check: PerformanceCheck.CheckGameBar);
 
-        // Session-scoped, so it is not offered in desk-only mode. Everything it does is tied to a
-        // session starting and ending, and there are none of those there.
-        if (!Config.DeskOnly)
+        // Offered in both modes, described by whichever moment it hangs on.
+        //
+        // It was session-only, on the reasoning that everything it does is tied to a session
+        // starting and ending. The feature is not about sessions though — it is about the memory
+        // a browser is holding while you play — and desk-only mode already has a moment that means
+        // the same thing, which is a game launching. The power plan and notification silencing
+        // both switched to that rule there; this follows them. See SessionController.TuneAroundGame.
+        NewSection(page, Words.SectionResourceControl);
+        var apps = NewCard(page);
+
+        AddToggle(apps,
+                  Config.DeskOnly ? Words.CloseAppsDesk : Words.CloseApps,
+                  _closeApps,
+                  Config.DeskOnly ? Words.CloseAppsDeskWhy : Words.CloseAppsWhy,
+                  setting: nameof(AppConfig.CloseAppsForSession));
+
+        WhenOn(() => _closeApps.Checked, apps, () =>
         {
-            NewSection(page, Words.SectionResourceControl);
-            var apps = NewCard(page);
+            AddRow(apps, BuildAppList(), Indent);
 
-            AddToggle(apps, Words.CloseApps, _closeApps, Words.CloseAppsWhy,
-                      setting: nameof(AppConfig.CloseAppsForSession));
+            AddToggle(apps,
+                      Config.DeskOnly ? Words.ReopenAppsDesk : Words.ReopenApps,
+                      _reopenApps,
+                      Config.DeskOnly ? Words.ReopenAppsDeskWhy : Words.ReopenAppsWhy,
+                      setting: nameof(AppConfig.ReopenAppsAfterSession), indent: Indent);
+        });
 
-            WhenOn(() => _closeApps.Checked, apps, () =>
-            {
-                AddRow(apps, BuildAppList(), Indent);
-
-                AddToggle(apps, Words.ReopenApps, _reopenApps, Words.ReopenAppsWhy,
-                          setting: nameof(AppConfig.ReopenAppsAfterSession), indent: Indent);
-            });
-
-            _closeApps.CheckedChanged -= OnCloseAppsToggled;
-            _closeApps.CheckedChanged += OnCloseAppsToggled;
-        }
+        _closeApps.CheckedChanged -= OnCloseAppsToggled;
+        _closeApps.CheckedChanged += OnCloseAppsToggled;
 
         // Re-read the two live system switches every time the page is opened, so they always show
         // the machine's real current state.

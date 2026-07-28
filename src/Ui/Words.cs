@@ -602,6 +602,24 @@ internal static class Words
             + "to close, exactly as Alt+F4 asks** — one that refuses, usually because it has "
             + "something unsaved, is left running. Nothing here is ever forced.";
 
+    // The same feature at a desk, where there is no session to hang it on. A game starting is the
+    // moment worth freeing memory for, which is the same rule the power plan and notification
+    // silencing already follow in that mode.
+    public const string CloseAppsDesk = "Close chosen apps when a game starts";
+    public const string CloseAppsDeskWhy =
+
+            "A browser, a chat client and a music player are gigabytes of memory and a steady "
+            + "trickle of background work that no one is using mid-game. **Each app is asked to "
+            + "close, exactly as Alt+F4 asks** — one that refuses, usually because it has something "
+            + "unsaved, is left running. Nothing here is ever forced.";
+
+    public const string ReopenAppsDesk = "Open them again afterwards";
+    public const string ReopenAppsDeskWhy =
+
+            "Starts the apps this closed once the game quits, and only those. **Windows and "
+            + "documents don't come back** — Windows offers no way to ask an app to reopen what it "
+            + "had, so a browser returns without its tabs.";
+
     public const string AppsToClose = "Apps to close";
     public const string AppsToCloseWhy =
         "Only what you put here. Everything else is left alone.";

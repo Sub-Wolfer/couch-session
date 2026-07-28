@@ -168,8 +168,28 @@ public sealed class SessionController
         // put the power plan back while the session was still going.
         if (!Config.DeskOnly) return;
 
-        if (running) _tuning.Apply(Config);
-        else _tuning.Restore();
+        if (running)
+        {
+            _tuning.Apply(Config);
+
+            // Resource control follows the same rule here as the power plan does. At a desk there is
+            // no session to hang it on, and the moment worth freeing memory for is a game starting.
+            try { _apps.CloseForSession(Config); }
+            catch (Exception ex) { Log.Warn($"Resource control failed: {ex.Message}"); }
+        }
+        else
+        {
+            _tuning.Restore();
+
+            // Off the calling thread for the same reason the session path does it: this runs from the
+            // game watcher, and starting several applications on that thread would stall the poll
+            // that notices the next game.
+            _ = Task.Run(() =>
+            {
+                try { _apps.ReopenAfterSession(Config); }
+                catch (Exception ex) { Log.Warn($"Could not restart the closed apps: {ex.Message}"); }
+            });
+        }
     }
 
     public void EnterTvMode()
