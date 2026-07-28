@@ -4,7 +4,7 @@
 
 **Your gaming PC on the TV, and back again, with one press.**
 
-<sub>For a gaming PC with a TV plugged into it. Not a streaming app.</sub>
+<sub>For a gaming PC with a TV plugged into it. Not a streaming app. No account, no telemetry.</sub>
 
 [![Release](https://img.shields.io/github/v/release/Sub-Wolfer/couch-session?label=download&color=6d5bff)](https://github.com/Sub-Wolfer/couch-session/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -277,6 +277,26 @@ anti-cheat. It reads HID devices directly and asks Windows about its own windows
   above.
 
 Settings live in `%AppData%\CouchSession`. Nothing is written anywhere else.
+
+---
+
+## 🔒 What it touches
+
+No account, no telemetry, no analytics, no crash reporting. There is nothing to sign into, and
+nothing is collected about you or the way you use it.
+
+- **Your settings** are one folder, `%AppData%\CouchSession`.
+- **The network** is used for three things and nothing else: GitHub, to see whether there's a newer
+  release; Steam's store API and PCGamingWiki, to find out whether a game supports HDR. Worth being
+  precise about the last two, because it is the one real cost: each lookup asks about one game by
+  name or by Steam id, so those two services see which games you have installed. Answers are cached,
+  so each game is asked about once.
+- **Windows settings** change only where you switch them on yourself: Game Mode, the Game Bar, UAC
+  prompts, the firewall, the power plan, and notification silencing. Each of those rows says on its
+  face whether it's put back when the session ends, and three of them deliberately are not.
+- **Start with Windows** adds a scheduled task, and only if you turn it on.
+- **To remove it entirely**, switch Start with Windows off, then delete the executable and that one
+  folder. There is no uninstaller because there is nothing else to undo.
 
 ---
 
