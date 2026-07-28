@@ -564,22 +564,41 @@ public sealed class SettingsForm : Form
     {
         if (!IsHandleCreated) { work(); return; }
 
-        // Counted, because these nest: switching pages freezes the window and then rebuilds a stale
-        // page inside that freeze, which freezes it again. WM_SETREDRAW is not refcounted by Windows,
-        // so the inner unfreeze used to switch drawing back on halfway through the outer one — and
-        // the half-built page painted, which is the flash this exists to prevent.
-        if (_freezeDepth++ == 0) SendMessage(Handle, WM_SETREDRAW, 0, 0);
-
+        Freeze();
         try { work(); }
-        finally
-        {
-            if (--_freezeDepth == 0)
-            {
-                SendMessage(Handle, WM_SETREDRAW, 1, 0);
+        finally { Thaw(); }
+    }
 
-                RedrawWindow(Handle, IntPtr.Zero, IntPtr.Zero,
-                             RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-            }
+    /// <summary>
+    /// Stop the window painting. Must be matched by a <see cref="Thaw"/>.
+    ///
+    /// Counted, because these nest: switching pages freezes the window and then rebuilds a stale
+    /// page inside that freeze, which freezes it again. WM_SETREDRAW is not refcounted by Windows,
+    /// so the inner unfreeze used to switch drawing back on halfway through the outer one — and the
+    /// half-built page painted, which is the flash this exists to prevent.
+    ///
+    /// Separate from Frozen so a freeze can outlive the call that opened it. A rebuild finishes by
+    /// posting the layout pass rather than running it, and that pass has to happen under the same
+    /// suppression as the rebuild it belongs to — see RebuildPageCore.
+    /// </summary>
+    private void Freeze()
+    {
+        if (!IsHandleCreated) return;
+        if (_freezeDepth++ == 0) SendMessage(Handle, WM_SETREDRAW, 0, 0);
+    }
+
+    /// <summary>Let it paint again, once the last holder has let go.</summary>
+    private void Thaw()
+    {
+        if (!IsHandleCreated) { _freezeDepth = 0; return; }
+        if (_freezeDepth == 0) return;
+
+        if (--_freezeDepth == 0)
+        {
+            SendMessage(Handle, WM_SETREDRAW, 1, 0);
+
+            RedrawWindow(Handle, IntPtr.Zero, IntPtr.Zero,
+                         RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
         }
     }
 
@@ -607,11 +626,28 @@ public sealed class SettingsForm : Form
     /// start at zero height and stay there until something else provokes a pass — which is what
     /// switching to another page and back was doing.
     /// </summary>
+    /// <summary>
+    /// Pages that have been through a real visibility change, so their rows have measured.
+    ///
+    /// The pass below is posted from three places — OnLoad, OnShown and handle creation — because a
+    /// form that gets its handle without being shown has to be covered too. On the ordinary path all
+    /// three fire, the first lands before the window is painted and the other two after it, and each
+    /// one hides the page, shows it again and repaints the whole window. That is the jump on startup:
+    /// the window appears, and a fraction of a second later it visibly settles.
+    ///
+    /// Measuring is a one-time thing per build, so the second and third calls have nothing to do.
+    /// Recording which pages are done makes them free instead of merely redundant.
+    /// </summary>
+    private readonly HashSet<int> _measured = [];
+
     private void RefreshVisiblePage()
     {
         if (IsDisposed || _pages.Count == 0 || !IsHandleCreated) return;
 
-        var page = _pages[Math.Clamp(_currentPage, 0, _pages.Count - 1)].Page;
+        int index = Math.Clamp(_currentPage, 0, _pages.Count - 1);
+        if (!_measured.Add(index)) return;
+
+        var page = _pages[index].Page;
 
         // Hide it and show it again.
         //
@@ -1217,6 +1253,10 @@ public sealed class SettingsForm : Form
 
     private void RebuildPageCore(int index)
     {
+        // The page about to be replaced takes its measurement with it: the new controls are created
+        // hidden like the originals and have never laid out either.
+        _measured.Remove(index);
+
         var (nav, old) = _pages[index];
 
         // Lift the settings controls clear before the old page is destroyed with its children.
@@ -1257,7 +1297,32 @@ public sealed class SettingsForm : Form
             // a pass driven from inside a rebuild hits that guard and leaves the content
             // unpositioned — which blanked the page entirely. RefreshVisiblePage does it from
             // outside, after the rebuild has finished.
-            if (IsHandleCreated) BeginInvoke(RefreshVisiblePage);
+            //
+            // Held frozen across the gap. The rebuild and the layout pass that completes it are one
+            // change to the window, and they were two: this method's freeze ended when it returned,
+            // repainting a page whose cards had not been measured yet, and the posted pass then
+            // repainted the whole window a second time with everything in its final place. Two full
+            // repaints a frame apart, the second of them after a hide and a show, is the flicker —
+            // most visible on the glance grid, which is the widest thing on screen and the only page
+            // whose tiles are re-measured on every rebuild.
+            //
+            // The freeze is released in the posted callback rather than here, so nothing paints until
+            // the layout has settled. Released in a finally, because a freeze that outlives its
+            // release leaves a window that never draws again.
+            if (IsHandleCreated)
+            {
+                Freeze();
+
+                try
+                {
+                    BeginInvoke(() =>
+                    {
+                        try { RefreshVisiblePage(); }
+                        finally { Thaw(); }
+                    });
+                }
+                catch { Thaw(); }   // the handle went between the check and the post
+            }
 
             // Only the page just built, rather than the whole form. Walking every control on
             // the window was pure waste on a path that now runs during a drag.
