@@ -512,20 +512,38 @@ public sealed class HdrCoordinator : IDisposable
 
             if (status.Enabled)
             {
-                // HDR is already on. If the user armed it by hotkey just before launching — the right
-                // order for HDR — claim it so this game's close still switches it back off, and say so.
-                // Otherwise it is HDR they run for other reasons, and is left strictly alone.
+                // HDR is already on, and this game is one the user ticked for HDR. Claim it either
+                // way, so closing the game still switches HDR off.
+                //
+                // This used to hold HDR only when the hotkey had armed it moments earlier, on the
+                // reasoning that anything else was "HDR they run for other reasons" and should be
+                // left strictly alone. That reasoning misses the ordinary case: HDR switched on for a
+                // film or a video, forgotten about, and then a ticked game launched on top of it. The
+                // game closes, HDR stays on, and the desktop sits there washed out — which is the
+                // exact outcome ticking the game was meant to prevent.
+                //
+                // The trade is deliberate. Somebody who runs HDR permanently and plays a ticked game
+                // now has it switched off when they quit. That is the smaller surprise: they ticked
+                // the game, which is a statement that HDR belongs to that game, and switching it back
+                // on is one hotkey press. The other way round leaves a washed-out desktop with no
+                // obvious cause.
+                _weTurnedItOn = true;
+
+                // The toast is for the armed case only. Announcing "HDR on" when nothing was turned
+                // on would be reporting an event that did not happen; the hotkey press is a thing the
+                // user just did and expects an answer to.
                 if (_hdrArmed)
                 {
-                    _weTurnedItOn = true;
                     _hdrArmed = false;
                     Log.Info($"Auto HDR: {game.Name} started with HDR already on from the hotkey; holding it.");
                     Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
                 }
                 else
                 {
-                    Log.Info($"Auto HDR: '{display}' already has HDR on; nothing to do.");
+                    Log.Info($"Auto HDR: {game.Name} started with HDR already on; holding it so its "
+                           + "close switches HDR off.");
                 }
+
                 return;
             }
 
