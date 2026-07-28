@@ -486,6 +486,18 @@ public sealed class SettingsForm : Form
         {
             if (_loading) return;
 
+            // The switch is disabled while a session runs, so this should be unreachable. It is
+            // here because "should be" is doing a lot of work in a window that stays open across
+            // a session starting from a controller in another room: the refresh that disables it
+            // runs on a timer, and a click can land in the gap.
+            if (SessionNow)
+            {
+                _deskOnly.SetQuietly(Config.DeskOnly);
+                RefreshModeLock();
+                Log.Info("Ignored a mode change made while a session was running.");
+                return;
+            }
+
             Config.DeskOnly = _deskOnly.Checked;
 
             // Whole-session HDR cannot happen without sessions, and leaving it selected would mean
@@ -3815,6 +3827,13 @@ public sealed class SettingsForm : Form
         AddToggle(mode, Words.DeskOnly, _deskOnly, Words.DeskOnlyWhy,
                   setting: nameof(AppConfig.DeskOnly), titleEmphasis: Theme.Info);
 
+        // Built every time and hidden most of the time, rather than added only when a session happens
+        // to be running as the page is built. A session can start and end while this window sits
+        // open, and a disabled switch with nothing to explain it reads as a fault.
+        _deskOnlyLocked = AddNote(mode, Words.DeskOnlyDuringSession);
+
+        RefreshModeLock();
+
         // A row of jump buttons used to sit here and has been removed.
         //
         // It duplicated the navigation rail three inches to its left — same five destinations, same
@@ -7137,6 +7156,32 @@ public sealed class SettingsForm : Form
         RefreshActionButton();
     }
 
+    private RichNote? _deskOnlyLocked;
+
+    /// <summary>
+    /// Lock the mode switch while a session is running.
+    ///
+    /// Swapping modes mid-session would take away the display, audio and controller settings the
+    /// session is currently using, from underneath it: the pages holding them leave the rail, the
+    /// glance stops reporting them, and the footer loses the button that ends the thing still
+    /// running. Ending the session first is the only order that leaves the app in a state it can
+    /// describe honestly, so the switch waits rather than trying to unpick it.
+    ///
+    /// Called from the periodic refresh as well as at build time, because the session can start or
+    /// end from a controller while this window is sitting open.
+    /// </summary>
+    private void RefreshModeLock()
+    {
+        bool locked = SessionNow;
+
+        if (_deskOnly.Enabled == !locked && _deskOnlyLocked is null) return;
+
+        _deskOnly.Enabled = !locked;
+
+        if (_deskOnlyLocked is { IsDisposed: false } note && note.Visible != locked)
+            note.Visible = locked;
+    }
+
     private void RefreshActionButton()
     {
         // Nothing to start, so nothing to offer. Left hidden rather than relabelled: a footer whose
@@ -7443,6 +7488,7 @@ public sealed class SettingsForm : Form
 
             RefreshHomeGlance();
             RefreshActionButton();
+            RefreshModeLock();
             RefreshPadGlyphs();
 
             if (_controllerPage is { Visible: true }) RefreshPadPresenceNow();

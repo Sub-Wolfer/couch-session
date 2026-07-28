@@ -96,6 +96,11 @@ internal static class Words
     public const string DeskOnlyNote =
         "Couch session features are off. The switch above brings them back.";
 
+    /// <summary>Shown beside the switch while a session is running, which is when it is locked.</summary>
+    public const string DeskOnlyDuringSession =
+        "**End your session first.** This switch puts away the display, audio and controller "
+      + "settings a running session is using, so it waits until you are back at your desk.";
+
     // ── The same pages, described without sessions ────────────────────────────────
     //
     // Desk-only mode leaves several pages standing whose subtitles and descriptions all explain
