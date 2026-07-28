@@ -18,6 +18,9 @@ internal sealed class PreviewDialog : Form
     private const int Pad = 24;
     private const int Wide = 600;
 
+    /// <summary>The width a row really gets: the dialog, less its padding and the scrollbar.</summary>
+    private const int RowW = Wide - Pad * 2 - 26;
+
     /// <summary>True if the user pressed Start rather than closing the window.</summary>
     public bool StartNow { get; private set; }
 
@@ -91,7 +94,7 @@ internal sealed class PreviewDialog : Form
         {
             Location = new Point(Pad, y),
             Width = Wide - Pad * 2,
-            BackColor = Theme.Input,
+            BackColor = Theme.Surface,
             Padding = new Padding(10, 10, 10, 10),
         };
 
@@ -139,66 +142,73 @@ internal sealed class PreviewDialog : Form
     /// <summary>
     /// One row: what happens, any qualifier, and whether it is undone.
     ///
-    /// The "put back after" tag is a separate run in its own colour rather than part of the sentence,
-    /// so a reader scanning only that column gets the answer without reading any of the rest.
+    /// Laid out as the games list and the app picker are, so a third list in this app is not a
+    /// third thing to learn: rows on the card colour, a rule between them, and the column that
+    /// answers the question aligned down the right instead of trailing each sentence wherever it
+    /// happens to end. Ragged was the problem — the whole value of this dialog is being able to
+    /// read one column and know what the machine keeps.
     /// </summary>
     private static Control Line(string what, string detail, string tail, Color ink)
     {
-        var row = new BufferedStack
-        {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = Color.Transparent,
-            Margin = new Padding(4, 4, 4, 10),
-        };
+        const int TagW = 116;
+        const int Pad0 = 12;
 
-        var head = new FlowLayoutPanel
+        bool two = detail.Length > 0;
+
+        var row = new BufferedPanel
         {
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = Color.Transparent,
+            Size = new Size(RowW, two ? 46 : 32),
+            BackColor = Theme.Surface,
             Margin = new Padding(0),
         };
 
-        head.Controls.Add(new Label
+        row.Paint += (_, e) =>
+        {
+            using var rule = new SolidBrush(Theme.RowLine);
+            e.Graphics.FillRectangle(rule, 10, row.Height - 1, row.Width - 20, 1);
+        };
+
+        row.Controls.Add(new Label
         {
             Text = what,
             Font = Theme.BodySemi,
             ForeColor = ink,
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(RowW - TagW - Pad0 * 3, 20),
+            AutoEllipsis = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Location = new Point(Pad0, two ? 5 : 6),
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 8, 0),
         });
 
-        if (tail.Length > 0)
-        {
-            head.Controls.Add(new Label
-            {
-                Text = tail,
-                Font = Theme.Small,
-                ForeColor = tail == Words.PreviewKept ? Theme.Warn : Theme.Good,
-                AutoSize = true,
-                BackColor = Color.Transparent,
-                Margin = new Padding(0, 3, 0, 0),
-            });
-        }
-
-        row.Controls.Add(head);
-
-        if (detail.Length > 0)
+        if (two)
         {
             row.Controls.Add(new Label
             {
                 Text = detail,
                 Font = Theme.Small,
                 ForeColor = Theme.TextFaint,
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(RowW - TagW - Pad0 * 3, 18),
+                AutoEllipsis = true,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Location = new Point(Pad0, 24),
                 BackColor = Color.Transparent,
-                Margin = new Padding(0, 2, 0, 0),
+            });
+        }
+
+        if (tail.Length > 0)
+        {
+            row.Controls.Add(new Label
+            {
+                Text = tail,
+                Font = Theme.Small,
+                ForeColor = tail == Words.PreviewKept ? Theme.Warn : Theme.Good,
+                AutoSize = false,
+                Size = new Size(TagW, 20),
+                TextAlign = ContentAlignment.MiddleRight,
+                Location = new Point(RowW - TagW - Pad0, two ? 5 : 6),
+                BackColor = Color.Transparent,
             });
         }
 
