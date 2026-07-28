@@ -152,6 +152,20 @@ public sealed class SessionController
     /// <summary>Switch to the TV. No-op if already there or mid-transition.</summary>
     public void EnterTvMode()
     {
+        // The one gate that cannot be got around.
+        //
+        // Desk-only mode is switched off in the interface as well — the pages go, the button goes,
+        // the triggers stop asking — but a mode that depends on every caller remembering to check it
+        // is a mode with a hole in it, and there are seven ways into this method. Steam opening Big
+        // Picture by itself is one of them, and it does not come through anything this app controls.
+        //
+        // So the refusal lives at the door rather than at each of the corridors leading to it.
+        if (Config.DeskOnly)
+        {
+            Log.Info("Desk-only mode is on, so the request to switch to the TV was ignored.");
+            return;
+        }
+
         lock (_gate)
         {
             if (State != TvState.Desktop) return;

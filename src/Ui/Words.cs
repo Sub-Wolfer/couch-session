@@ -77,6 +77,25 @@ internal static class Words
     public const string PageAbout = "About";
     public const string PageAboutWhy = "";
 
+    // ── Using it at the desk only ─────────────────────────────────────────────────
+    //
+    // Named for what the reader wants rather than for what it switches off. "Disable couch session
+    // features" describes the mechanism to somebody who never wanted them; "just HDR and performance"
+    // describes what they came for.
+    public const string SectionDeskOnly = "Do you have a television?";
+    public const string DeskOnly = "Use this for HDR and performance only";
+    public const string DeskOnlyWhy =
+
+            "**No television, no controller, no sessions.** HDR still switches itself around your "
+            + "games, the priority boost still runs, and the Windows settings on the Performance "
+            + "page still work — everything else is put away.\n\nNothing is lost by switching this "
+            + "on. Your display, audio and controller settings are remembered and come straight "
+            + "back if you turn it off.";
+
+    /// <summary>Shown under the glance grid while the couch half is switched off.</summary>
+    public const string DeskOnlyNote =
+        "Couch session features are off. The switch above brings them back.";
+
     // ── Home / dashboard ──────────────────────────────────────────────────────────
     public const string PageHome = "Home";
     public const string PageHomeWhy = "Your couch session at a glance — start it here, and set what turns it on.";

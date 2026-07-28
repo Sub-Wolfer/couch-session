@@ -157,6 +157,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _startOnWakeControllerOnly = new();
     private readonly ToggleSwitch _minimizeOnClose = new();
     private readonly ToggleSwitch _showNotifications = new();
+    private readonly ToggleSwitch _deskOnly = new();
     private readonly ToggleSwitch _showSessionNotifications = new();
     private readonly ToggleSwitch _showHdrNotifications = new();
     private readonly ToggleSwitch _showMinimizeNotification = new();
@@ -473,6 +474,24 @@ public sealed class SettingsForm : Form
         // "hdr-support.json.tmp ... used by another process".
         HdrDatabase.Updated += OnHdrDataUpdated;
         UpdateHdrBulkLabel();
+
+        // Applied live rather than on save, because this one changes the shape of the window: two
+        // entries leave the rail, the footer button goes, and half the glance grid with it. A switch
+        // whose effect waits for a save reads as a switch that did nothing.
+        //
+        // Wired here rather than beside the control, because the control is created once and the page
+        // holding it is rebuilt every time the window is resized — attaching there would add a fresh
+        // handler on each rebuild and run this once per rebuild that had ever happened.
+        _deskOnly.CheckedChanged += (_, _) =>
+        {
+            if (_loading) return;
+
+            Config.DeskOnly = _deskOnly.Checked;
+            ApplyDeskOnly();
+            RebuildPage(HomePage);
+        };
+
+        ApplyDeskOnly();
 
         ShowPage(0);
         FitToContent();
@@ -3669,6 +3688,27 @@ public sealed class SettingsForm : Form
         RefreshHomeGlance();
         AddRow(glance, _homeGlance, 0, elbow: false);
 
+        // Said once, under the grid it explains, and only while the grid is half the size it was.
+        // Without it the couch tiles and two pages of the rail simply vanish, which reads as the app
+        // having lost them rather than as a mode somebody chose.
+        if (Config.DeskOnly)
+        {
+            var note = NewLabel(Words.DeskOnlyNote, Theme.Small, Theme.TextFaint, RowWidth);
+            note.Margin = new Padding(0, 10, 0, 0);
+            AddRow(glance, note, 0, elbow: false);
+        }
+
+        // The mode switch, at the foot of the page rather than the head of it.
+        //
+        // It is a setting somebody presses once and never returns to, and the top of Home belongs to
+        // the thing they came for. Putting it first would also mean the first control a new user sees
+        // is one that removes most of the app.
+        NewSection(page, Words.SectionDeskOnly);
+
+        var mode = NewCard(page);
+        AddToggle(mode, Words.DeskOnly, _deskOnly, Words.DeskOnlyWhy,
+                  setting: nameof(AppConfig.DeskOnly));
+
         // A row of jump buttons used to sit here and has been removed.
         //
         // It duplicated the navigation rail three inches to its left — same five destinations, same
@@ -6390,6 +6430,7 @@ public sealed class SettingsForm : Form
             _startOnWake.Checked = Config.StartSessionOnWake;
             _startOnWakeControllerOnly.Checked = Config.StartOnWakeControllerOnly;
             _showNotifications.Checked = Config.ShowNotifications;
+            _deskOnly.Checked = Config.DeskOnly;
             _showSessionNotifications.Checked = Config.ShowSessionNotifications;
             _showHdrNotifications.Checked = Config.ShowHdrNotifications;
             _showMinimizeNotification.Checked = Config.ShowMinimizeNotification;
@@ -6528,6 +6569,7 @@ public sealed class SettingsForm : Form
         Config.StartSessionOnWake = _startOnWake.Checked;
         Config.StartOnWakeControllerOnly = _startOnWakeControllerOnly.Checked;
         Config.ShowNotifications = _showNotifications.Checked;
+        Config.DeskOnly = _deskOnly.Checked;
         Config.ShowSessionNotifications = _showSessionNotifications.Checked;
         Config.ShowHdrNotifications = _showHdrNotifications.Checked;
         Config.ShowMinimizeNotification = _showMinimizeNotification.Checked;
@@ -6925,8 +6967,42 @@ public sealed class SettingsForm : Form
     /// colour says which way it goes before the word is read. Resuming is green for that reason: it
     /// puts you back on the television, whatever the wording.
     /// </summary>
+    /// <summary>
+    /// Show or hide the couch half of the window to match desk-only mode.
+    ///
+    /// The pages are built and kept either way, and only their entries in the rail are hidden. Every
+    /// page index in this file is a position in a fixed list — Words.NavItems, Builders and NavIcons
+    /// all line up by number — so removing one would renumber the rest and quietly point half the
+    /// file at the wrong page. Hiding the entry costs a few kilobytes of controls nobody can reach
+    /// and keeps every one of those numbers true.
+    /// </summary>
+    private void ApplyDeskOnly()
+    {
+        if (_pages.Count <= ControllerPage) return;
+
+        bool couch = !Config.DeskOnly;
+
+        _pages[DisplayPage].Nav.Visible = couch;
+        _pages[ControllerPage].Nav.Visible = couch;
+
+        // Standing on a page that has just been put away. Home is the one page that always exists and
+        // is where the switch that did this lives, so it is also where the explanation is.
+        if (!couch && (_currentPage == DisplayPage || _currentPage == ControllerPage))
+            ShowPage(HomePage);
+
+        _action.Visible = couch;
+
+        RefreshActionButton();
+    }
+
     private void RefreshActionButton()
     {
+        // Nothing to start, so nothing to offer. Left hidden rather than relabelled: a footer whose
+        // main button is missing reads as a mode, and a disabled one reads as a fault.
+        if (Config.DeskOnly) { _action.Visible = false; return; }
+
+        _action.Visible = true;
+
         var state = SessionNow ? FooterState.End
                   : LeftRunningNow ? FooterState.Resume
                                    : FooterState.Start;

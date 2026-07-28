@@ -123,6 +123,9 @@ public sealed class TrayApp : IDisposable
         // from one that is broken, and every one of these conditions is invisible from outside.
         _pads.Connected += device => OnUi(() =>
         {
+            // Switching a pad on at a desk is somebody about to play at that desk.
+            if (_session.Config.DeskOnly) return;
+
             // A pad coming back after it dropped out mid-session is not "starting a session". It is
             // picking up where you were, so it happens before the start-on-connect switch is even
             // consulted — that setting is about sitting down at a desktop, and this is not that.
@@ -618,6 +621,9 @@ public sealed class TrayApp : IDisposable
     /// </summary>
     private void StartSessionAfter(int delayMs)
     {
+        // Launch and wake both land here. Neither should fire at a desk.
+        if (_session.Config.DeskOnly) return;
+
         var timer = new System.Windows.Forms.Timer { Interval = Math.Max(1, delayMs) };
         timer.Tick += (_, _) =>
         {
@@ -643,6 +649,10 @@ public sealed class TrayApp : IDisposable
         }
         else
         {
+            // Only the starting half is gated. Ending has to keep working, because this is also how a
+            // session that was already running gets closed when desk-only mode is switched on.
+            if (_session.Config.DeskOnly) return;
+
             if (!Configured()) return;
             RunBackground("Switching to the TV", () =>
             {
@@ -1467,6 +1477,11 @@ public sealed class TrayApp : IDisposable
     private void OnBigPictureOpened(IntPtr hwnd)
     {
         if (_busy) return;
+
+        // Somebody at a desk who opens Big Picture wanted Big Picture, not a display switch. This is
+        // the trigger nothing else can catch: Steam opens it on its own, so without this the app
+        // would take over a screen in a mode whose whole promise is that it does not.
+        if (_session.Config.DeskOnly) return;
 
         // Do not let Steam opening Big Picture on its own at boot drag the desktop into a couch
         // session. Right after a start-with-Windows launch that is the machine starting up, not the
@@ -2893,6 +2908,11 @@ public sealed class TrayApp : IDisposable
         // those are unrelated settings. It used to return here first, which meant switching the
         // shortcut off silently took the power-off detection with it.
         if (!_session.Config.EndSessionOnGuideButton) { _guideHeld = false; return; }
+
+        // Desk-only mode leaves the pad entirely alone. The guide button belongs to Steam and to
+        // whatever game is running, and taking it over is the single most intrusive thing this app
+        // does to somebody who never asked for a session.
+        if (_session.Config.DeskOnly) { _guideHeld = false; return; }
 
         // Mid-transition: track the button so a press made during it cannot fire the moment it clears,
         // but act on nothing.

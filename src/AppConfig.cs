@@ -51,6 +51,24 @@ public sealed class AppConfig
     public bool SwitchAudio { get; set; } = true;
 
     /// <summary>
+    /// Use the app for HDR and performance only, with every couch session feature switched off.
+    ///
+    /// There are two audiences here and only one of them owns a television. The HDR switching works
+    /// perfectly well at a desk — on when a game starts, off when it quits, so the desktop is not left
+    /// washed out — and so does the priority boost, and both are the reason a good number of people
+    /// will install this at all. Everything about sessions is noise to them: a display picker they
+    /// will never set, a controller page about starting something they do not want started, and a
+    /// guide button that hijacks their pad mid-game.
+    ///
+    /// So this is one switch rather than eleven. Off by default, because the app is named after the
+    /// thing it turns off and somebody who wanted only HDR can find the switch on the first page.
+    ///
+    /// Nothing is deleted or forgotten while it is on. The settings behind the hidden pages keep
+    /// their values and come back exactly as they were, because this is a mode rather than a reset.
+    /// </summary>
+    public bool DeskOnly { get; set; }
+
+    /// <summary>
     /// Keep Big Picture pinned above other windows during a session, until a game or launcher takes
     /// over. Off lets the user alt-tab freely, at the cost of stray windows covering it on the TV.
     /// </summary>
