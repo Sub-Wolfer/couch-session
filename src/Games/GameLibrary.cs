@@ -245,6 +245,7 @@ public static class GameLibrary
     private static bool IsSteamTool(string name, string? appId)
     {
         if (appId is not null && ToolAppIds.Contains(appId)) return true;
+        if (IsSteamApplication(appId)) return true;
 
         return ToolNames.Any(tool => name.Contains(tool, StringComparison.OrdinalIgnoreCase));
     }
@@ -274,6 +275,42 @@ public static class GameLibrary
     [
         "Steamworks Common Redist", "Steam Linux Runtime", "Proton ", "Proton Experimental",
         "SteamVR", "Steam Controller Configs", "Steamworks Shared",
+    ];
+
+    /// <summary>
+    /// Steam software that is not a game, and must not be treated as one.
+    ///
+    /// Separate from the runtimes above because it fails differently and more visibly. A
+    /// redistributable never runs, so listing one is untidy and nothing more. Wallpaper Engine runs
+    /// for the whole time the machine is on — so with Smart HDR on it is a permanent candidate for
+    /// "the game you are playing", and the first HDR toggle of the day teaches the app that your
+    /// wallpaper is a game that wants HDR. From then on HDR follows your desktop rather than your
+    /// games, and the cause is three settings away from the symptom.
+    ///
+    /// Steam offers no way to ask. The manifests these are read from record an id, a name and an
+    /// install folder, and nothing that distinguishes Aseprite from a platformer — the app type
+    /// lives in appinfo.vdf, a binary format, and reading it to filter a list would be a large
+    /// amount of fragile parsing for a list that is short and slow-moving.
+    ///
+    /// So this is by hand, and deliberately conservative: only things certain not to be games, with
+    /// no name matching that could catch a real title. Anything missed is one Browse away from being
+    /// added on purpose, which is the case this list is not allowed to break.
+    /// </summary>
+    private static bool IsSteamApplication(string? appId) =>
+        appId is not null && ApplicationAppIds.Contains(appId);
+
+    private static readonly HashSet<string> ApplicationAppIds =
+    [
+        // Only ids that are certain. A wrong number here does not add clutter, it silently removes
+        // somebody's game from their own list and gives them no way to find out why — so an id that
+        // is merely probably an application does not belong in this list. Missing one costs a Browse.
+        "431960",    // Wallpaper Engine
+        "365670",    // Blender
+        "431730",    // Aseprite
+        "280680",    // Krita
+        "1905180",   // OBS Studio
+        "250820",    // SteamVR
+        "480",       // Spacewar, Valve's test app
     ];
 
     /// <summary>Every Steam library folder, including drives other than the one Steam is on.</summary>
