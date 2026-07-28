@@ -56,12 +56,29 @@ internal sealed class InlineCheck : Control
     protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
     protected override void OnMouseUp(MouseEventArgs e) { Checked = !Checked; base.OnMouseUp(e); }
 
+    /// <summary>
+    /// A short tag drawn after the label in its own colour, for "(Recommended)".
+    ///
+    /// The full settings rows get this from AddToggle, which builds a title out of two runs of text.
+    /// This control draws one string in one colour, so a badge appended to Text would come out the
+    /// same grey as the label and read as part of its name. Kept as a separate run for the same
+    /// reason the rows do it: the tag is a judgement about the setting, not part of what it is called.
+    /// </summary>
+    public string Suffix { get; set; } = "";
+
+    public Color SuffixColour { get; set; } = Theme.Good;
+
     /// <summary>Width the label needs, so the caller can size the control to fit its text.</summary>
     public int PreferredWidth()
     {
         using var g = CreateGraphics();
+
         int text = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding).Width;
-        return BoxSize + Gap + text + 2;
+        int tag = Suffix.Length == 0
+                      ? 0
+                      : TextRenderer.MeasureText(g, Suffix, Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+
+        return BoxSize + Gap + text + tag + 2;
     }
 
     private const int BoxSize = 16;
@@ -109,9 +126,20 @@ internal sealed class InlineCheck : Control
 
         var textRect = new Rectangle(BoxSize + Gap, 0, Width - BoxSize - Gap, Height);
 
+        const TextFormatFlags Flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter
+                                    | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+
         TextRenderer.DrawText(g, Text, Font, textRect,
-                              Enabled ? ForeColor : Theme.TextFaint,
-                              TextFormatFlags.Left | TextFormatFlags.VerticalCenter
-                            | TextFormatFlags.NoPrefix);
+                              Enabled ? ForeColor : Theme.TextFaint, Flags);
+
+        if (Suffix.Length == 0) return;
+
+        // Placed by measuring the label rather than by padding the string, so the two runs sit
+        // together however the font renders.
+        int after = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+
+        TextRenderer.DrawText(g, Suffix, Font,
+                              new Rectangle(textRect.X + after, 0, textRect.Width - after, Height),
+                              Enabled ? SuffixColour : Theme.TextFaint, Flags);
     }
 }

@@ -3297,7 +3297,13 @@ public sealed class SettingsForm : Form
 
         // Sits on the search row rather than as a full setting: a compact checkbox for the "the HDR
         // hotkey adds/removes the game from this list" behaviour, right where that list is.
-        _hdrHotkeyRemember = new InlineCheck { Text = Words.HdrHotkeyRemember, Height = 40, Font = Theme.Small };
+        _hdrHotkeyRemember = new InlineCheck
+        {
+            Text = Words.HdrHotkeyRemember,
+            Suffix = Plain(Words.BadgeRecommended),
+            Height = 40,
+            Font = Theme.Small,
+        };
         _hdrHotkeyRemember.SetQuietly(Config.HdrHotkeyRemembersGame);
         _hdrHotkeyRemember.Width = _hdrHotkeyRemember.PreferredWidth();
         _hdrHotkeyRemember.CheckedChanged += (_, _) => { MarkDirty(); };
