@@ -137,11 +137,21 @@ internal static class Words
     // wearing a dropdown: two clicks to answer, and a control that looks like it has more behind it.
     // The list of options is still HdrModeOptionsDesk, because the glance tile and the save path both
     // read the picker — the switch drives it rather than replacing it.
+    // "It only ever switches HDR back off if it was the one that turned it on" was in both of these
+    // and was not true with Smart HDR on, which is the shipped default. That setting exists to
+    // remember HDR you switch on yourself — by hotkey, or by launching a game with HDR already on —
+    // and remembering it calls Remember(game, true), which claims _weTurnedItOn and adopts the
+    // running game precisely so that closing the game switches HDR off. The comment in
+    // HdrCoordinator says as much in the code.
+    //
+    // So the app does switch off HDR it did not turn on. Both descriptions now name the case, since
+    // "my HDR turned itself off" is exactly the surprise this file exists to prevent.
     public const string HdrAuto = "Turn HDR on automatically";
     public const string HdrAutoWhy =
 
             "**On when a game from the list below starts, off when it closes.** Your main display "
-            + "only, and it only ever switches HDR back off if it was the one that turned it on.";
+            + "only. HDR you had on beforehand is left alone — unless **Smart HDR** below has tied "
+            + "it to the game you are playing, in which case it goes off when that game does.";
 
 
     /// <summary>The same choice without the session entry. Indexes match HdrMode: Off, PerGame.</summary>
@@ -480,8 +490,9 @@ internal static class Words
     public const string HdrMode = "Turn HDR on automatically";
     public const string HdrModeWhy =
         
-            "Primary display only — the TV in a session, or your monitor at the desk — and "
-            + "it only ever switches HDR back off if it was the one that turned it on. **Per "
+            "Primary display only — the TV in a session, or your monitor at the desk. HDR you "
+            + "had on beforehand is left alone, unless **Smart HDR** has tied it to the game "
+            + "you are playing. **Per "
             + "game** switches it on when a game from the list below starts, and off when "
             + "that game closes. **For the whole session** switches it on as the session "
             + "begins and leaves it there until the session ends.";
