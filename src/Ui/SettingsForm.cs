@@ -3173,6 +3173,14 @@ public sealed class SettingsForm : Form
         // still line up with HdrMode, because the entry removed is the last one.
         SetOptions(_hdrMode, Config.DeskOnly ? Words.HdrModeOptionsDesk : Words.HdrModeOptions);
 
+        // Then put it where the config says, rather than leaving whatever the last build left.
+        //
+        // SetOptions preserves the previous index, which is right for a resize and wrong across a
+        // mode change: the two modes offer different lists, so the number carried over is an index
+        // into a list that no longer exists. Coming back from desk-only with whole-session stored,
+        // it lands out of range and the picker reads as unset.
+        _hdrMode.SelectedIndex = Math.Clamp((int)Config.HdrSwitching, 0, _hdrMode.Items.Count - 1);
+
         if (Config.DeskOnly)
         {
             // The switch reflects the picker and drives it; everything downstream still reads the
@@ -3213,8 +3221,20 @@ public sealed class SettingsForm : Form
         // not used. Whole-session is not even an entry in that picker here, so the note cannot be
         // true in this mode however the control is read — and a condition that cannot be true is
         // better written down than left to depend on an index staying in step.
+        // Built with its answer already applied, rather than built visible and corrected later.
+        //
+        // [BUG] WhenOn creates its rows unconditionally and leaves UpdateDependentStates to hide
+        // them. That pass runs after the page is built — and after LoadFromConfig, which is what
+        // puts the picker back in step — so between the two there is a page on screen holding a
+        // note that contradicts the control three rows above it. Switching modes rebuilds every
+        // page, which is exactly when that window is wide enough to see.
+        //
+        // The group still handles later changes; this only settles what it looks like the moment
+        // it is made.
+        bool wholeSession = !Config.DeskOnly && Config.HdrSwitching == HdrMode.WholeSession;
+
         WhenOn(() => !Config.DeskOnly && HdrModeOf(_hdrMode) == HdrMode.WholeSession, listCard,
-               () => AddNote(listCard, Words.HdrWholeSessionNote));
+               () => AddNote(listCard, Words.HdrWholeSessionNote).Visible = wholeSession);
 
         // Two deliberate rows rather than one wrapping row.
         //
