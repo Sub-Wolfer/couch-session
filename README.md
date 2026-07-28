@@ -18,12 +18,13 @@
 Switch the display. Move the sound. Fix the resolution. Turn on HDR. Open Big Picture. Then undo every
 one of them when you're done, while working out which window ended up where.
 
-Couch Session does the whole round trip. One press out, one press back, everything exactly as you left
-it.
+Couch Session does the whole round trip. One press and the living room TV behaves like a console:
+the right picture and sound, HDR on, Big Picture waiting, a controller in your hand and nothing that
+wants a keyboard. One press back and the desk is exactly as you left it.
 
 > ### 👥 Who this is for
 >
-> **One PC doing two jobs.** A machine you work and play at on a desk, that you also want to game on
+> **One PC doing two jobs.** A machine you work and play on at a desk, that you also want to game on
 > from the sofa. That's the whole reason this exists: the going-to-the-TV part is easy enough to do by
 > hand, and it's *coming back* that nobody wants to do twice a day.
 >
