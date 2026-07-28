@@ -21,20 +21,20 @@ namespace CouchMode.Session;
 /// </summary>
 public static class SessionPreview
 {
-    /// <summary>Whether a step undoes itself when the session ends.</summary>
-    public enum Undo
-    {
-        /// <summary>Put back when the session ends.</summary>
-        Restored,
-
-        /// <summary>Left as it is afterwards, deliberately.</summary>
-        Kept,
-
-        /// <summary>Nothing to undo.</summary>
-        None,
-    }
-
-    public sealed record Step(string What, string Detail, Undo Restores);
+    /// <summary>
+    /// One thing a session does, and what becomes of it at the end.
+    ///
+    /// [BUG] <c>After</c> used to be a three-way enum the dialog turned into the words "put back
+    /// after" or "stays after" for every row alike. Two problems with that. It is abstract — put
+    /// *what* back — and on the display row it was simply wrong: nothing about moving the picture
+    /// to the television is put back, and the television in fact disconnects. What comes back is
+    /// the desktop, which is a different sentence.
+    ///
+    /// Each step now says what happens to it when the session ends, in its own words. Reversed is
+    /// only kept for the colour, since "this returns to how it was" and "this does not" is still
+    /// worth telling apart at a glance.
+    /// </summary>
+    public sealed record Step(string What, string Detail, string After, bool Reversed);
 
     /// <summary>Something that would stop a session, or make one useless. Empty when all is well.</summary>
     public sealed record Problem(string What, string Detail);
@@ -73,7 +73,7 @@ public static class SessionPreview
                        : Ui.Words.PreviewKeepMonitors);
 
         steps.Add(new Step(string.Format(Ui.Words.PreviewDisplay, name),
-                           string.Join(" · ", detail), Undo.Restored));
+                           string.Join(" · ", detail), Ui.Words.PreviewAfterDisplay, true));
     }
 
     private static void Audio(AppConfig config, List<Step> steps, List<Problem> problems)
@@ -88,7 +88,7 @@ public static class SessionPreview
 
         steps.Add(new Step(string.Format(Ui.Words.PreviewAudio, NameOfAudio(config.TvAudioDeviceId)),
                            config.RestartSteamForAudio ? Ui.Words.PreviewAudioSteam : "",
-                           Undo.Restored));
+                           Ui.Words.PreviewAfterAudio, true));
     }
 
     private static void Hdr(AppConfig config, List<Step> steps)
@@ -96,7 +96,7 @@ public static class SessionPreview
         switch (config.HdrSwitching)
         {
             case HdrMode.WholeSession:
-                steps.Add(new Step(Ui.Words.PreviewHdrSession, "", Undo.Restored));
+                steps.Add(new Step(Ui.Words.PreviewHdrSession, "", Ui.Words.PreviewAfterHdr, true));
                 break;
 
             case HdrMode.PerGame:
@@ -104,7 +104,8 @@ public static class SessionPreview
                 if (ticked == 0) break;   // on, but nothing is ticked, so nothing will happen
 
                 steps.Add(new Step(Ui.Words.PreviewHdrPerGame,
-                                   string.Format(Ui.Words.PreviewHdrGames, ticked), Undo.Restored));
+                                   string.Format(Ui.Words.PreviewHdrGames, ticked),
+                                   Ui.Words.PreviewAfterHdrGame, true));
                 break;
         }
     }
@@ -115,7 +116,7 @@ public static class SessionPreview
 
         steps.Add(new Step(Ui.Words.PreviewBigPicture,
                            config.RestartSteamForAudio ? Ui.Words.PreviewBigPictureRestart : "",
-                           Undo.Restored));
+                           Ui.Words.PreviewAfterBigPicture, true));
     }
 
     private static void Performance(AppConfig config, List<Step> steps)
@@ -127,14 +128,15 @@ public static class SessionPreview
                                 : "";
 
             steps.Add(new Step(Ui.Words.PreviewPowerPlan, detail,
-                               detail.Length > 0 ? Undo.None : Undo.Restored));
+                               detail.Length > 0 ? "" : Ui.Words.PreviewAfterPower,
+                               detail.Length == 0));
         }
 
         if (config.SilenceNotifications)
-            steps.Add(new Step(Ui.Words.PreviewNotifications, "", Undo.Restored));
+            steps.Add(new Step(Ui.Words.PreviewNotifications, "", Ui.Words.PreviewAfterNotifications, true));
 
         if (config.GamePriorityEnabled)
-            steps.Add(new Step(Ui.Words.PreviewPriority, "", Undo.Restored));
+            steps.Add(new Step(Ui.Words.PreviewPriority, "", Ui.Words.PreviewAfterPriority, true));
     }
 
     private static void Apps(AppConfig config, List<Step> steps, List<Problem> problems)
@@ -148,7 +150,9 @@ public static class SessionPreview
 
         steps.Add(new Step(string.Format(Ui.Words.PreviewCloseApps, names.Count),
                            string.Join(", ", names),
-                           config.ReopenAppsAfterSession ? Undo.Restored : Undo.Kept));
+                           config.ReopenAppsAfterSession ? Ui.Words.PreviewAfterAppsBack
+                                                         : Ui.Words.PreviewAfterAppsStay,
+                           config.ReopenAppsAfterSession));
     }
 
     private static string NameOfDisplay(string path)

@@ -67,17 +67,14 @@ internal sealed class PreviewDialog : Form
         foreach (var problem in preview.Problems)
             stack.Controls.Add(Line(problem.What, problem.Detail, "", Theme.Warn));
 
-        foreach (var step in preview.Steps)
-        {
-            string tail = step.Restores switch
-            {
-                SessionPreview.Undo.Restored => Words.PreviewRestored,
-                SessionPreview.Undo.Kept => Words.PreviewKept,
-                _ => "",
-            };
+        // A heading over the right-hand column, because "Desktop comes back" beside "Move the
+        // picture to the TV" is only obvious once you know the column is about the end of the
+        // session. Four words spare the reader working that out.
+        if (preview.Steps.Count > 0) stack.Controls.Add(ColumnHeader());
 
-            stack.Controls.Add(Line(step.What, step.Detail, tail, Theme.Text));
-        }
+        foreach (var step in preview.Steps)
+            stack.Controls.Add(Line(step.What, step.Detail, step.After,
+                                    Theme.Text, step.Reversed));
 
         if (preview.Steps.Count == 0 && preview.Problems.Count == 0)
         {
@@ -148,9 +145,10 @@ internal sealed class PreviewDialog : Form
     /// happens to end. Ragged was the problem — the whole value of this dialog is being able to
     /// read one column and know what the machine keeps.
     /// </summary>
-    private static Control Line(string what, string detail, string tail, Color ink)
+    private static Control Line(string what, string detail, string tail, Color ink,
+                                bool reversed = true)
     {
-        const int TagW = 116;
+        const int TagW = 152;
         const int Pad0 = 12;
 
         bool two = detail.Length > 0;
@@ -203,7 +201,7 @@ internal sealed class PreviewDialog : Form
             {
                 Text = tail,
                 Font = Theme.Small,
-                ForeColor = tail == Words.PreviewKept ? Theme.Warn : Theme.Good,
+                ForeColor = reversed ? Theme.Good : Theme.Warn,
                 AutoSize = false,
                 Size = new Size(TagW, 20),
                 TextAlign = ContentAlignment.MiddleRight,
@@ -211,6 +209,31 @@ internal sealed class PreviewDialog : Form
                 BackColor = Color.Transparent,
             });
         }
+
+        return row;
+    }
+
+    /// <summary>The label over the right-hand column.</summary>
+    private static Control ColumnHeader()
+    {
+        var row = new Panel
+        {
+            Size = new Size(RowW, 18),
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 2),
+        };
+
+        row.Controls.Add(new Label
+        {
+            Text = Words.PreviewColumnAfter,
+            Font = Theme.Caption,
+            ForeColor = Theme.TextFaint,
+            AutoSize = false,
+            Size = new Size(152, 16),
+            TextAlign = ContentAlignment.MiddleRight,
+            Location = new Point(RowW - 152 - 12, 1),
+            BackColor = Color.Transparent,
+        });
 
         return row;
     }

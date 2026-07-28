@@ -682,8 +682,22 @@ internal static class Words
     public const string PreviewClose = "Close";
     public const string PreviewStart = "Start it now";
 
-    public const string PreviewRestored = "put back after";
-    public const string PreviewKept = "stays after";
+    // Was "put back after" and "stays after" on every row alike. Abstract, and on the display row
+    // untrue: nothing about moving the picture to the TV is put back, and the TV disconnects at the
+    // end. Each step says what becomes of it in its own words now, under a column headed so the
+    // reader knows what they are looking at.
+    public const string PreviewColumnAfter = "WHEN IT ENDS";
+
+    public const string PreviewAfterDisplay = "Desktop comes back";
+    public const string PreviewAfterAudio = "Sound comes back";
+    public const string PreviewAfterHdr = "HDR goes off";
+    public const string PreviewAfterHdrGame = "HDR off with the game";
+    public const string PreviewAfterBigPicture = "Closed at the end";
+    public const string PreviewAfterPower = "Your plan comes back";
+    public const string PreviewAfterNotifications = "Notifications return";
+    public const string PreviewAfterPriority = "Priority returns";
+    public const string PreviewAfterAppsBack = "Opened again";
+    public const string PreviewAfterAppsStay = "Left closed";
 
     public const string PreviewNothing =
         "**Nothing would happen.** Every setting that changes something is switched off.";
