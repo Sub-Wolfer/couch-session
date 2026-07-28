@@ -7656,6 +7656,8 @@ public sealed class SettingsForm : Form
         _gameWatch.Tick += (_, _) => LoadGames();
         _gameWatch.Start();
 
+        _displaySettle.Tick += (_, _) => { _displaySettle.Stop(); RefreshDevicesIfChanged(); };
+
         _noteTimer.Tick += (_, _) => { _noteTimer.Stop(); _deviceNote.Text = ""; };
 
         _scanNoteTimer.Tick += (_, _) =>
@@ -7673,10 +7675,32 @@ public sealed class SettingsForm : Form
         _savedNoteTimer.Tick += (_, _) => { _savedNoteTimer.Stop(); _saveNote.Text = ""; };
     }
 
+    /// <summary>
+    /// The pause between a display change and re-reading the device lists.
+    ///
+    /// [BUG] This used to be Thread.Sleep(400) inside a BeginInvoke, which is a sleep on the one
+    /// thread that draws the window — so every display change froze the settings window solid for
+    /// four hundred milliseconds, and a session start, which changes the topology more than once,
+    /// queued one freeze per change. A timer waits the same length of time without stopping
+    /// anything.
+    ///
+    /// Restarting it on each event makes it a debounce as well, which is what the wait was reaching
+    /// for: Windows reports a topology change in several steps, and only the state after the last
+    /// of them is worth reading.
+    /// </summary>
+    private readonly System.Windows.Forms.Timer _displaySettle = new() { Interval = 400 };
+
     private void OnDisplaysChanged(object? sender, EventArgs e)
     {
         if (IsDisposed || Disposing) return;
-        BeginInvoke(() => { Thread.Sleep(400); RefreshDevicesIfChanged(); });
+
+        BeginInvoke(() =>
+        {
+            if (IsDisposed || Disposing) return;
+
+            _displaySettle.Stop();
+            _displaySettle.Start();
+        });
     }
 
     private void RefreshDevicesIfChanged()
@@ -7746,6 +7770,7 @@ public sealed class SettingsForm : Form
         if (disposing)
         {
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
+            _displaySettle.Stop(); _displaySettle.Dispose();
             _deviceWatch.Stop(); _deviceWatch.Dispose();
             _gameWatch.Stop(); _gameWatch.Dispose();
             _noteTimer.Stop(); _noteTimer.Dispose();
