@@ -166,6 +166,10 @@ internal sealed class UpdateDialog : Form
         KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) DialogResult = DialogResult.No; };
 
         AcceptButton = null;
+
+        // Draggable by its heading and its background, but not by the notes: those live in a
+        // scrolling panel, and a press inside it belongs to the scrolling.
+        WindowDrag.Enable(this);
     }
 
     /// <summary>

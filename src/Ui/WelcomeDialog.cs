@@ -114,6 +114,11 @@ internal sealed class WelcomeDialog : Form
         // Escape leaves too. A welcome that traps anyone has failed at being welcoming.
         KeyPreview = true;
         KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) DialogResult = DialogResult.Cancel; };
+
+        // And it can be moved. This one opens over the settings window, which Windows disables while
+        // a dialog it owns is up — so without this neither window could be shifted an inch until the
+        // question was answered.
+        WindowDrag.Enable(this);
     }
 
 

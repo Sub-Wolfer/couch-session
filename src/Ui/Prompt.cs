@@ -110,6 +110,11 @@ internal static class Prompt
 
         box.Controls.AddRange([heading, note, input, ok, cancel]);
         if (clear is not null) box.Controls.Add(clear);
+
+        // After the controls are in, so the walk sees them. The heading and the background move the
+        // window; the text box and the buttons keep their own clicks.
+        WindowDrag.Enable(box);
+
         box.ShowDialog(owner);
 
         return answer;

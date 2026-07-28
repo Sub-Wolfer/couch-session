@@ -126,6 +126,10 @@ internal static class AskBox
             e.Graphics.DrawRectangle(pen, 0, 0, box.Width - 1, box.Height - 1);
         };
 
+        // Last, so every control is in place for it to walk. Borderless means no title bar to drag,
+        // and the window underneath is disabled while this is up.
+        WindowDrag.Enable(box);
+
         return box.ShowDialog(owner);
     }
 }
