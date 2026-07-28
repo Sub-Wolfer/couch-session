@@ -79,6 +79,97 @@ public static class StartupRegistration
         }
     }
 
+    /// <summary>
+    /// The executable the startup entry would launch, or null when nothing is registered.
+    ///
+    /// The point of asking is that a registered entry records an absolute path, and this app is a
+    /// single file people move: dropped somewhere better, tidied into a folder, renamed around. Task
+    /// Scheduler keeps launching whatever path it was given, fails with "file not found", and says
+    /// nothing — while the switch in Settings still reads as on, because a task that exists is not
+    /// the same as a task that works.
+    /// </summary>
+    public static string? RegisteredExe()
+    {
+        var (code, xml) = RunSchtasks($"/Query /TN \"{TaskName}\" /XML");
+
+        if (code == 0)
+        {
+            int open = xml.IndexOf("<Command>", StringComparison.OrdinalIgnoreCase);
+            int close = xml.IndexOf("</Command>", StringComparison.OrdinalIgnoreCase);
+
+            if (open >= 0 && close > open)
+            {
+                string command = xml[(open + "<Command>".Length)..close].Trim();
+
+                // Undo the escaping BuildTaskXml applied on the way in.
+                return command.Replace("&lt;", "<").Replace("&gt;", ">").Replace("&amp;", "&");
+            }
+        }
+
+        // The Run key is only ever a fallback, but a machine that fell back to it has the same
+        // problem and deserves the same repair.
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey);
+            if (key?.GetValue(ValueName) is not string value || value.Length == 0) return null;
+
+            // Stored as "\"C:\path\app.exe\" --startup".
+            if (value.StartsWith('"'))
+            {
+                int end = value.IndexOf('"', 1);
+                if (end > 1) return value[1..end];
+            }
+
+            int space = value.IndexOf(' ');
+            return space > 0 ? value[..space] : value;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not read the startup entry: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Make the startup entry point at this copy of the app, registering or repairing as needed.
+    ///
+    /// Called at every launch rather than only when the switch is pressed, because the thing that
+    /// breaks it is not the switch — it is the executable moving afterwards, which the app finds out
+    /// about only by looking. Returns true when something had to change.
+    /// </summary>
+    /// <summary>
+    /// Whether this launch had to repair the sign-in entry, so the tray can say so once it exists.
+    ///
+    /// Recorded rather than reported here: the repair happens before there is a window, a tray icon
+    /// or anywhere to put a message. The interesting part for the reader is not that it was fixed but
+    /// what it implies — that the sign-in before this one probably did not start the app.
+    /// </summary>
+    public static bool WasRepaired { get; private set; }
+
+    public static bool EnsurePointsHere()
+    {
+        var exe = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exe)) return false;
+
+        var registered = RegisteredExe();
+
+        if (registered is not null && string.Equals(registered, exe, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        Log.Info(registered is null
+            ? "Start with Windows is on but nothing is registered; registering it now."
+            : $"The startup entry points at '{registered}', which is not this copy; re-pointing it "
+              + $"at '{exe}'.");
+
+        Set(true);
+
+        // Only a move is worth mentioning on screen. Registering for the first time is the setting
+        // doing what it says, and a notification about it would be telling somebody what they just
+        // asked for; a stale entry is the case where a sign-in has already quietly failed.
+        WasRepaired = registered is not null;
+        return true;
+    }
+
     public static void Set(bool enabled)
     {
         // Whichever way this goes, the Run key must not survive — otherwise a machine that has both

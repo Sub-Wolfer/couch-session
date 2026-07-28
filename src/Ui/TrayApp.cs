@@ -519,6 +519,15 @@ public sealed class TrayApp : IDisposable
         // topology, which is why it is here rather than inside the session.
         Display.DisplayManager.RecoverFromCrash();
 
+        // Say so if the sign-in entry had to be re-pointed at this copy. Program repairs it long
+        // before there is a tray icon to speak from, so it leaves a flag for here.
+        //
+        // A problem rather than a confirmation: what it really reports is that the previous sign-in
+        // probably did not start the app, which is a thing that already went wrong rather than a
+        // thing that just went right.
+        if (StartupRegistration.WasRepaired)
+            Notify(Words.WarnStartupRepointed, ToolTipIcon.Warning);
+
         // Look for a new version shortly after launch, and once a day after that.
         //
         // [BUG] AppConfig.CheckForUpdates has existed and defaulted to true since the setting was

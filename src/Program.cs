@@ -231,15 +231,31 @@ internal static class Program
         var config = AppConfig.Load();
         bool launchedByWindows = args.Contains(StartupRegistration.StartupArg, StringComparer.OrdinalIgnoreCase);
 
-        // Re-register the logon task if start-with-Windows is meant to be on but the task is missing.
-        // A rename clears the old-named task in ForgetOldNames above without ever creating a new one
-        // (the switch is only written when the user opens Settings), so start-with-Windows silently
-        // broke after the app was renamed. This heals it, and also re-points the task at the current
-        // executable if the app was moved.
-        if (config.IsConfigured && config.StartWithWindows && !StartupRegistration.IsEnabled())
+        // Make the startup entry agree with where this executable actually is, every launch.
+        //
+        // [BUG] This used to run only when IsEnabled() said nothing was registered, and IsEnabled()
+        // answers "does a task exist", not "does that task work". A task left pointing at a path the
+        // app has since moved away from therefore looked healthy, so the repair never fired — while
+        // the comment here claimed it re-pointed a moved executable, which it could not.
+        //
+        // Windows reports the failure only in the task's own history, as 0x80070002. From the
+        // outside, start-with-Windows is switched on in Settings and simply never happens.
+        //
+        // This is not an edge case for a portable single file. Moving it is the ordinary thing to do
+        // with one: out of Downloads, into a folder, onto another drive. Every one of those breaks
+        // startup silently, and none of them is the user's mistake.
+        // Repairing an entry and creating one are two different decisions, and they were one.
+        //
+        // Creating one is gated on the app being set up: a fresh install has StartWithWindows on by
+        // default, and adding yourself to somebody's sign-in before they have chosen a television is
+        // presumptuous. Repairing one is not gated on anything — an entry that already exists was
+        // asked for, and pointing it at a file that is no longer there serves nobody. The old
+        // condition required both, so a working setup that lost its display choice also quietly lost
+        // its startup repair, which is two unrelated things sharing one switch.
+        if (config.StartWithWindows
+                && (StartupRegistration.RegisteredExe() is not null || config.IsConfigured))
         {
-            StartupRegistration.Set(true);
-            Log.Info("Start-with-Windows was set but the task was missing (likely after a rename); re-registered it.");
+            StartupRegistration.EnsurePointsHere();
         }
 
         // Settings open on every manual launch — it's the confirmation step before the app can

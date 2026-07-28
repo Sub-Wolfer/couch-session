@@ -504,10 +504,22 @@ internal static class Words
     // ── General ───────────────────────────────────────────────────────────────────
 
     public const string StartWithWindows = "Start with Windows";
+    // The second sentence is the one catch this setting has, and it had none.
+    //
+    // Windows records where this file is, not what it is called, so moving the app leaves the
+    // sign-in launch pointing at a folder that is no longer there. It repairs itself the next time
+    // Couch Session runs — but that has to happen, and somebody who moves the app and then reboots
+    // gets one sign-in where nothing starts and nothing explains why. Saying so costs a line.
     public const string StartWithWindowsWhy =
-        
+
             "Launches to the tray as you sign in — ahead of the usual startup delay — ready "
-            + "to switch displays and manage HDR.";
+            + "to switch displays and manage HDR.\n\nIf you move Couch Session to another folder, "
+            + "open it once from its new home so Windows knows where to find it.";
+
+    /// <summary>Shown when a launch found the sign-in entry pointing somewhere the app no longer is.</summary>
+    public const string WarnStartupRepointed =
+        "Couch Session had moved, so \"Start with Windows\" was pointing at the old folder. "
+      + "That is fixed now, though the last sign-in may have missed it.";
 
     public const string StartOnLaunch = "Start a session when Couch Session opens";
     public const string StartOnLaunchWhy =
