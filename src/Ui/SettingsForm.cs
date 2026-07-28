@@ -157,7 +157,7 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _startOnWakeControllerOnly = new();
     private readonly ToggleSwitch _minimizeOnClose = new();
     private readonly ToggleSwitch _showNotifications = new();
-    private readonly ToggleSwitch _deskOnly = new();
+    private readonly ToggleSwitch _deskOnly = new() { Prominent = true };
     private readonly ToggleSwitch _showSessionNotifications = new();
     private readonly ToggleSwitch _showHdrNotifications = new();
     private readonly ToggleSwitch _showMinimizeNotification = new();
@@ -487,6 +487,21 @@ public sealed class SettingsForm : Form
             if (_loading) return;
 
             Config.DeskOnly = _deskOnly.Checked;
+
+            // Whole-session HDR cannot happen without sessions, and leaving it selected would mean
+            // switching this mode on quietly switched HDR off — the one feature most of these users
+            // came for. Per game is the setting that does the same job at a desk.
+            if (Config.DeskOnly && Config.HdrSwitching == HdrMode.WholeSession)
+            {
+                // Through the picker rather than around it, so the page, the glance tile and the
+                // dirty tracking all hear about it the same way they would from a click.
+                _hdrMode.SelectedIndex = (int)HdrMode.PerGame;
+                Config.HdrSwitching = HdrMode.PerGame;
+
+                Log.Info("Desk-only mode: HDR switched from whole-session to per game, "
+                       + "because there are no sessions to switch it for.");
+            }
+
             ApplyDeskOnly();
             RebuildPage(HomePage);
         };
@@ -1559,22 +1574,28 @@ public sealed class SettingsForm : Form
         // switches, and what the controller starts and ends. Everything dropped is still one click
         // away on its own page, and this page is better at its job for not restating it.
         //
-        Group("Display and sound");
-        Tile("Couch display", display ?? "not chosen", displayLive, page: DisplayPage, anchor: _tvDisplay);
-        Tile("Resolution", _tvVideoMode.SelectedItem?.ToString() ?? "whatever it is", true, page: DisplayPage,
-             anchor: _tvVideoMode);
-        Tile("Displays in session", DisplayModeText(), true, page: DisplayPage, anchor: _displayMode);
-        Tile("TV on exit", tvOff ? "disconnects" : "stays connected", true, page: DisplayPage,
-             anchor: _turnOffTvOnExit);
+        // Both of these groups describe a session: which screen and speakers it moves to,
+        // and what starts and ends it. In desk-only mode there is no session for them to be
+        // about, and a grid reporting settings that cannot apply is worse than a shorter grid.
+        if (!Config.DeskOnly)
+        {
+            Group("Display and sound");
+            Tile("Couch display", display ?? "not chosen", displayLive, page: DisplayPage, anchor: _tvDisplay);
+            Tile("Resolution", _tvVideoMode.SelectedItem?.ToString() ?? "whatever it is", true, page: DisplayPage,
+                 anchor: _tvVideoMode);
+            Tile("Displays in session", DisplayModeText(), true, page: DisplayPage, anchor: _displayMode);
+            Tile("TV on exit", tvOff ? "disconnects" : "stays connected", true, page: DisplayPage,
+                 anchor: _turnOffTvOnExit);
 
-        Tile("Sound in session", audio ? tvSound ?? "TV (not detected)" : "unchanged", tvSoundLive,
-             page: DisplayPage, anchor: _tvAudio);
-        Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
-             anchor: _desktopAudio);
-        Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
-             _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
+            Tile("Sound in session", audio ? tvSound ?? "TV (not detected)" : "unchanged", tvSoundLive,
+                 page: DisplayPage, anchor: _tvAudio);
+            Tile("Sound at the desk", deskSound ?? "unchanged", deskSoundLive, page: DisplayPage,
+                 anchor: _desktopAudio);
+            Tile("Game left running", _muteOnDesktop.Checked ? "muted at the desk" : "keeps playing",
+                 _muteOnDesktop.Checked, page: DisplayPage, anchor: _muteOnDesktop);
+        }
 
-        Group("HDR");
+                Group("HDR");
         // One tile, because it is now one setting. Two tiles for two switches that cancelled each
         // other meant the pair could read "on · 12 games" and "whole session: yes" at once, which
         // described a state the app has never actually been in.
@@ -1608,102 +1629,107 @@ public sealed class SettingsForm : Form
                                       ? Input.KeyShortcut.Describe(_shortcutKeyboardHdr.Value) : "not set",
              _shortcutKeyboardHdr.Value != 0, page: HotkeysPage, anchor: _shortcutKeyboardHdr);
 
-        Group("Controller");
-        //
-        // "Controller — PlayStation DualSense" used to open this group and has gone. Every other tile
-        // here reports a setting; that one reported live state, which under a heading reading
-        // "Settings at a glance" is the one thing on the grid that is not one. The Controller page
-        // already carries a status card saying the same thing, in the place somebody goes to act on
-        // it.
-
-        // Which pad, not just whether one is connected.
-        //
-        // Picking a specific controller is the quietest way to end up with a session that will not
-        // start: the pad in your hand is connected, the trigger is switched on, and nothing happens
-        // because the app is waiting for a different one. The tile above cannot say that — it reports
-        // what is plugged in, not what is allowed to start anything.
-        Tile("Controller that starts it", Config.TriggerControllerId.Length == 0
-                                       ? "any controller"
-                                       : Config.TriggerControllerName.Length > 0
-                                             ? Config.TriggerControllerName
-                                             : "a specific one",
-             true, page: ControllerPage, anchor: _triggerPad);
-        // The third thing that can quietly stop a session starting, alongside the two above. Set to
-        // Bluetooth only, plug the controller in, and nothing happens with no clue why — which is the
-        // argument written above the tile before it, and applies here word for word.
-        Tile("Connection that counts", Config.StartOnControllerLink switch
+        // The whole controller group is about starting and ending sessions.
+        if (!Config.DeskOnly)
         {
-            PadLink.WiredOnly => "cable or dongle only",
-            PadLink.WirelessOnly => "Bluetooth only",
-            _ => "wired or wireless",
-        }, Config.StartOnControllerLink == PadLink.Either, page: ControllerPage, anchor: _padLink);
+            Group("Controller");
+            //
+            // "Controller — PlayStation DualSense" used to open this group and has gone. Every other tile
+            // here reports a setting; that one reported live state, which under a heading reading
+            // "Settings at a glance" is the one thing on the grid that is not one. The Controller page
+            // already carries a status card saying the same thing, in the place somebody goes to act on
+            // it.
 
-        // Both halves of each hotkey, keyboard as well as pad.
-        //
-        // The keyboard ones were dropped when this grid was cut back to display, controller and HDR,
-        // on the reasoning that a key combination is not a controller setting. True, and the wrong
-        // cut to make: a hotkey is how a session starts and ends whichever device it lives on, and
-        // "not set" against one of these is exactly the sort of thing somebody comes to this page to
-        // find out. They are back, in pairs, so neither is the odd one missing.
-        Tile("Session hotkey (pad)", padCombo != 0 ? PadText(padCombo) : "not set", padCombo != 0,
-             page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
-        Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
-             keyCombo != 0, page: HotkeysPage, anchor: _shortcutKeyboard);
-        Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
-             anchor: _guideEndsSession);
-        Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
-             page: ControllerPage, anchor: _startOnController);
-        // "on" was not the whole answer.
-        //
-        // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
-        // will not move" is the commonest thing to come back about. A tile that says "on" while the
-        // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
-        // here answers it without opening anything.
-        //
-        // The other state said "on, always" and now says "on". "Always" was there to mean "without
-        // holding anything", which is a meaning nobody can take from the word unless they have
-        // already seen the "hold R2" state and worked out what it is being contrasted with. It was
-        // also a claim the app does not keep: the pointer stands down over a fullscreen game unless
-        // that is allowed separately. "on" beside "hold R2" carries the contrast on its own.
-        Tile("Controller as mouse", !_mouseControl.Checked ? "off"
-                           : _mouseHold.Checked ? $"hold {HoldButtonName()}"
-                                                : "on",
-             _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
+            // Which pad, not just whether one is connected.
+            //
+            // Picking a specific controller is the quietest way to end up with a session that will not
+            // start: the pad in your hand is connected, the trigger is switched on, and nothing happens
+            // because the app is waiting for a different one. The tile above cannot say that — it reports
+            // what is plugged in, not what is allowed to start anything.
+            Tile("Controller that starts it", Config.TriggerControllerId.Length == 0
+                                           ? "any controller"
+                                           : Config.TriggerControllerName.Length > 0
+                                                 ? Config.TriggerControllerName
+                                                 : "a specific one",
+                 true, page: ControllerPage, anchor: _triggerPad);
+            // The third thing that can quietly stop a session starting, alongside the two above. Set to
+            // Bluetooth only, plug the controller in, and nothing happens with no clue why — which is the
+            // argument written above the tile before it, and applies here word for word.
+            Tile("Connection that counts", Config.StartOnControllerLink switch
+            {
+                PadLink.WiredOnly => "cable or dongle only",
+                PadLink.WirelessOnly => "Bluetooth only",
+                _ => "wired or wireless",
+            }, Config.StartOnControllerLink == PadLink.Either, page: ControllerPage, anchor: _padLink);
 
-        // The two disconnect answers, beside the controller settings they belong to rather than in
-        // the startup group four tiles later. They were down there because the single tile they
-        // replaced was about ending a session, and "starting and stopping" was where ending lived —
-        // but this grid is read by scanning for a subject, and the subject here is the controller.
-        Tile("Switching it off", Says(DisconnectOf(_onControllerOff, DisconnectAction.ComeBack)),
-             DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore,
-             page: ControllerPage, anchor: _onControllerOff);
+            // Both halves of each hotkey, keyboard as well as pad.
+            //
+            // The keyboard ones were dropped when this grid was cut back to display, controller and HDR,
+            // on the reasoning that a key combination is not a controller setting. True, and the wrong
+            // cut to make: a hotkey is how a session starts and ends whichever device it lives on, and
+            // "not set" against one of these is exactly the sort of thing somebody comes to this page to
+            // find out. They are back, in pairs, so neither is the odd one missing.
+            Tile("Session hotkey (pad)", padCombo != 0 ? PadText(padCombo) : "not set", padCombo != 0,
+                 page: HotkeysPage, anchor: _shortcutController, combo: padCombo);
+            Tile("Session hotkey (keys)", keyCombo != 0 ? Input.KeyShortcut.Describe(keyCombo) : "not set",
+                 keyCombo != 0, page: HotkeysPage, anchor: _shortcutKeyboard);
+            Tile("Guide button", guide ? "starts and ends sessions" : "off", guide, page: HotkeysPage,
+                 anchor: _guideEndsSession);
+            Tile("Start on controller", _startOnController.Checked ? "yes" : "no", _startOnController.Checked,
+                 page: ControllerPage, anchor: _startOnController);
+            // "on" was not the whole answer.
+            //
+            // With hold-to-activate set, the pointer does nothing until a button is held — and "my cursor
+            // will not move" is the commonest thing to come back about. A tile that says "on" while the
+            // pointer sits still is a tile that sends someone to look at the wrong page. Naming the button
+            // here answers it without opening anything.
+            //
+            // The other state said "on, always" and now says "on". "Always" was there to mean "without
+            // holding anything", which is a meaning nobody can take from the word unless they have
+            // already seen the "hold R2" state and worked out what it is being contrasted with. It was
+            // also a claim the app does not keep: the pointer stands down over a fullscreen game unless
+            // that is allowed separately. "on" beside "hold R2" carries the contrast on its own.
+            Tile("Controller as mouse", !_mouseControl.Checked ? "off"
+                               : _mouseHold.Checked ? $"hold {HoldButtonName()}"
+                                                    : "on",
+                 _mouseControl.Checked, page: ControllerPage, anchor: _mouseControl);
 
-        Tile("If it drops out", Says(DisconnectOf(_onControllerLost, DisconnectAction.Ignore)),
-             DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
-             page: ControllerPage, anchor: _onControllerLost);
+            // The two disconnect answers, beside the controller settings they belong to rather than in
+            // the startup group four tiles later. They were down there because the single tile they
+            // replaced was about ending a session, and "starting and stopping" was where ending lived —
+            // but this grid is read by scanning for a subject, and the subject here is the controller.
+            Tile("Switching it off", Says(DisconnectOf(_onControllerOff, DisconnectAction.ComeBack)),
+                 DisconnectOf(_onControllerOff, DisconnectAction.ComeBack) != DisconnectAction.Ignore,
+                 page: ControllerPage, anchor: _onControllerOff);
 
-        // Short forms of the option labels, for a tile four to a row. Same words where they fit, so
-        // the home page and the page it links to do not describe one setting two ways.
-        static string Says(DisconnectAction action) => action switch
-        {
-            DisconnectAction.EndAndClose => "closes the game",
-            DisconnectAction.ComeBackAndAsk => "switches back, then asks",
-            DisconnectAction.ComeBack => "switches back to the desktop",
-            _ => "nothing",
-        };
+            Tile("If it drops out", Says(DisconnectOf(_onControllerLost, DisconnectAction.Ignore)),
+                 DisconnectOf(_onControllerLost, DisconnectAction.Ignore) != DisconnectAction.Ignore,
+                 page: ControllerPage, anchor: _onControllerLost);
 
-        // Four from the other pages, and only four.
-        //
-        // This grid was cut back to the three subjects that decide whether a session works, and that
-        // is still the right shape — but three settings elsewhere outlive a session and one decides
-        // whether the app is running at all, which makes them worth a line here even though nothing
-        // about them is about the television.
-        //
-        // The three Windows ones are the argument: everything else this app touches is put back when
-        // a session ends, and these are changed and left changed. Two of them lower the machine's
-        // security. Somebody skimming this page to see what the app has done to their PC should not
-        // have to open the Performance page to find the part that outlives the session.
-        //
+            // Short forms of the option labels, for a tile four to a row. Same words where they fit, so
+            // the home page and the page it links to do not describe one setting two ways.
+            static string Says(DisconnectAction action) => action switch
+            {
+                DisconnectAction.EndAndClose => "closes the game",
+                DisconnectAction.ComeBackAndAsk => "switches back, then asks",
+                DisconnectAction.ComeBack => "switches back to the desktop",
+                _ => "nothing",
+            };
+
+            // Four from the other pages, and only four.
+            //
+            // This grid was cut back to the three subjects that decide whether a session works, and that
+            // is still the right shape — but three settings elsewhere outlive a session and one decides
+            // whether the app is running at all, which makes them worth a line here even though nothing
+            // about them is about the television.
+            //
+            // The three Windows ones are the argument: everything else this app touches is put back when
+            // a session ends, and these are changed and left changed. Two of them lower the machine's
+            // security. Somebody skimming this page to see what the app has done to their PC should not
+            // have to open the Performance page to find the part that outlives the session.
+            //
+        }
+
         // Start with Windows earns its place differently: none of the rest of this grid means
         // anything if the app is not running when you sit down.
         Group("Windows and startup");
@@ -1711,11 +1737,17 @@ public sealed class SettingsForm : Form
         Tile("Start with Windows", onBoot ? "yes" : "no", onBoot, page: GeneralPage,
              anchor: _startWithWindows);
 
-        Tile("Admin prompts", _disableUac.Checked ? "silenced" : "normal", _disableUac.Checked,
-             page: PerformancePage, anchor: _disableUac);
+        // UAC and the firewall are only here because their prompts appear on surfaces a controller
+        // cannot reach, which is a couch problem and nothing else. At a desk there is a mouse two
+        // inches away, so lowering the machine's security to avoid a dialog buys nothing at all.
+        if (!Config.DeskOnly)
+        {
+            Tile("Admin prompts", _disableUac.Checked ? "silenced" : "normal", _disableUac.Checked,
+                 page: PerformancePage, anchor: _disableUac);
 
-        Tile("Windows Firewall", _disableFirewall.Checked ? "switched off" : "on",
-             _disableFirewall.Checked, page: PerformancePage, anchor: _disableFirewall);
+            Tile("Windows Firewall", _disableFirewall.Checked ? "switched off" : "on",
+                 _disableFirewall.Checked, page: PerformancePage, anchor: _disableFirewall);
+        }
 
         // "off" rather than "off while the app runs": it is a Windows setting now and stays however
         // it is left, so describing it in terms of this app's lifetime would be a plain untruth.
@@ -3380,37 +3412,50 @@ public sealed class SettingsForm : Form
         // Each toggle carries its own check now, run when it is switched on (or, for the two live
         // system switches, whenever the page is shown) and printed right underneath it — so there
         // is no separate "check" section to go and press.
-        _disableUac.CheckedChanged -= OnUacToggled;
-        _disableUac.CheckedChanged += OnUacToggled;
-        // The two security switches keep the small target on purpose. Everywhere else a row-wide
-        // click is a straight win; here it would mean a press aimed at the description below could
-        // switch UAC off, and that is a change the user must have meant.
-        AddToggle(windows, Words.DisableUac, _disableUac, Words.DisableUacWhy,
-                  check: PerformanceCheck.CheckUac, checkAlways: true, rowClick: false);
-        SetUacQuietly(!UacControl.IsEnabled());
+        // Both of these exist for one reason: their prompts appear on surfaces a controller
+        // cannot reach, so a session can strand itself behind a dialog nobody can answer. At a
+        // desk the mouse is right there, and lowering the machine's security to dodge a prompt
+        // you can simply click is a bad trade offered for no reason.
+        if (!Config.DeskOnly)
+        {
+            _disableUac.CheckedChanged -= OnUacToggled;
+            _disableUac.CheckedChanged += OnUacToggled;
+            // The two security switches keep the small target on purpose. Everywhere else a row-wide
+            // click is a straight win; here it would mean a press aimed at the description below could
+            // switch UAC off, and that is a change the user must have meant.
+            AddToggle(windows, Words.DisableUac, _disableUac, Words.DisableUacWhy,
+                      check: PerformanceCheck.CheckUac, checkAlways: true, rowClick: false);
+            SetUacQuietly(!UacControl.IsEnabled());
 
-        _disableFirewall.CheckedChanged -= OnFirewallToggled;
-        _disableFirewall.CheckedChanged += OnFirewallToggled;
-        AddToggle(windows, Words.DisableFirewall, _disableFirewall, Words.DisableFirewallWhy,
-                  check: PerformanceCheck.CheckFirewall, checkAlways: true, rowClick: false);
-        SetFirewallQuietly(!FirewallControl.IsEnabled());
+            _disableFirewall.CheckedChanged -= OnFirewallToggled;
+            _disableFirewall.CheckedChanged += OnFirewallToggled;
+            AddToggle(windows, Words.DisableFirewall, _disableFirewall, Words.DisableFirewallWhy,
+                      check: PerformanceCheck.CheckFirewall, checkAlways: true, rowClick: false);
+            SetFirewallQuietly(!FirewallControl.IsEnabled());
+        }
 
-        AddToggle(windows, Words.ChangePowerPlan, _changePowerPlan, Words.ChangePowerPlanWhy, setting: nameof(AppConfig.ChangePowerPlan),
-                  check: () => PerformanceCheck.CheckPowerPlan(SelectedPowerPlan()));
+        // The power plan is switched for a session and put back at the end of one, so without
+        // sessions it has nothing to act on. Offering it here would be offering a setting that
+        // silently never applies.
+        if (!Config.DeskOnly)
+        {
+            AddToggle(windows, Words.ChangePowerPlan, _changePowerPlan, Words.ChangePowerPlanWhy, setting: nameof(AppConfig.ChangePowerPlan),
+                      check: () => PerformanceCheck.CheckPowerPlan(SelectedPowerPlan()));
 
-        RefreshPowerPlans();
-        AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy, Words.PowerPlanAuto, indent: Indent);
+            RefreshPowerPlans();
+            AddPick(windows, Words.PowerPlanPick, _powerPlan, Words.PowerPlanPickWhy, Words.PowerPlanAuto, indent: Indent);
 
-        // The picker follows the toggle, so a list of plans is not offered to someone who has
-        // just said they do not want their power plan touched.
-        _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
-        _changePowerPlan.CheckedChanged += OnChangePowerPlanToggled;
-        _powerPlan.Enabled = _changePowerPlan.Checked;
+            // The picker follows the toggle, so a list of plans is not offered to someone who has
+            // just said they do not want their power plan touched.
+            _changePowerPlan.CheckedChanged -= OnChangePowerPlanToggled;
+            _changePowerPlan.CheckedChanged += OnChangePowerPlanToggled;
+            _powerPlan.Enabled = _changePowerPlan.Checked;
 
-        // Re-run the power check when a different plan is picked, so its line under the toggle
-        // updates to whether that plan can be switched to on this machine.
-        _powerPlan.SelectedIndexChanged -= OnPowerPlanChanged;
-        _powerPlan.SelectedIndexChanged += OnPowerPlanChanged;
+            // Re-run the power check when a different plan is picked, so its line under the toggle
+            // updates to whether that plan can be switched to on this machine.
+            _powerPlan.SelectedIndexChanged -= OnPowerPlanChanged;
+            _powerPlan.SelectedIndexChanged += OnPowerPlanChanged;
+        }
 
         // "Keep the TV awake" is not offered at the moment.
         //
@@ -3421,8 +3466,12 @@ public sealed class SettingsForm : Form
         // games already handle. The setting and its plumbing are still here; only the way in is gone,
         // and it is forced off on save so a previously saved "on" cannot outlive the switch.
 
-        AddToggle(windows, Words.SilenceNotifications, _silenceNotifications, Words.SilenceNotificationsWhy, setting: nameof(AppConfig.SilenceNotifications),
-                  check: PerformanceCheck.CheckNotifications);
+        // Silenced until the session ends, which is a sentence with nothing in it here.
+        if (!Config.DeskOnly)
+        {
+            AddToggle(windows, Words.SilenceNotifications, _silenceNotifications, Words.SilenceNotificationsWhy, setting: nameof(AppConfig.SilenceNotifications),
+                      check: PerformanceCheck.CheckNotifications);
+        }
 
         // Badged, because it is the one setting on this page that is a plain recommendation. The rest
         // are trades — security for reach, or a Windows-wide preference for a quieter session — and
@@ -3706,8 +3755,10 @@ public sealed class SettingsForm : Form
         NewSection(page, Words.SectionDeskOnly);
 
         var mode = NewCard(page);
+        // Accent title as well as the larger green switch, so it reads as a mode from the heading
+        // down rather than only at the control.
         AddToggle(mode, Words.DeskOnly, _deskOnly, Words.DeskOnlyWhy,
-                  setting: nameof(AppConfig.DeskOnly));
+                  setting: nameof(AppConfig.DeskOnly), titleEmphasis: Theme.Info);
 
         // A row of jump buttons used to sit here and has been removed.
         //

@@ -247,6 +247,31 @@ internal sealed class ToggleSwitch : Control
         Invalidate();
     }
 
+    /// <summary>
+    /// Draw this one as a mode switch rather than a setting.
+    ///
+    /// Bigger, and green when on instead of the violet every other switch uses. There is exactly one
+    /// of these in the app and it deserves the distinction: every other toggle changes what happens
+    /// during a session, while this one decides whether sessions exist at all — it empties two pages
+    /// out of the rail, takes the main button off the footer and halves the grid on the home page.
+    ///
+    /// A switch that reshapes the window should not look identical to the switch beside it that
+    /// silences a notification.
+    /// </summary>
+    public bool Prominent
+    {
+        get => _prominent;
+        set
+        {
+            if (_prominent == value) return;
+            _prominent = value;
+            Size = value ? new Size(56, 30) : new Size(44, 24);
+            Invalidate();
+        }
+    }
+
+    private bool _prominent;
+
     public ToggleSwitch()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
@@ -286,7 +311,9 @@ internal sealed class ToggleSwitch : Control
 
         var track = new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
 
-        Color on = _hover ? Theme.AccentHi : Theme.Accent;
+        Color on = _prominent
+            ? (_hover ? Theme.Mix(Theme.Good, Color.White, 0.15f) : Theme.Good)
+            : (_hover ? Theme.AccentHi : Theme.Accent);
         Color off = _hover ? Theme.Mix(Theme.SurfaceHi, Theme.Line, 0.6f) : Theme.SurfaceHi;
         Color fill = !Enabled ? Theme.Mix(Theme.Surface, Theme.Line, 0.5f) : _checked ? on : off;
 
