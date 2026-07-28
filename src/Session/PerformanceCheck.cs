@@ -233,7 +233,12 @@ public static class PerformanceCheck
             // Worked tracks the couch-friendly state, not a pass/fail: off is good (green tick),
             // on is the one that can strand a session (red cross). The line just states the fact —
             // the mark, the colour and the toggle's own description carry the rest.
-            return new(Name, off, (off ? "UAC is off." : "UAC is on.")
+            //
+            // Was: "UAC is off." / "UAC is on." Neither was true of what this reads. IsEnabled asks
+            // whether admin elevation still puts up a prompt — it returns false with UAC fully on
+            // and ConsentPromptBehaviorAdmin at 0 — so a machine reported here as having no UAC has
+            // UAC running, silently. The prompts are the subject, and now they are what it says.
+            return new(Name, off, (off ? "UAC prompts are off." : "UAC prompts are on.")
                                 + " Checked against current Windows settings.");
         }
         catch (Exception ex) { return new(Name, false, $"Could not be checked: {ex.Message}"); }

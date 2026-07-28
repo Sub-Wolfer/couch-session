@@ -693,13 +693,20 @@ internal static class Words
             "Confirms a bug report was saved, that UAC or the firewall has changed, or that "
             + "a new version is available. Everything here is a short message in the corner; "
             + "nothing waits for an answer.";
-    public const string DisableUac = "Turn off User Account Control (UAC)";
+    // Was: "Turn off User Account Control (UAC)". It does not do that, and UacControl says so in its
+    // own summary: it writes ConsentPromptBehaviorAdmin and PromptOnSecureDesktop, and it forces
+    // EnableLUA back to *1* on both paths (UacControl.cs, the comment above the reg calls). UAC stays
+    // on; what stops is the interrupting prompt. The distinction matters to anyone deciding whether
+    // to press this, since a title claiming the whole of UAC is going away asks for more trust than
+    // the switch actually needs.
+    public const string DisableUac = "Turn off UAC prompts";
     public const string DisableUacWhy =
-        
+
             "**This lowers your PC's security.** UAC prompts appear on a secure screen a "
             + "controller can't reach. This elevates admin apps silently so those dead ends "
-            + "go away. Needs an admin prompt, **applies right away, no restart.** It is not "
-            + "tied to a session — it stays off until you switch it back on here.";
+            + "go away. UAC itself stays on. Needs an admin prompt, **applies right away, no "
+            + "restart.** It is not tied to a session — it stays off until you switch it back "
+            + "on here.";
     public const string NoticeUacChanged = "UAC setting changed";
     public const string NoticeUacRestart = "Admin prompts are now silent.";
     public const string NoticeUacOn = "UAC prompts are back on.";
