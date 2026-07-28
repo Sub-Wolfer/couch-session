@@ -82,8 +82,8 @@ internal static class Words
     // Named for what the reader wants rather than for what it switches off. "Disable couch session
     // features" describes the mechanism to somebody who never wanted them; "just HDR and performance"
     // describes what they came for.
-    public const string SectionDeskOnly = "Do you have a television?";
-    public const string DeskOnly = "Use this for HDR and performance only";
+    public const string SectionDeskOnly = "How you use this";
+    public const string DeskOnly = "At my desk only";
     public const string DeskOnlyWhy =
 
             "**No television, no controller, no sessions.** HDR still switches itself around your "
@@ -94,7 +94,7 @@ internal static class Words
 
     /// <summary>Shown under the glance grid while the couch half is switched off.</summary>
     public const string DeskOnlyNote =
-        "Couch session features are off. The switch above brings them back.";
+        "Couch session features are off. Turn them back on under General.";
 
     /// <summary>Shown beside the switch while a session is running, which is when it is locked.</summary>
     public const string DeskOnlyDuringSession =
@@ -403,7 +403,7 @@ internal static class Words
             + "starts and goes off when it quits, so the desktop is never left washed out.";
 
     /// <summary>Under both answers, so neither reads as a decision that cannot be undone.</summary>
-    public const string WelcomeEither = "You can change this at any time on the Home page.";
+    public const string WelcomeEither = "You can change this at any time on the General page.";
 
     // ── Home page guidance ────────────────────────────────────────────────────────
     // No ** in either of these, unlike every other string in this file.
@@ -659,6 +659,12 @@ internal static class Words
         
             "A hotkey another program already holds, or a change Windows refused. Rare, and "
             + "each one is something that stops a feature working.";
+
+    /// <summary>The same row without UAC and the firewall, which desk-only mode does not offer.</summary>
+    public const string ShowActionNotificationsWhyDesk =
+
+            "Confirms a bug report was saved, or that a new version is available. Everything "
+            + "here is a short message in the corner; nothing waits for an answer.";
 
     public const string ShowActionNotifications = "When something you pressed is done";
     public const string ShowActionNotificationsWhy =

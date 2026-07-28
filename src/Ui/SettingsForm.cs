@@ -515,7 +515,22 @@ public sealed class SettingsForm : Form
             }
 
             ApplyDeskOnly();
-            RebuildPage(HomePage);
+
+            // Every page is stale, not just Home.
+            //
+            // [BUG] This rebuilt Home and nothing else, on the reasoning that Home was where the
+            // switch lived. But the mode changes what six of the eight pages contain and how three
+            // of them describe themselves — General keeps its start-a-session switches, Hotkeys its
+            // session shortcuts, Performance its session wording. A page is only rebuilt when its
+            // recorded width stops matching the window, so those simply kept whatever they were
+            // built with and showed settings the mode had supposedly removed.
+            //
+            // Marking them all stale is what the width check already does for a resize; this is the
+            // same idea for a change that alters content rather than shape. The visible one is
+            // rebuilt now and the rest when they are next opened.
+            for (int i = 0; i < _pageWidth.Length; i++) _pageWidth[i] = -1;
+
+            RebuildPage(_currentPage);
         };
 
         ApplyDeskOnly();
@@ -3814,26 +3829,6 @@ public sealed class SettingsForm : Form
             AddRow(glance, note, 0, elbow: false);
         }
 
-        // The mode switch, at the foot of the page rather than the head of it.
-        //
-        // It is a setting somebody presses once and never returns to, and the top of Home belongs to
-        // the thing they came for. Putting it first would also mean the first control a new user sees
-        // is one that removes most of the app.
-        NewSection(page, Words.SectionDeskOnly);
-
-        var mode = NewCard(page);
-        // Accent title as well as the larger green switch, so it reads as a mode from the heading
-        // down rather than only at the control.
-        AddToggle(mode, Words.DeskOnly, _deskOnly, Words.DeskOnlyWhy,
-                  setting: nameof(AppConfig.DeskOnly), titleEmphasis: Theme.Info);
-
-        // Built every time and hidden most of the time, rather than added only when a session happens
-        // to be running as the page is built. A session can start and end while this window sits
-        // open, and a disabled switch with nothing to explain it reads as a fault.
-        _deskOnlyLocked = AddNote(mode, Words.DeskOnlyDuringSession);
-
-        RefreshModeLock();
-
         // A row of jump buttons used to sit here and has been removed.
         //
         // It duplicated the navigation rail three inches to its left — same five destinations, same
@@ -3861,6 +3856,26 @@ public sealed class SettingsForm : Form
     private Panel BuildGeneralPage()
     {
         var page = NewPage(Words.PageGeneral, Words.PageGeneralWhy);
+
+        // First on the page, because it decides what most of the rest of the page is for.
+        //
+        // It lived on Home and does not belong there: Home reports the state of the app, and this
+        // changes what the app is. It is also pressed once and never returned to, which is what
+        // the General page is full of.
+        NewSection(page, Words.SectionDeskOnly);
+
+        var mode = NewCard(page);
+        // Accent title as well as the larger green switch, so it reads as a mode from the heading
+        // down rather than only at the control.
+        AddToggle(mode, Words.DeskOnly, _deskOnly, Words.DeskOnlyWhy,
+                  setting: nameof(AppConfig.DeskOnly), titleEmphasis: Theme.Info);
+
+        // Built every time and hidden most of the time, rather than added only when a session
+        // happens to be running as the page is built. A session can start and end while this
+        // window sits open, and a disabled switch with nothing to explain it reads as a fault.
+        _deskOnlyLocked = AddNote(mode, Words.DeskOnlyDuringSession);
+
+        RefreshModeLock();
 
         NewSection(page, Words.SectionStartup);
         var start = NewCard(page);
@@ -3950,7 +3965,8 @@ public sealed class SettingsForm : Form
                       setting: nameof(AppConfig.ShowProblemNotifications));
 
             AddToggle(notify, Words.ShowActionNotifications, _showActionNotifications,
-                      Words.ShowActionNotificationsWhy, Indent,
+                      Config.DeskOnly ? Words.ShowActionNotificationsWhyDesk
+                                        : Words.ShowActionNotificationsWhy, Indent,
                       setting: nameof(AppConfig.ShowActionNotifications));
         });
 
