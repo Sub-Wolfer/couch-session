@@ -20,6 +20,7 @@ _to_delete/
 # It is a separate deliverable with its own life — nobody cloning this to build the app needs it, and
 # it would otherwise turn every wording tweak on the site into a commit against the application.
 website/
+_old-website*/
 
 # A standalone scratch tool ("Couch Mode — text editor"), not part of the application. Nothing in the
 # codebase references it and it does not ship, so it has no business being the first thing a visitor
