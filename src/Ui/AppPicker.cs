@@ -58,6 +58,8 @@ internal sealed class AppPicker : Form
     private readonly Dictionary<string, InlineCheck> _ticks = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Control> _boxes = new(StringComparer.OrdinalIgnoreCase);
 
+    private Control? _hovering;
+
     public AppPicker(IEnumerable<string> already)
     {
         FormBorderStyle = FormBorderStyle.None;
@@ -132,7 +134,7 @@ internal sealed class AppPicker : Form
             Location = new Point(Pad, y),
             Width = Wide - Pad * 2,
             Height = 360,
-            BackColor = Theme.Input,
+            BackColor = Theme.Surface,
             Padding = new Padding(6, 6, 6, 6),
         };
 
@@ -192,6 +194,7 @@ internal sealed class AppPicker : Form
 
         foreach (Control old in _rows.Controls) old.Dispose();
         _rows.Controls.Clear();
+        _hovering = null;
 
         var apps = shown.Where(a => !a.Background).ToList();
         var back = shown.Where(a => a.Background).ToList();
@@ -246,10 +249,24 @@ internal sealed class AppPicker : Form
         RefreshAddButton();
     }
 
-    /// <summary>Shade a chosen row, so the choice is legible without reading down the tick column.</summary>
+    /// <summary>
+    /// The background one row should be showing, in priority order.
+    ///
+    /// Ticked beats hovered beats banded. Kept as one function because three separate handlers
+    /// setting BackColor is how a row ends up stuck in its hover colour after being ticked.
+    /// </summary>
     private void Shade(Control row, RunningApp app)
     {
-        row.BackColor = _ticked.Contains(app.Path) ? Theme.SurfaceHi : Color.Transparent;
+        // Lifted from GameListView, deliberately the same three values: selected is the strongest,
+        // hover sits between it and a plain row so it reads as "you are here" rather than "this is
+        // chosen". Two lists in one app that shade rows differently is two lists to learn.
+        bool ticked = _ticked.Contains(app.Path);
+        bool hover = _hovering == row && !ticked;
+
+        row.BackColor = ticked ? Theme.SurfaceHi
+                      : hover  ? Theme.Mix(Theme.Surface, Theme.SurfaceHi, 0.45f)
+                               : Theme.Surface;
+
         row.Invalidate();
     }
 
@@ -326,21 +343,32 @@ internal sealed class AppPicker : Form
     {
         var row = new BufferedPanel
         {
-            Size = new Size(RowW, 34),
+            Size = new Size(RowW, 36),
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 0, 1),
+            Margin = new Padding(0, 0, 0, 0),
             Cursor = app.Protectable ? Cursors.Hand : Cursors.Default,
         };
 
-        void Cell(string text, int x, Font font, Color ink, int width = 0) =>
+        // Brighter than the dividers between settings rows, for the reason the games list gives:
+        // those sit in a card with generous spacing, these are tight and evenly sized, and the eye
+        // needs a firmer edge to track along a long list.
+        row.Paint += (_, e) =>
+        {
+            using var rule = new SolidBrush(Theme.RowLine);
+            e.Graphics.FillRectangle(rule, 10, row.Height - 1, row.Width - 20, 1);
+        };
+
+        void Cell(string text, int x, Font font, Color ink, int width = 0,
+                  ContentAlignment align = ContentAlignment.MiddleLeft) =>
             row.Controls.Add(new Label
             {
                 Text = text,
                 Font = font,
                 ForeColor = ink,
-                AutoSize = width == 0,
-                Size = width == 0 ? Size.Empty : new Size(width, 18),
-                AutoEllipsis = width > 0,
+                AutoSize = false,
+                Size = new Size(width == 0 ? 120 : width, 22),
+                AutoEllipsis = true,
+                TextAlign = align,
                 Location = new Point(x, 7),
                 BackColor = Color.Transparent,
             });
@@ -365,7 +393,7 @@ internal sealed class AppPicker : Form
 
         Cell(app.Name, NameX, Theme.BodySemi, ink, ProcX - NameX - 12);
         Cell(app.Process, ProcX, Theme.Small, Theme.TextDim, ProcW);
-        Cell(Memory(app.WorkingSet), MemX, Theme.Small, Theme.TextDim, MemW);
+        Cell(Memory(app.WorkingSet), MemX, Theme.Small, Theme.TextDim, MemW, ContentAlignment.MiddleRight);
         Cell(app.Protectable ? "" : Words.AppPickerProtected, StatusX, Theme.Small, Theme.Warn, StatusW);
 
         // The whole row is the target, not the tick box.
@@ -383,6 +411,26 @@ internal sealed class AppPicker : Form
         }
 
         _boxes[app.Path] = row;
+
+        // Hover has to be hung off the labels too. A Label sitting on a Panel takes the mouse
+        // with it, so a row wired only on itself lights up in the gaps between its own text.
+        void Enter(object? sender, EventArgs e) { _hovering = row; Shade(row, app); }
+        void Leave(object? sender, EventArgs e)
+        {
+            if (_hovering != row) return;
+            _hovering = null;
+            Shade(row, app);
+        }
+
+        row.MouseEnter += Enter;
+        row.MouseLeave += Leave;
+
+        foreach (Control child in row.Controls)
+        {
+            child.MouseEnter += Enter;
+            child.MouseLeave += Leave;
+        }
+
         Shade(row, app);
 
         return row;
