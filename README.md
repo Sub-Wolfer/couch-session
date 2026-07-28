@@ -27,7 +27,7 @@ wants a keyboard. One press back and the desk is exactly as you left it.
 
 <div align="center">
 
-![Couch Session](docs/screenshots/banner.jpg)
+![Couch Session](docs/screenshots/banner.png)
 
 </div>
 
