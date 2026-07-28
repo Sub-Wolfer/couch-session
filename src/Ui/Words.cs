@@ -1535,7 +1535,10 @@ internal static class Words
     // UpdateFound was here, word for word the same as NoticeUpdateFound above. Use that one.
 
     public const string UpdateFailed =
-        
+
             "The update could not be installed. Nothing has been changed.\n\nYou can download "
             + "it yourself from the GitHub page under About.";
+
+    /// <summary>The same news in one line, for a tray balloon, which has no room for a paragraph.</summary>
+    public const string UpdateFailedShort = "The update could not be installed. Nothing has changed.";
 }

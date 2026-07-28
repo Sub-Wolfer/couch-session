@@ -2039,11 +2039,94 @@ public sealed class TrayApp : IDisposable
             }
 
             Notify(string.Format(Words.NoticeUpdateFound, found.Version), ToolTipIcon.Info);
+            OfferUpdateNow(found);
         }
         catch (Exception ex)
         {
             Log.Info($"Update check failed: {ex.Message}");
         }
+    }
+
+    /// <summary>The version already put in front of the user this run, so it is offered once.</summary>
+    private string? _offeredVersion;
+
+    /// <summary>
+    /// Put the release notes on screen without waiting to be asked.
+    ///
+    /// A corner balloon that fades after four seconds was the only announcement, and reaching the
+    /// notes from it meant opening settings and finding a card on the Home page. Somebody who was
+    /// not looking at the screen at that moment never learned there was a new version at all. The
+    /// dialog now comes up on its own, and declining it costs one keypress.
+    ///
+    /// This does not make the update automatic. Escape or "Not now" leaves the running version
+    /// exactly as it is, and the offer stays on the Home page for as long as it applies — the
+    /// once-per-run guard is about not asking twice, not about giving up on it.
+    ///
+    /// Only ever at a quiet moment: the caller has already established that no session and no game
+    /// is running, and it is checked again here because the two are a network round trip apart.
+    /// </summary>
+    private async void OfferUpdateNow(UpdateInfo found)
+    {
+        if (_exiting || !found.Available) return;
+        if (_offeredVersion == found.Version) return;
+        if (Playing) return;
+
+        // Never over a question the user is already answering. The first-run welcome is the one
+        // that matters — a new install is exactly where an update is most likely to be waiting —
+        // and stacking a second dialog on it would bury the choice underneath.
+        if (Application.OpenForms.OfType<WelcomeDialog>().Any())
+        {
+            Log.Info("An update is ready, but the welcome is still up; asking again shortly.");
+            RetryUpdateOffer(found);
+            return;
+        }
+
+        _offeredVersion = found.Version;
+
+        try
+        {
+            using var ask = new UpdateDialog(found, _session.IsInTvMode);
+
+            // Owned by the settings window when it is open, so it centres on it and cannot end up
+            // behind it. With nothing open, WinForms owns it to the foreground window, which is
+            // what puts it in front of whatever the user is doing.
+            var result = _settings is { IsDisposed: false, Visible: true } open
+                             ? ask.ShowDialog(open)
+                             : ask.ShowDialog();
+
+            if (result != DialogResult.Yes)
+            {
+                Log.Info($"Update {found.Version} declined for now; the offer stays on the Home page.");
+                return;
+            }
+
+            if (await Updates.InstallAsync(found.DownloadUrl))
+            {
+                ExitApp();
+                return;
+            }
+
+            Notify(Words.UpdateFailedShort, ToolTipIcon.Warning);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not offer the update: {ex.Message}");
+        }
+    }
+
+    /// <summary>Ask again in half a minute, once — for the case where a dialog was in the way.</summary>
+    private void RetryUpdateOffer(UpdateInfo found)
+    {
+        var again = new System.Windows.Forms.Timer { Interval = 30_000 };
+
+        again.Tick += (_, _) =>
+        {
+            again.Stop();
+            again.Dispose();
+            OfferUpdateNow(found);
+        };
+
+        again.Start();
     }
 
     /// <summary>
@@ -2063,6 +2146,7 @@ public sealed class TrayApp : IDisposable
 
         Log.Info($"Showing the held notice for version {found.Version}.");
         Notify(string.Format(Words.NoticeUpdateFound, found.Version), ToolTipIcon.Info);
+        OfferUpdateNow(found);
     }
 
     private void ShowSettings()
