@@ -2515,10 +2515,17 @@ public sealed class SettingsForm : Form
         // The room is now made instead of borrowed: the panel starts a bleed higher, and Reset gets
         // a matching top margin to put it back on the same line. Both written against the constant,
         // so changing the bleed cannot knock the footer out of alignment again.
-        var reset = new FlatButton
+        // Was Reset all settings, which has moved to the General page. A footer is for the two or
+        // three things you do from every page, and wiping the app clean is not one of them — it was
+        // the button nearest the corner your hand goes to, one slip from the primary action, and it
+        // was there because it had nowhere else to live rather than because it belonged.
+        //
+        // The preview takes the slot because it is about the button beside it: "what will Start
+        // actually do" is a question asked at the moment of pressing, from whatever page you are on.
+        var preview = new FlatButton
         {
-            Text = Words.ButtonReset,
-            Size = new Size(150, BigButton),
+            Text = Words.PreviewFooterButton,
+            Size = new Size(178, BigButton),
 
             // Top margin puts it back on the primary button's line — see the note below.
             //
@@ -2528,8 +2535,8 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0, FlatButton.Bleed, FlatButton.Bleed, 3),
         };
 
-        reset.Click += (_, _) => ResetEverything();
-        _tips.SetToolTip(reset, Wrapped(Words.TipReset));
+        preview.Click += (_, _) => ShowSessionPreview();
+        _tips.SetToolTip(preview, Wrapped(Words.PreviewButtonTip));
 
         // The one button this window exists for, so the one button drawn as a primary action.
         _action = new FlatButton
@@ -2613,7 +2620,7 @@ public sealed class SettingsForm : Form
         // The primary action belongs at the end of the row: it is where the eye finishes and where
         // the hand already is, and it puts the most-used button furthest from Reset, which is the one
         // in this pair worth never hitting by accident.
-        right.Controls.AddRange([_action, _closeGame, reset]);
+        right.Controls.AddRange([_action, _closeGame, preview]);
 
         _footerButtons = right;
         SizeFooterButtons();
@@ -3934,30 +3941,6 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0),
         };
 
-        // [BUG] Above the grid, because under it nobody found it.
-        //
-        // The reasoning for putting it below was that the grid answers "how is this set up" and the
-        // preview answers "so what happens when I press it", which is the next question. True, and
-        // beside the point: the grid is twenty-odd tiles and four headings tall, so anything after it
-        // is off the bottom of the window on open. The first person to look for this could not find
-        // it. A control that has to be scrolled to is a control that does not exist.
-        //
-        // Not offered in desk-only mode: there are no sessions there to preview.
-        if (!Config.DeskOnly)
-        {
-            var preview = new FlatButton
-            {
-                Text = Words.PreviewButton,
-                Size = new Size(210, 34),
-                Margin = new Padding(0, 0, 0, 12),
-            };
-
-            preview.Click += (_, _) => ShowSessionPreview();
-            _tips.SetToolTip(preview, Wrapped(Words.PreviewButtonTip));
-
-            AddRow(glance, preview, 0, elbow: false);
-        }
-
         RefreshHomeGlance();
         AddRow(glance, _homeGlance, 0, elbow: false);
 
@@ -4112,6 +4095,30 @@ public sealed class SettingsForm : Form
                                         : Words.ShowActionNotificationsWhy, Indent,
                       setting: nameof(AppConfig.ShowActionNotifications));
         });
+
+        // Reset all settings, moved here off the footer.
+        //
+        // General is where the things that are about the app rather than about a session already
+        // live, and it is the last page in the rail before About, so somebody arrives here looking
+        // for exactly this sort of switch. It also gets a sentence, which it never had in the
+        // footer: a button named after wiping everything deserves more than a tooltip.
+        NewSection(page, Words.SectionReset);
+
+        var starting = NewCard(page);
+
+        var reset = new FlatButton
+        {
+            Text = Words.ButtonReset,
+            Size = new Size(176, 38),
+            Fill = Theme.SurfaceHi,
+            Line = Theme.Line,
+            Margin = new Padding(0, 0, 0, 8),
+        };
+
+        reset.Click += (_, _) => ResetEverything();
+
+        AddNote(starting, Words.ResetEverythingWhy);
+        AddRow(starting, reset, 0, elbow: false);
 
         AddPageReset(page, GeneralPage);
 
@@ -5223,8 +5230,18 @@ public sealed class SettingsForm : Form
 
     private int ContentWidth => _contentWidth;
 
-    /// <summary>Widest the content is ever drawn, on a large display.</summary>
-    private const int PreferredContentWidth = 940;
+    /// <summary>
+    /// Widest the content is ever drawn, on a large display.
+    ///
+    /// Raised from 940. That number came from a window holding rows of text and a switch, and
+    /// the page it has to hold now is longer than that: descriptions that wrap to three lines at
+    /// 940, a games list with five columns in it, a grid of settings tiles, and a list of chosen
+    /// applications with a full path on each row. All of those get their width from here, so one
+    /// number widens every page at once.
+    ///
+    /// Still clamped against the screen in ChooseContentWidth, so a small display is unaffected.
+    /// </summary>
+    private const int PreferredContentWidth = 1120;
 
     /// <summary>Narrowest it will go before the window simply becomes scrollable.</summary>
     private const int MinimumContentWidth = 560;

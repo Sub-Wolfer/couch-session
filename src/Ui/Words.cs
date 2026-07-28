@@ -633,6 +633,10 @@ internal static class Words
     // is about to authorise. No step here may describe a setting that is switched off — see
     // SessionPreview, where the list is built by asking the config rather than by listing features.
     public const string PreviewButton = "Preview what a session does";
+
+    // Shorter, because in the footer it sits beside a 186-pixel primary button and the strip is
+    // measured from exactly what is in it.
+    public const string PreviewFooterButton = "Preview session";
     public const string PreviewButtonTip =
         "Lists every change starting a session would make, and whether each one is put back "
         + "afterwards. Nothing happens until you press Start.";
@@ -1324,6 +1328,17 @@ internal static class Words
     public const string CloseGameNo = "Leave it running";
 
     public const string ButtonReset = "Reset all settings";
+
+    // On the General page now rather than in the footer. It needs a heading and a sentence there,
+    // where in the footer it had only its own name and a tooltip nobody opens before pressing a
+    // button called Reset all settings.
+    public const string SectionReset = "Starting over";
+    public const string ResetEverythingWhy =
+
+            "Puts every setting back to how it was when the app was new — your displays, audio "
+            + "devices, HDR game list, hotkeys and everything else. **You are asked to confirm "
+            + "first.** Nothing outside this app is touched, so the Windows settings you switched "
+            + "on here stay as they are.";
 
     public const string TipReset =
         
