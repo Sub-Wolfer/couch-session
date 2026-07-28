@@ -3934,14 +3934,13 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0),
         };
 
-        RefreshHomeGlance();
-        AddRow(glance, _homeGlance, 0, elbow: false);
-
-        // The preview sits under the grid rather than beside the Start button.
+        // [BUG] Above the grid, because under it nobody found it.
         //
-        // The grid answers "how is this set up" and the preview answers "so what happens when I press
-        // it", which is the next question and not a different one. Putting it in the footer would
-        // have made it a third button competing with the one it describes.
+        // The reasoning for putting it below was that the grid answers "how is this set up" and the
+        // preview answers "so what happens when I press it", which is the next question. True, and
+        // beside the point: the grid is twenty-odd tiles and four headings tall, so anything after it
+        // is off the bottom of the window on open. The first person to look for this could not find
+        // it. A control that has to be scrolled to is a control that does not exist.
         //
         // Not offered in desk-only mode: there are no sessions there to preview.
         if (!Config.DeskOnly)
@@ -3949,8 +3948,8 @@ public sealed class SettingsForm : Form
             var preview = new FlatButton
             {
                 Text = Words.PreviewButton,
-                Size = new Size(190, 34),
-                Margin = new Padding(0, 10, 0, 0),
+                Size = new Size(210, 34),
+                Margin = new Padding(0, 0, 0, 12),
             };
 
             preview.Click += (_, _) => ShowSessionPreview();
@@ -3958,6 +3957,10 @@ public sealed class SettingsForm : Form
 
             AddRow(glance, preview, 0, elbow: false);
         }
+
+        RefreshHomeGlance();
+        AddRow(glance, _homeGlance, 0, elbow: false);
+
 
         // Said once, under the grid it explains, and only while the grid is half the size it was.
         // Without it the couch tiles and two pages of the rail simply vanish, which reads as the app
