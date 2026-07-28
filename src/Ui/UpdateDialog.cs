@@ -19,7 +19,16 @@ namespace CouchMode.Ui;
 internal sealed class UpdateDialog : Form
 {
     private const int Pad = 24;
-    private const int Wide = 520;
+
+    /// <summary>
+    /// Wider than a dialog needs to be, because this one is read rather than answered.
+    ///
+    /// It was 520, which is the width of a question. What is in it is a release's notes — headings,
+    /// paragraphs, a list — and at 520 those wrapped every eight or nine words into a column too
+    /// narrow to take in at a glance, inside a box showing four lines of it at a time. The two
+    /// buttons were never the problem; the reading was.
+    /// </summary>
+    private const int Wide = 660;
 
     public UpdateDialog(UpdateInfo found, bool sessionRunning)
     {
@@ -103,7 +112,15 @@ internal sealed class UpdateDialog : Form
         host.SetContent(holder);
 
         // Tall enough for the notes, capped so the dialog stays a dialog.
-        host.Height = Math.Clamp(list.PreferredSize.Height + 22, 70, 240);
+        //
+        // The ceiling comes off the screen rather than out of a constant. A fixed 240 was a quarter
+        // of the room available on the monitor this is read on and would have been most of the room
+        // on a small laptop; measuring means a long set of notes gets shown rather than scrolled on
+        // a display with the space for it. Everything above and below the box comes to roughly 300
+        // pixels, and 80 more keeps the dialog clear of the screen edges.
+        int room = Screen.FromPoint(Cursor.Position).WorkingArea.Height - 380;
+
+        host.Height = Math.Clamp(list.PreferredSize.Height + 22, 140, Math.Clamp(room, 180, 520));
         Controls.Add(host);
 
         y += host.Height + 14;
