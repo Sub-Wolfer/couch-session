@@ -68,6 +68,25 @@ That's the whole setup. Everything else has a sensible default.
 
 ---
 
+## 🔏 Windows will warn you the first time
+
+`CouchSession.exe` is not code signed, so Windows SmartScreen shows **"Windows protected your PC"**
+when you run it. Click **More info**, then **Run anyway**. Your antivirus may also want a word, for the
+same reason.
+
+**Why it isn't signed.** A code signing certificate costs a few hundred dollars a year, renewed forever,
+and even then a new certificate carries no reputation with SmartScreen until enough people have
+downloaded it for Microsoft to trust it. For a free tool written by one person and given away, that is
+a recurring bill to make a warning disappear. It may be worth it later. It isn't yet.
+
+**You don't have to take it on trust.** Every release is built by GitHub from the source in this
+repository, on their machines rather than mine, from the exact commit the version tag points at. The
+[build log for each release](https://github.com/Sub-Wolfer/couch-session/actions) is public, so you can
+read what went into the file you downloaded. Or skip the download and
+[build it yourself](#-building-it-yourself). It's two commands.
+
+---
+
 ## 🎯 How you'll actually use it
 
 **From your desk**, press your hotkey. The TV comes on, sound moves, Big Picture opens.
