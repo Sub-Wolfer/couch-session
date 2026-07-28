@@ -281,8 +281,11 @@ version to reason about.
   but **not** the `.csproj` files — they carry the `Compile Remove="_backup*/**/*.cs"` exclusion,
   without which the backup breaks the build with hundreds of duplicate-symbol errors.
 - Log: `%AppData%\CouchSession\couchsession.log`. First place to look for anything.
-- The live project is `CouchPotato.csproj` (`AssemblyName` = `CouchSession`).
-- Housekeeping still not done: three stale executables (`CouchLauncher.exe`, `CouchPotato.exe`,
-  `CouchModeGaming.exe`) and the redundant `CouchModeGaming.csproj`. Also a stray
-  `YTDown.com_YouTube_...mp4` in the project root.
-- This folder is not a git repository. `_backup-before-ui-overhaul/` is the only safety net.
+- The live project is `CouchSession.csproj`, and the source lives under `src/`. This section used to
+  name `CouchPotato.csproj`, which was renamed along with the app.
+- The housekeeping listed here is done: the stale executables, the redundant second csproj and the
+  stray video file are all gone.
+- This folder **is** a git repository, on `main`, pushed to
+  `https://github.com/Sub-Wolfer/couch-session`. The line saying otherwise predates it, as does the
+  claim that `_backup-before-ui-overhaul/` is the only safety net — that folder is now a snapshot
+  nobody needs, excluded from both compilation and git.
