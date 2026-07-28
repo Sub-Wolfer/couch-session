@@ -513,8 +513,8 @@ internal static class Words
     public const string StartWithWindowsWhy =
 
             "Launches to the tray as you sign in — ahead of the usual startup delay — ready "
-            + "to switch displays and manage HDR.\n\nIf you move Couch Session to another folder, "
-            + "open it once from its new home so Windows knows where to find it.";
+            + "to switch displays and manage HDR.\n\n**If you move Couch Session to another folder, "
+            + "open it once from its new home so Windows knows where to find it.**";
 
     /// <summary>Shown when a launch found the sign-in entry pointing somewhere the app no longer is.</summary>
     public const string WarnStartupRepointed =
