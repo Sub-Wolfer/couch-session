@@ -128,11 +128,21 @@ internal static class Words
             "Toggles HDR on your main display — for the games and apps that look wrong in HDR, "
             + "without going into Windows settings.";
 
-    public const string HdrModeWhyDesk =
+    // HdrModeWhyDesk stood here, describing the picker this mode no longer has. The switch that
+    // replaced it carries its own description in HdrAutoWhy.
 
-            "Your main display only, and it only ever switches HDR back off if it was the one that "
-            + "turned it on. **Per game** switches it on when a game from the list below starts, and "
-            + "off when that game closes.";
+    // Two choices are a switch, not a list.
+    //
+    // With whole-session gone this picker offered Off and Per game, which is a yes-or-no question
+    // wearing a dropdown: two clicks to answer, and a control that looks like it has more behind it.
+    // The list of options is still HdrModeOptionsDesk, because the glance tile and the save path both
+    // read the picker — the switch drives it rather than replacing it.
+    public const string HdrAuto = "Turn HDR on automatically";
+    public const string HdrAutoWhy =
+
+            "**On when a game from the list below starts, off when it closes.** Your main display "
+            + "only, and it only ever switches HDR back off if it was the one that turned it on.";
+
 
     /// <summary>The same choice without the session entry. Indexes match HdrMode: Off, PerGame.</summary>
     public static readonly string[] HdrModeOptionsDesk = [

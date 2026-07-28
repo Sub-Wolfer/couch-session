@@ -158,6 +158,9 @@ public sealed class SettingsForm : Form
     private readonly ToggleSwitch _minimizeOnClose = new();
     private readonly ToggleSwitch _showNotifications = new();
     private readonly ToggleSwitch _deskOnly = new() { Prominent = true };
+
+    /// <summary>Desk-only mode's stand-in for the HDR mode picker, which has two entries there.</summary>
+    private readonly ToggleSwitch _hdrAuto = new();
     private readonly ToggleSwitch _showSessionNotifications = new();
     private readonly ToggleSwitch _showHdrNotifications = new();
     private readonly ToggleSwitch _showMinimizeNotification = new();
@@ -482,6 +485,19 @@ public sealed class SettingsForm : Form
         // Wired here rather than beside the control, because the control is created once and the page
         // holding it is rebuilt every time the window is resized — attaching there would add a fresh
         // handler on each rebuild and run this once per rebuild that had ever happened.
+        // The desk-mode HDR switch writes through to the picker, which is what the glance tile, the
+        // save path and the dependent notes all read. Wired once, for the same reason as below.
+        _hdrAuto.CheckedChanged += (_, _) =>
+        {
+            if (_loading) return;
+
+            _hdrMode.SelectedIndex = _hdrAuto.Checked ? (int)HdrMode.PerGame : (int)HdrMode.Off;
+            Config.HdrSwitching = _hdrAuto.Checked ? HdrMode.PerGame : HdrMode.Off;
+
+            UpdateDependentStates();
+            MarkDirty();
+        };
+
         _deskOnly.CheckedChanged += (_, _) =>
         {
             if (_loading) return;
@@ -520,6 +536,9 @@ public sealed class SettingsForm : Form
                 // dirty tracking all hear about it the same way they would from a click.
                 _hdrMode.SelectedIndex = (int)HdrMode.PerGame;
                 Config.HdrSwitching = HdrMode.PerGame;
+
+                // Anything shown or hidden by that choice has to hear about it too.
+                UpdateDependentStates();
 
                 Log.Info($"Desk-only mode: HDR set to per game (was {was}), which is what this "
                        + "mode is mostly for.");
@@ -3153,9 +3172,23 @@ public sealed class SettingsForm : Form
         // "For the whole session" is dropped rather than left selectable and inert. The indexes
         // still line up with HdrMode, because the entry removed is the last one.
         SetOptions(_hdrMode, Config.DeskOnly ? Words.HdrModeOptionsDesk : Words.HdrModeOptions);
-        AddPick(card, Words.HdrMode, _hdrMode,
-                Config.DeskOnly ? Words.HdrModeWhyDesk : Words.HdrModeWhy,
-                Words.HdrModeOptions[(int)HdrMode.Off]);
+
+        if (Config.DeskOnly)
+        {
+            // The switch reflects the picker and drives it; everything downstream still reads the
+            // picker, so nothing else has to know which control the reader actually touched.
+            _hdrAuto.SetQuietly(HdrModeOf(_hdrMode) != HdrMode.Off);
+
+            AddToggle(card, Words.HdrAuto, _hdrAuto, Words.HdrAutoWhy, defaultIs: true);
+        }
+        else
+        {
+        // The default differs by mode, because the mode sets it: switching desk-only on selects
+        // per game. Printing "Default: Off" under a picker this mode had just moved to Per game
+        // described a setting nobody would arrive at.
+            AddPick(card, Words.HdrMode, _hdrMode, Words.HdrModeWhy,
+                    Words.HdrModeOptions[(int)HdrMode.Off]);
+        }
 
         // A note reporting what each display says about its own HDR support used to sit here, with a
         // per-display override underneath it. Both are gone.
@@ -3173,7 +3206,14 @@ public sealed class SettingsForm : Form
         // Only while the list is doing nothing. A card full of greyed-out controls with no
         // explanation reads as a fault; one sentence turns it into a consequence of the choice made
         // three rows above it.
-        WhenOn(() => HdrModeOf(_hdrMode) == HdrMode.WholeSession, listCard,
+        // The mode is part of the condition, not just the picker.
+        //
+        // [BUG] Reading the picker alone left this note on screen in desk-only mode with "Per
+        // game" plainly selected above it, telling the reader the list they were looking at was
+        // not used. Whole-session is not even an entry in that picker here, so the note cannot be
+        // true in this mode however the control is read — and a condition that cannot be true is
+        // better written down than left to depend on an index staying in step.
+        WhenOn(() => !Config.DeskOnly && HdrModeOf(_hdrMode) == HdrMode.WholeSession, listCard,
                () => AddNote(listCard, Words.HdrWholeSessionNote));
 
         // Two deliberate rows rather than one wrapping row.
@@ -4313,6 +4353,7 @@ public sealed class SettingsForm : Form
     /// </param>
     private void AddToggle(Card card, string title, ToggleSwitch toggle, string description,
                            int indent = 0, string? setting = null, Color? titleEmphasis = null,
+                           bool? defaultIs = null,
                            Func<CheckResult>? check = null, bool checkAlways = false,
                            bool rowClick = true)
     {
@@ -4352,10 +4393,14 @@ public sealed class SettingsForm : Form
 
         // What this setting ships as, so it is obvious which way is "untouched" without having
         // to reset anything to find out.
-        if (setting is not null)
+        // defaultIs overrides the property lookup, for a row whose shipped value depends on which
+        // mode the app is in rather than on one field in AppConfig.
+        if (setting is not null || defaultIs is not null)
         {
+            bool ships = defaultIs ?? DefaultOf(setting!);
+
             var note = NewLabel(string.Format(Words.DefaultIs,
-                                              DefaultOf(setting) ? Words.DefaultOn : Words.DefaultOff),
+                                              ships ? Words.DefaultOn : Words.DefaultOff),
                                 Theme.Caption, Theme.TextFaint);
             note.Margin = new Padding(0, 5, 0, 0);
             text.Controls.Add(note);
@@ -6602,6 +6647,7 @@ public sealed class SettingsForm : Form
             _confirmClosingGame.Checked = Config.ConfirmClosingGame;
             _checkForUpdates.Checked = Config.CheckForUpdates;
             _hdrMode.SelectedIndex = (int)Config.HdrSwitching;
+            _hdrAuto.SetQuietly(Config.HdrSwitching != HdrMode.Off);
             _hdrHotkeyRemember?.SetQuietly(Config.HdrHotkeyRemembersGame);
             _minimizeOnClose.Checked = Config.MinimizeToTrayOnClose;
             _startOnLaunch.Checked = Config.StartSessionOnLaunch;
