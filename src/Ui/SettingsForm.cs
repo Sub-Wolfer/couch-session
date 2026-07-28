@@ -7347,13 +7347,23 @@ public sealed class SettingsForm : Form
         // for. The fill is deepened below to claw some of that back.
         _action.ForeColor = Color.White;
 
-        // A deeper green under white ink, and only under white ink.
+        // The app's own violet to go, red to stop.
         //
-        // Theme.Good stays what it is: it is the colour of every "this is fine" state in the app and
-        // is read against a dark surface, where it is right. Here it is a background with text on
-        // it, which is a different job — and dropping it a fifth of the way toward black takes white
-        // from 2.35:1 to about 3.6:1 while still reading as the same green from across a room.
-        _action.Fill = live ? Theme.Bad : Theme.Mix(Theme.Good, Color.Black, 0.20f);
+        // This was a deepened Theme.Good, on the reasoning that green means go and red means stop and
+        // the pair reads before the words do. Half of that still holds and the red has not moved. The
+        // green was the problem: nothing else in this window is green except a tick, so the largest
+        // and brightest object on screen was also the only one that belonged to no part of the
+        // palette. Violet is what the rail highlight, the logo, the links and every emphasis in the
+        // app are already made of, so the primary action now reads as this app's button rather than
+        // as a green thing sitting on it.
+        //
+        // Nothing is lost on meaning. The word says Start or End, the mark beside it is a play or a
+        // stop, and red still marks the one press that interrupts something.
+        //
+        // Dropped an eighth toward black for the same reason the green was: white on Theme.Accent
+        // measures about 3.4:1, and this takes it to roughly 4.4:1 without reading as a different
+        // colour from the rail beside it.
+        _action.Fill = live ? Theme.Bad : Theme.Mix(Theme.Accent, Color.Black, 0.12f);
 
         // A play mark to start, a stop mark to end, in whichever ink the fill needs.
         //

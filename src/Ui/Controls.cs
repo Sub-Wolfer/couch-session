@@ -416,7 +416,12 @@ internal sealed class FlatButton : Control
         // More lift on the primary button than the rest. The shallow 7% sheen is right for a row of
         // secondary buttons, where anything stronger bands visibly on a dark theme; on a saturated
         // fill at pill size it disappears, and the surface goes flat.
-        var (top, bottom) = Theme.Sheen(fill, Emphasis ? 0.15f : 0.07f);
+        //
+        // Taken from 15% to 10%. Fifteen put a visible light-to-dark ramp down the pill, which is the
+        // look of a button trying to appear physical, and against flat cards and flat rows it read as
+        // the one component from an older toolkit. Ten still separates the top edge from the bottom
+        // without the gradient becoming the thing you notice.
+        var (top, bottom) = Theme.Sheen(fill, Emphasis ? 0.10f : 0.07f);
         Theme.FillRoundedGradient(g, bounds, radius, top, bottom);
 
         // The rim light. Drawn all the way round rather than only across the top: clipping it to the
@@ -424,7 +429,10 @@ internal sealed class FlatButton : Control
         // anti-aliased curve leaves a visible nick at the two points where it crosses.
         if (Emphasis)
         {
-            int strength = !Enabled ? 0 : _down ? 22 : _hover ? 78 : 58;
+            // Softened from 58 at rest. A bright hairline all the way round drew the pill's outline
+            // as hard as its fill, so the eye read an edge rather than a surface. Enough is left to
+            // catch the top curve, and the hover value still lifts on approach.
+            int strength = !Enabled ? 0 : _down ? 18 : _hover ? 58 : 38;
 
             if (strength > 0)
                 Theme.DrawRounded(g, RectangleF.Inflate(bounds, -0.5f, -0.5f), radius - 0.5f,
@@ -476,7 +484,12 @@ internal sealed class FlatButton : Control
 
         float spread = _down ? Bleed * 0.55f : _hover ? Bleed : Bleed * 0.8f;
         float drop = _down ? 0.5f : 2f;
-        int peak = _down ? 20 : _hover ? 44 : 32;
+
+        // Quieter at rest, brighter on approach. At 32 the halo was legible as a shape in its own
+        // right, which on a violet fill against a near-black footer looked like a glow effect rather
+        // than like light coming off the button. Twenty-two reads as lift; the hover value is where
+        // the emphasis now lives, so the button answers the pointer instead of shouting at it.
+        int peak = _down ? 16 : _hover ? 40 : 22;
 
         for (int i = Rings; i >= 1; i--)
         {
