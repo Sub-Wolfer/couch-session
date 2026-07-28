@@ -22,6 +22,14 @@ Couch Session does the whole round trip. One press and the living room TV behave
 the right picture and sound, HDR on, Big Picture waiting, a controller in your hand and nothing that
 wants a keyboard. One press back and the desk is exactly as you left it.
 
+<div align="center">
+
+![The session prompt over a running game](docs/screenshots/session-prompt-in-game.jpg)
+
+<sub>Press the Guide button mid-game and this is what the TV shows. Answered with the pad, never the keyboard.</sub>
+
+</div>
+
 > ### 👥 Who this is for
 >
 > **One PC doing two jobs.** A machine you work and play on at a desk, that you also want to game on
@@ -47,7 +55,7 @@ wants a keyboard. One press back and the desk is exactly as you left it.
 | 🌈&nbsp;**HDR** | On for the whole session, or only while a game you ticked is running. Off again when it closes, even if it was already on beforehand. The list learns from your hotkey presses. |
 | 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Decide what happens if it disconnects. Tested on Xbox and PS5 pads. |
 | ⚡&nbsp;**Performance** | Power plan, game priority, and silencing notifications for the session. Shortcuts to a few Windows settings that are not. |
-| 🔄&nbsp;**Updates** | Tells you when a new version exists and installs it with one click. Never while you're playing. |
+| 🔄&nbsp;**Updates** | Shows you what changed in a new version as soon as it finds one, and installs it with one click. Never while you're playing. |
 | 🖱️&nbsp;**Desk only** | Turn the couch half off entirely and keep HDR and performance. One switch, and the settings it hides are remembered. |
 
 ---
@@ -61,6 +69,12 @@ and no .NET to install. It's one file with everything inside.
 **2. Say how you'll use it.** The first time settings opens it asks: on a TV, or at your
 desk only. Choosing the desk puts the couch features away and leaves HDR and performance. Either
 answer can be changed later under **General**.
+
+<div align="center">
+
+<img src="docs/screenshots/first-run.png" width="620" alt="The first-run question: on my television, or at my desk only">
+
+</div>
 
 **3. Pick your TV and your speakers.** Go to **Display & Audio** and choose them. Your TV doesn't
 need to be switched on to appear in the list. It's there, dimmed, marked disconnected.
@@ -119,6 +133,14 @@ They're two separate settings, and either can be set to come back, to ask first,
 > To leave a game running, end the session with the Guide button instead and pick one of the answers
 > above.
 
+<div align="center">
+
+![The same prompt with only Big Picture open](docs/screenshots/session-prompt-big-picture.jpg)
+
+<sub>With no game running, the same button asks a shorter question.</sub>
+
+</div>
+
 ---
 
 ## ⚙️ Every setting explains itself
@@ -127,6 +149,21 @@ No setting in this app is a bare label. Each one says what it does, what it cost
 put back when the session ends, because a switch you can't reason about is a switch you leave alone.
 
 Nothing is hidden behind a wiki either. If a setting has a catch, it says so on its own row.
+
+<div align="center">
+
+<img src="docs/screenshots/performance.png" width="800" alt="The Performance page, every row explaining itself">
+
+</div>
+
+The Home page collects the lot into one grid, so you can see how the app is set without opening
+seven pages.
+
+<div align="center">
+
+<img src="docs/screenshots/home-at-a-glance.png" width="800" alt="Settings at a glance on the Home page">
+
+</div>
 
 ---
 
@@ -153,14 +190,33 @@ you switch it back on, here or in Windows. If Win+G has stopped working at your 
 
 ### ⚠️ Your call, and they lower your security
 
-> 🔓 **User Account Control** and **Windows Defender Firewall** can both be switched off from the
-> Performance page. **These reduce your PC's security**, and like the two above they stay off until you
-> turn them back on.
+> 🔓 **UAC prompts** and **Windows Defender Firewall** can both be switched off from the Performance
+> page. **These reduce your PC's security**, and like the two above they stay off until you turn them
+> back on.
 >
 > They exist because a UAC prompt appears on a secure desktop a controller cannot reach, and the
 > firewall's "allow this app?" dialog needs a mouse and blocks a game's networking until it's answered.
 > Both are dead ends when the only thing in your hand is a gamepad. If that isn't a trade you want,
 > leave them alone. Nothing else in the app depends on them.
+>
+> To be exact about the first one, because it matters: **User Account Control itself stays on.** The
+> switch sets Windows to never notify, so an app asking for admin rights is elevated without putting
+> a prompt on a screen you cannot answer from the sofa. That is a real reduction in security, and a
+> smaller one than turning UAC off, which this does not do.
+
+---
+
+## 🌈 HDR, with or without a session
+
+Tick the games you want HDR for and it comes on when one starts and goes off when it closes,
+whether a session is running or not. Steam, Epic and GOG libraries are found on their own, and
+Smart HDR keeps the list current by watching which games you switch it on for by hand.
+
+<div align="center">
+
+<img src="docs/screenshots/hdr-switching.png" width="800" alt="The HDR Switching page with a game list">
+
+</div>
 
 ---
 
@@ -176,6 +232,13 @@ else, [a quick report](https://github.com/Sub-Wolfer/couch-session/issues) eithe
 useful.
 
 No extra software is needed for any of them.
+
+<div align="center">
+
+<img src="docs/screenshots/controller.png" width="420" alt="The Controller page">
+<img src="docs/screenshots/hotkeys.png" width="420" alt="The Hotkeys page">
+
+</div>
 
 Your controller is **never taken over**. It's opened for reading only and never exclusively, so it
 runs alongside Steam Input, DS4Windows and games rather than competing with them. The Guide button is
@@ -210,6 +273,8 @@ Things that are known to be wrong or awkward. Listed here rather than left to be
 - **Some windows do not go back where they were.** OBS is a reliable example. A window moved to a second monitor shortly before a session may also come back on the wrong one. Under investigation, and the log now records both cases.
 
 - **Moving the app breaks "Start with Windows" for one sign-in.** Windows records where the file is, so moving it leaves the sign-in launch pointing at the old folder. Couch Session repairs this the next time it runs and tells you it did, but if you move it and then restart without opening it, that one sign-in is missed.
+
+- **HDR can switch off on the wrong screen.** Start a game you have ticked at your desk, then begin a session while it is still running, and closing that game switches HDR off on the TV rather than on the monitor it was turned on for. The app records that it turned HDR on, but not which display it turned it on for.
 
 - **The display can be slow to sleep while a controller is connected.** A pad that streams continuously, as a DualSense does even sitting still, holds Windows' idle timer open. The app lets go after about ninety seconds of a genuinely untouched controller.
 
