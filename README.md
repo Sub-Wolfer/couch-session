@@ -194,6 +194,41 @@ Settings live in `%AppData%\CouchSession`. Nothing is written anywhere else.
 
 ---
 
+## ⚠️ Known issues
+
+Things that are known to be wrong or awkward. Listed here rather than left to be discovered, because
+finding out on your own costs you an evening and reading it here costs you a minute.
+
+🎮 **Exclusive-fullscreen games minimize when the session prompt appears.** Windows does that itself
+the moment such a game loses focus, and it cannot be avoided while also taking the controller away
+from the game so you can answer. Setting a game to *borderless* fullscreen avoids it entirely, which
+is worth doing anyway.
+
+🌈 **HDR can quietly do nothing on a display that supports it.** HDR is only switched when Windows
+reports the display as capable, and Windows does not always agree with the display itself. Nothing on
+screen says so, there is no way to overrule it yet, and the log is the only place it is recorded.
+
+🖥️ **Some windows do not go back where they were.** OBS is a reliable example. A window moved to a
+second monitor shortly before a session may also come back on the wrong one. Under investigation, and
+the log now records both cases.
+
+🔌 **Moving the app breaks "Start with Windows" for one sign-in.** Windows records where the file is,
+so moving it leaves the sign-in launch pointing at the old folder. Couch Session repairs this the
+next time it runs and tells you it did, but if you move it and then restart without opening it, that
+one sign-in is missed.
+
+💤 **The display can be slow to sleep while a controller is connected.** A pad that streams
+continuously, as a DualSense does even sitting still, holds Windows' idle timer open. The app lets go
+after about ninety seconds of a genuinely untouched controller.
+
+🔊 **Couch audio set to the same device you already use does nothing.** There is nothing to move and
+nothing to restore. The app says so once per run and points at the setting.
+
+📺 **A TV's audio output only appears in the list while the TV is on.** One seen before stays
+selectable, marked as off, so it can still be chosen with the set cold.
+
+---
+
 ## 🧪 A word about beta
 
 This is version 0.9.x and it's in daily use, but it hasn't been through many hands yet. Bug reports
