@@ -7167,8 +7167,8 @@ public sealed class SettingsForm : Form
         if (!couch && (_currentPage == DisplayPage || _currentPage == ControllerPage))
             ShowPage(HomePage);
 
-        _action.Visible = couch;
-
+        // Visibility is RefreshActionButton's to set, because it is the one that also resizes the
+        // strip around it. Two places setting it meant one of them forgot.
         RefreshActionButton();
     }
 
@@ -7202,9 +7202,21 @@ public sealed class SettingsForm : Form
     {
         // Nothing to start, so nothing to offer. Left hidden rather than relabelled: a footer whose
         // main button is missing reads as a mode, and a disabled one reads as a fault.
-        if (Config.DeskOnly) { _action.Visible = false; return; }
+        //
+        // [BUG] Hiding it is not enough on its own. The strip holding these buttons is sized to
+        // exactly the buttons visible in it, and that sum was only recalculated when Close Game
+        // came and went — so hiding this one left the strip its old width, and showing it again
+        // put a 190-pixel button into a gap that had been measured without it. The result was the
+        // main button hanging off the right edge, half of it past the window.
+        bool wanted = !Config.DeskOnly;
 
-        _action.Visible = true;
+        if (_action.Visible != wanted)
+        {
+            _action.Visible = wanted;
+            SizeFooterButtons();
+        }
+
+        if (!wanted) return;
 
         var state = SessionNow ? FooterState.End
                   : LeftRunningNow ? FooterState.Resume
