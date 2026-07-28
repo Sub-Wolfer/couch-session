@@ -247,6 +247,22 @@ public sealed class GameWatcher : IDisposable
 
         _tracked.Clear();
         ReleasePrimary();
+
+        // [BUG] Stopping used to forget the game rather than report it as stopped. The tracked set
+        // was cleared and Current was left pointing at whatever had been running, so GameStopped
+        // never fired and nothing downstream was ever told to undo itself. Everything engaged on the
+        // way in stayed engaged: HDR held on with no watcher left to switch it off, and the game's
+        // process priority left raised. The way in is ordinary — turning Auto HDR or the priority
+        // boost off, or unticking the last game, while playing — and the way out was restarting the
+        // app.
+        //
+        // Announcing it is also simply true. Nothing is being watched from here, so as far as this
+        // app is concerned the game is no longer running, and every listener should hear that.
+        if (Current is { } game)
+        {
+            Current = null;
+            GameStopped?.Invoke(game);
+        }
     }
 
     /// <summary>Forget which processes were already running, so a rebuilt list starts clean.</summary>
@@ -449,7 +465,18 @@ public sealed class GameWatcher : IDisposable
         }
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        // Silent on the way out. Stop now reports the running game as stopped, which is right when
+        // watching is being switched off and wrong when the app is closing: HdrCoordinator puts HDR
+        // back itself before disposing this, and a listener firing during shutdown is asking a
+        // half-torn-down object to do work it no longer can.
+        GameStarted = null;
+        GameAdopted = null;
+        GameStopped = null;
+
+        Stop();
+    }
 
     // ---- interop ----
 
