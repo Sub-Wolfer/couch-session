@@ -15,6 +15,9 @@ namespace CouchMode.Games;
 ///
 /// Only reached when the precise passes (the tracked game, and the Steam-by-folder close) found
 /// nothing, so it never fires on top of a game that was already closed properly.
+///
+/// And because it is the one pass that cannot name what it is closing, it only ever asks. See
+/// <see cref="GameClose.AskToClose"/> for why this path in particular must take no for an answer.
 /// </summary>
 public static class RunningGames
 {
@@ -34,10 +37,23 @@ public static class RunningGames
         try
         {
             using var p = Process.GetProcessById((int)pid);
-            // Ask the game to quit first (WM_CLOSE to its window) so it can save, ending it only if it
-            // will not go — matching what Steam's "Stop" does rather than a hard kill.
-            bool gone = GameClose.CloseGracefully(p, GameClose.DefaultGrace);
-            Log.Info($"Closed the foreground game '{name}' as the session ended.");
+
+            // Asked, never ended.
+            //
+            // This used to call CloseGracefully, which sends WM_CLOSE and then kills the whole
+            // process tree if the window has not gone in eight seconds. Everywhere else that is the
+            // right trade, because everywhere else the process has been identified as the game. Here
+            // it has not: all that is known is that Steam reports something running, the precise
+            // passes could not find it, and this window is the one filling the television. A browser
+            // or a video player left full-screen on the TV fits that description exactly, and one
+            // showing "close all tabs?" would refuse the request and then be killed for it.
+            //
+            // So a refusal is honoured. The cost is a game that ignores WM_CLOSE outliving the
+            // session, which the user can close themselves; the alternative cost was ending
+            // something they were using.
+            bool gone = GameClose.AskToClose(p, GameClose.DefaultGrace);
+
+            if (gone) Log.Info($"Closed the foreground game '{name}' as the session ended.");
             return gone ? 1 : 0;
         }
         catch

@@ -70,6 +70,59 @@ internal static class GameClose
         }
     }
 
+    /// <summary>
+    /// Ask a process to close and wait for it, but never end it. Returns true once it has gone.
+    ///
+    /// For the one caller that is not certain what it is looking at. Everything else here closes a
+    /// process that has been identified as the game — tracked by the watcher, or running out of a
+    /// known install folder — and for those, ending a hung one is right, because the alternative is
+    /// a session that cannot tidy up. The foreground fallback has no such proof: it closes whatever
+    /// is filling the television, on the strength of Steam saying *something* is running. Usually
+    /// that is the game. It does not have to be.
+    ///
+    /// So that one asks, and takes no for an answer. A game that ignores the request stays running
+    /// and the session ends around it, which is a far smaller wrong than ending an application
+    /// somebody was using because it happened to be full-screen when a session finished.
+    /// </summary>
+    public static bool AskToClose(Process p, TimeSpan grace)
+    {
+        string name = SafeName(p);
+
+        if (Protected.Contains(name))
+        {
+            Log.Warn($"Refusing to close protected process '{name}' — leaving it alone.");
+            return false;
+        }
+
+        try
+        {
+            bool asked = false;
+            try { p.Refresh(); asked = p.CloseMainWindow(); }
+            catch { /* no main window, or the request was refused */ }
+
+            if (!asked)
+            {
+                Log.Info($"{name} had no window to ask, and it is not confirmed as the game; leaving it.");
+                return false;
+            }
+
+            if (p.WaitForExit((int)grace.TotalMilliseconds))
+            {
+                Log.Info($"{name} saved and closed after being asked to quit.");
+                return true;
+            }
+
+            Log.Info($"{name} did not quit within {grace.TotalSeconds:0}s of being asked. It is not "
+                   + "confirmed as the game, so it is being left running.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Asking {name} to close failed: {ex.Message}");
+            return false;
+        }
+    }
+
     /// <summary>End a process tree outright, but never a protected one. Returns true if it was ended.</summary>
     public static bool KillIfAllowed(Process p)
     {
