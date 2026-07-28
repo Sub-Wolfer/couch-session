@@ -183,6 +183,8 @@ public sealed class SettingsForm : Form
     private readonly Dropdown _padLink = new();
     private readonly ToggleSwitch _changePowerPlan = new();
     private readonly ToggleSwitch _powerPlanMainsOnly = new();
+    private readonly ToggleSwitch _closeApps = new();
+    private readonly ToggleSwitch _reopenApps = new();
     private readonly Dropdown _powerPlan = NewDropdown();
 
     /// <summary>Explains an empty mode list. Rebuilt with the page, so it is not readonly.</summary>
@@ -3683,6 +3685,28 @@ public sealed class SettingsForm : Form
         AddToggle(windows, Words.DisableGameBarButton, _disableGameBarButton, Words.DisableGameBarButtonWhy,
                   check: PerformanceCheck.CheckGameBar);
 
+        // Session-scoped, so it is not offered in desk-only mode. Everything it does is tied to a
+        // session starting and ending, and there are none of those there.
+        if (!Config.DeskOnly)
+        {
+            NewSection(page, Words.SectionResourceControl);
+            var apps = NewCard(page);
+
+            AddToggle(apps, Words.CloseApps, _closeApps, Words.CloseAppsWhy,
+                      setting: nameof(AppConfig.CloseAppsForSession));
+
+            WhenOn(() => _closeApps.Checked, apps, () =>
+            {
+                AddRow(apps, BuildAppList(), Indent);
+
+                AddToggle(apps, Words.ReopenApps, _reopenApps, Words.ReopenAppsWhy,
+                          setting: nameof(AppConfig.ReopenAppsAfterSession), indent: Indent);
+            });
+
+            _closeApps.CheckedChanged -= OnCloseAppsToggled;
+            _closeApps.CheckedChanged += OnCloseAppsToggled;
+        }
+
         // Re-read the two live system switches every time the page is opened, so they always show
         // the machine's real current state.
         page.VisibleChanged -= OnPerformancePageShown;
@@ -4322,6 +4346,194 @@ public sealed class SettingsForm : Form
     /// unlabelled, so a page read as an undifferentiated run of switches. Naming each group is
     /// what makes a long page scannable.
     /// </summary>
+    /// <summary>The apps chosen to be closed, held here while the window is open.</summary>
+    private readonly List<string> _appsToClose = [];
+
+    private FlowLayoutPanel? _appRows;
+
+    private void OnCloseAppsToggled(object? sender, EventArgs e) => MarkDirty();
+
+    /// <summary>
+    /// The chosen apps, with the two ways of adding one underneath them.
+    ///
+    /// Built once and refilled by <see cref="RebuildAppRows"/>, so adding an app does not rebuild the
+    /// page around it — a page rebuild here would scroll the reader back to the top of Performance
+    /// every time they added something, which is the wrong reward for using the feature.
+    /// </summary>
+    private Control BuildAppList()
+    {
+        var holder = new BufferedStack
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(RowWidth, 0),
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 2, 0, 6),
+        };
+
+        holder.Controls.Add(NewLabel(Words.AppsToCloseWhy, Theme.Small, Theme.TextDim));
+
+        _appRows = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(RowWidth, 0),
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 6, 0, 6),
+        };
+
+        holder.Controls.Add(_appRows);
+        RebuildAppRows();
+
+        var buttons = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0),
+        };
+
+        var pick = new FlatButton
+        {
+            Text = Words.AddRunningApp,
+            Size = new Size(168, 34),
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        pick.Click += (_, _) => AddAppFromRunning();
+
+        var browse = new FlatButton
+        {
+            Text = Words.AddAppByBrowse,
+            Size = new Size(110, 34),
+            Margin = new Padding(0),
+        };
+        browse.Click += (_, _) => AddAppByBrowse();
+
+        buttons.Controls.Add(pick);
+        buttons.Controls.Add(browse);
+        holder.Controls.Add(buttons);
+
+        return holder;
+    }
+
+    /// <summary>Refill the list of chosen apps in place.</summary>
+    private void RebuildAppRows()
+    {
+        if (_appRows is null) return;
+
+        Freeze();
+        try
+        {
+            ForgetToolTips(_appRows);
+
+            foreach (Control old in _appRows.Controls) old.Dispose();
+            _appRows.Controls.Clear();
+
+            if (_appsToClose.Count == 0)
+            {
+                _appRows.Controls.Add(NewLabel(Words.AppsNoneChosen, Theme.Small, Theme.TextFaint));
+                return;
+            }
+
+            foreach (var path in _appsToClose.ToArray()) _appRows.Controls.Add(AppRow(path));
+        }
+        finally { Thaw(); }
+    }
+
+    /// <summary>One chosen app: what it is called, where it lives, and a way to take it off again.</summary>
+    private Control AppRow(string path)
+    {
+        var row = new BufferedPanel
+        {
+            Size = new Size(RowWidth, 42),
+            BackColor = Theme.Surface,
+            Margin = new Padding(0, 0, 0, 4),
+        };
+
+        var name = new Label
+        {
+            Text = Path.GetFileNameWithoutExtension(path),
+            Font = Theme.BodySemi,
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Location = new Point(10, 4),
+            BackColor = Color.Transparent,
+        };
+
+        // The path, not just the name. Two apps can be called the same thing, and the one a reader
+        // needs to confirm is the one that will actually be closed.
+        var where = new Label
+        {
+            Text = path,
+            Font = Theme.Small,
+            ForeColor = Theme.TextFaint,
+            AutoSize = false,
+            Size = new Size(RowWidth - 120, 16),
+            Location = new Point(10, 22),
+            AutoEllipsis = true,
+            BackColor = Color.Transparent,
+        };
+
+        var remove = new FlatButton
+        {
+            Text = Words.RemoveApp,
+            Size = new Size(84, 28),
+            Location = new Point(RowWidth - 94, 7),
+            Font = Theme.Small,
+        };
+
+        remove.Click += (_, _) =>
+        {
+            _appsToClose.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            RebuildAppRows();
+            MarkDirty();
+        };
+
+        row.Controls.Add(name);
+        row.Controls.Add(where);
+        row.Controls.Add(remove);
+        return row;
+    }
+
+    private void AddAppFromRunning()
+    {
+        using var picker = new AppPicker(_appsToClose);
+
+        if (picker.ShowDialog(this) != DialogResult.OK || picker.Chosen is not { Length: > 0 } path)
+            return;
+
+        AddAppPath(path);
+    }
+
+    private void AddAppByBrowse()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = Words.BrowseAppTitle,
+            Filter = Words.BrowseAppFilter,
+            CheckFileExists = true,
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        AddAppPath(dialog.FileName);
+    }
+
+    private void AddAppPath(string path)
+    {
+        if (_appsToClose.Any(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase))) return;
+
+        _appsToClose.Add(path);
+        RebuildAppRows();
+        MarkDirty();
+    }
+
     private void NewSection(Panel page, string title)
     {
         var caption = NewLabel(title.ToUpperInvariant(), Theme.Caption, Theme.TextFaint);
@@ -6726,6 +6938,11 @@ public sealed class SettingsForm : Form
 
             _changePowerPlan.Checked = Config.ChangePowerPlan;
             _powerPlanMainsOnly.Checked = Config.PowerPlanOnlyWhenPluggedIn;
+            _closeApps.Checked = Config.CloseAppsForSession;
+            _reopenApps.Checked = Config.ReopenAppsAfterSession;
+
+            _appsToClose.Clear();
+            _appsToClose.AddRange(Config.AppsToClose);
             _powerPlan.Enabled = Config.ChangePowerPlan;
 
             _powerPlan.SelectedIndex = Guid.TryParse(Config.SessionPowerPlan, out _)
@@ -6867,6 +7084,9 @@ public sealed class SettingsForm : Form
 
         Config.ChangePowerPlan = _changePowerPlan.Checked;
         Config.PowerPlanOnlyWhenPluggedIn = _powerPlanMainsOnly.Checked;
+        Config.CloseAppsForSession = _closeApps.Checked;
+        Config.ReopenAppsAfterSession = _reopenApps.Checked;
+        Config.AppsToClose = [.. _appsToClose];
         Config.SessionPowerPlan = _powerPlan.SelectedItem is PowerPlan plan
                                 ? plan.Id.ToString()
                                 : AppConfig.Automatic;

@@ -206,10 +206,33 @@ public sealed class AppConfig
     /// <summary>
     /// Free the machine up when a session starts by closing open desktop apps.
     ///
-    /// Off by default, and every sub-option below is also off: closing someone's windows
-    /// without being asked is the kind of thing that loses work, so it has to be chosen.
-    /// Windows are always asked to close politely, never terminated.
+    /// Off by default, and the list below starts empty: closing someone's windows without being
+    /// asked is the kind of thing that loses work, so it has to be chosen twice, once for the
+    /// feature and once for each app.
+    ///
+    /// Apps are always *asked* to close, exactly as Alt+F4 asks, and one that refuses is left
+    /// running. Nothing here ever ends a process. That is the difference between freeing up memory
+    /// and losing the document somebody had open, and it is not a setting.
     /// </summary>
+    public bool CloseAppsForSession { get; set; }
+
+    /// <summary>
+    /// Full paths of the executables to ask to close, chosen by the user and no one else.
+    ///
+    /// Paths rather than names, so "chrome" means the Chrome you picked and not any process that
+    /// happens to share the name. Matching is on the path a running process reports.
+    /// </summary>
+    public List<string> AppsToClose { get; set; } = [];
+
+    /// <summary>
+    /// Start the apps that were closed again once the session ends.
+    ///
+    /// Only the ones this app actually closed during this run, so ending a session never opens
+    /// something that was not already open. Windows and documents do not come back, which the
+    /// setting says on its face — Windows offers no way to ask an app to reopen what it had.
+    /// </summary>
+    public bool ReopenAppsAfterSession { get; set; }
+
     /// <summary>
     /// Whether couch mode may change the power plan at all.
     ///

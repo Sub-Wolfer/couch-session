@@ -40,6 +40,7 @@ public sealed class SessionController
 
     /// <summary>Power, sleep and notification settings held for the session. See PerformanceTuning.</summary>
     private readonly PerformanceTuning _tuning = new();
+    private readonly ResourceControl _apps = new();
 
     public AppConfig Config { get; set; }
     public TvState State { get; private set; } = TvState.Desktop;
@@ -336,6 +337,12 @@ public sealed class SessionController
                 }
             }
             catch (Exception ex) { Log.Warn($"Could not open Big Picture: {ex.Message}"); }
+
+            // Once the couch interface is up, not before. Big Picture wants the machine's
+            // attention while it starts, and asking six apps to close in the same second makes
+            // both of them slower for no reason. Nothing downstream waits on this.
+            try { _apps.CloseForSession(Config); }
+            catch (Exception ex) { Log.Warn($"Resource control failed: {ex.Message}"); }
 
             lock (_gate) State = TvState.Tv;
             RaiseStateChanged();
@@ -775,6 +782,15 @@ public sealed class SessionController
                        Ui.Theme.Accent);
 
         _tuning.Restore();
+
+        // Last, and off this thread. Starting several apps takes seconds and none of the
+        // desktop's restoration depends on them; doing it here would leave the user watching an
+        // empty desktop while Chrome works out where its profile is.
+        _ = Task.Run(() =>
+        {
+            try { _apps.ReopenAfterSession(Config); }
+            catch (Exception ex) { Log.Warn($"Could not restart the closed apps: {ex.Message}"); }
+        });
     }
 
     /// <summary>What the TV was running at before the session changed it.</summary>

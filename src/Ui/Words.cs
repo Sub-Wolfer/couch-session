@@ -588,6 +588,46 @@ internal static class Words
             + "clocks costs more than it gives. **Checked once, as the session starts** — plugging "
             + "in later won't switch it.";
 
+    // ── Resource control ──────────────────────────────────────────────────────────
+    // Every string here is careful about one thing: this asks, it never ends anything. The competing
+    // app that prompted the feature terminates directly and warns that unsaved work may be lost, and
+    // the wording below is the difference, so it must not drift into promising the apps *will* close.
+    public const string SectionResourceControl = "Freeing up the machine";
+
+    public const string CloseApps = "Close chosen apps when a session starts";
+    public const string CloseAppsWhy =
+
+            "A browser, a chat client and a music player are gigabytes of memory and a steady "
+            + "trickle of background work that no one is using from the sofa. **Each app is asked "
+            + "to close, exactly as Alt+F4 asks** — one that refuses, usually because it has "
+            + "something unsaved, is left running. Nothing here is ever forced.";
+
+    public const string AppsToClose = "Apps to close";
+    public const string AppsToCloseWhy =
+        "Only what you put here. Everything else is left alone.";
+
+    public const string AppsNoneChosen = "No apps chosen, so nothing will be closed.";
+    public const string AddRunningApp = "Add an open app...";
+    public const string AddAppByBrowse = "Browse...";
+    public const string RemoveApp = "Remove";
+
+    public const string ReopenApps = "Open them again afterwards";
+    public const string ReopenAppsWhy =
+
+            "Starts the apps this closed once the session ends, and only those. **Windows and "
+            + "documents don't come back** — Windows offers no way to ask an app to reopen what it "
+            + "had, so a browser returns without its tabs.";
+
+    public const string AppPickerTitle = "Choose an open app";
+    public const string AppPickerWhy =
+        "Everything with a window on screen right now. Anything running as administrator is not "
+        + "listed, because this app runs without those rights and could not close it.";
+    public const string AppPickerNothing = "Nothing is open that this could close.";
+    public const string AppPickerCancel = "Cancel";
+
+    public const string BrowseAppTitle = "Choose an application";
+    public const string BrowseAppFilter = "Applications (*.exe)|*.exe";
+
     public const string SilenceNotifications = "Silence Windows notifications";
     public const string SilenceNotificationsWhy =
         
