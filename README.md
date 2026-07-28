@@ -1,7 +1,5 @@
 <div align="center">
 
-![Couch Session](docs/screenshots/banner.jpg)
-
 # 🛋️ Couch Session
 
 **Your gaming PC on the TV, and back again, with one press.**
@@ -26,6 +24,12 @@ every one of them when you're done, while working out which window ended up wher
 Couch Session does the whole round trip. One press and the living room TV behaves like a console:
 the right picture and sound, HDR on, Big Picture waiting, a controller in your hand and nothing that
 wants a keyboard. One press back and the desk is exactly as you left it.
+
+<div align="center">
+
+![Couch Session](docs/screenshots/banner.jpg)
+
+</div>
 
 > ### 👥 Who this is for
 >
