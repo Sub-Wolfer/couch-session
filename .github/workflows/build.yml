@@ -1,0 +1,39 @@
+# Builds every push, so a commit that does not compile says so on the commit itself.
+#
+# Until this existed the only build that ran anywhere was the one on the developer's machine before
+# pushing, and the only build GitHub did was the release. That is a habit rather than a guarantee:
+# it holds right up until somebody is in a hurry, opens a pull request, or pushes from a machine
+# where it happened to work. A tick beside a commit that means "this compiles" is worth having.
+#
+# Deliberately a build and not a publish. Publishing produces a 66 MB self-contained executable and
+# takes minutes; compiling catches everything a publish would catch about the source and finishes in
+# well under one. Releases still publish, which is where the executable is supposed to come from.
+#
+# Runs on windows-latest because the project targets net8.0-windows and uses WinForms, which will not
+# build on a Linux runner however fast that would be.
+
+name: Build
+
+on:
+  push:
+  pull_request:
+
+# A run per commit, not per push: pushing three times in a minute should leave one answer, not three
+# queued builds racing each other to report on work that has already moved on.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        run: dotnet build CouchSession.csproj -c Release
