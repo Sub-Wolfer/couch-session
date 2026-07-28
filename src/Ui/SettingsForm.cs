@@ -3605,15 +3605,37 @@ public sealed class SettingsForm : Form
         // a sofa and the thing nobody discovers on their own. Both buttons are drawn rather than named:
         // "the PS or Xbox button" is a phrase people read past, while the shapes are recognised without
         // reading at all.
-        var banner = NewCard(page);
-
-        AddRow(banner, new GuideBanner
+        // Shown until it is dismissed, and again after an update. See GuideBannerDismissedAt.
+        if (!string.Equals(Config.GuideBannerDismissedAt, AppInfo.Version, StringComparison.Ordinal))
         {
-            Line1 = Words.HomeGuideBannerTitle,
-            Line2 = Words.HomeGuideBannerBody,
-            Width = RowWidth,
-            Margin = new Padding(0),
-        }, 0, elbow: false);
+            var banner = NewCard(page);
+
+            var guide = new GuideBanner
+            {
+                Line1 = Words.HomeGuideBannerTitle,
+                Line2 = Words.HomeGuideBannerBody,
+                Width = RowWidth,
+                Margin = new Padding(0),
+            };
+
+            guide.Dismissed += () =>
+            {
+                Config.GuideBannerDismissedAt = AppInfo.Version;
+
+                // Written immediately rather than left to the auto-save. Dismissing something is a
+                // statement that it should not come back, and a crash before the next save would
+                // bring it back — which reads as the button not having worked.
+                try { Config.Save(); }
+                catch (Exception ex) { Log.Warn($"Could not record the dismissed banner: {ex.Message}"); }
+
+                Log.Info("Guide banner dismissed; it returns after an update or a reset.");
+
+                // The card goes with it, so the page closes up rather than leaving a gap.
+                RebuildPage(HomePage);
+            };
+
+            AddRow(banner, guide, 0, elbow: false);
+        }
 
         // The setup checklist has been removed.
         //

@@ -1076,7 +1076,27 @@ internal sealed class GuideBanner : Control
     /// <summary>Air above and below the two lines when they need more room than the art does.</summary>
     private const int VerticalPad = 16;
 
-    private const int BeforeText = 18, RightPad = 16;
+    private const int BeforeText = 18;
+
+    /// <summary>
+    /// Room on the right for the dismiss cross, so the text never runs underneath it.
+    ///
+    /// Wide enough for the glyph and its hit area rather than only the mark itself: a target the size
+    /// of what is drawn is a target that has to be aimed at, and this one is pressed once ever.
+    /// </summary>
+    private const int RightPad = 44;
+
+    private const int CloseSize = 20, CloseInset = 12;
+
+    private Rectangle CloseRect => new(Width - CloseInset - CloseSize, CloseInset, CloseSize, CloseSize);
+
+    private bool _overClose;
+
+    /// <summary>
+    /// Raised when the reader presses the cross. The caller decides what "dismissed" means and
+    /// remembers it; this control only reports the press.
+    /// </summary>
+    public event Action? Dismissed;
 
     /// <summary>
     /// Where the sentence starts: past the mark and the air after it.
@@ -1125,6 +1145,40 @@ internal sealed class GuideBanner : Control
         Relayout();
     }
 
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+
+        bool over = CloseRect.Contains(e.Location);
+        if (over == _overClose) return;
+
+        _overClose = over;
+        Cursor = over ? Cursors.Hand : Cursors.Default;
+
+        // Only the corner repaints. Invalidating the whole banner redraws the mark and both blocks of
+        // wrapped text every time the pointer crosses it, which is the flicker this file argues
+        // against everywhere else.
+        Invalidate(Rectangle.Inflate(CloseRect, 2, 2));
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+
+        if (!_overClose) return;
+
+        _overClose = false;
+        Cursor = Cursors.Default;
+        Invalidate(Rectangle.Inflate(CloseRect, 2, 2));
+    }
+
+    protected override void OnMouseClick(MouseEventArgs e)
+    {
+        base.OnMouseClick(e);
+
+        if (e.Button == MouseButtons.Left && CloseRect.Contains(e.Location)) Dismissed?.Invoke();
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -1171,8 +1225,36 @@ internal sealed class GuideBanner : Control
         if (Line2.Length > 0)
             TextRenderer.DrawText(g, Line2, Theme.Small,
                                   new Rectangle(x, top + h1 + 4, available, h2), Theme.TextDim, Wrapped);
+
+        DrawClose(g);
     }
 
+    /// <summary>
+    /// The dismiss cross, top right.
+    ///
+    /// Faint until the pointer is on it. This is a banner somebody reads once and then wants gone, so
+    /// the way out has to exist — but a bright cross beside the one sentence explaining the app's main
+    /// control invites closing it before it has been read.
+    /// </summary>
+    private void DrawClose(Graphics g)
+    {
+        var box = CloseRect;
+
+        if (_overClose)
+            Theme.FillRounded(g, box, 5, Theme.Mix(Theme.Accent, Theme.Surface, 0.6f));
+
+        // Inset from the hit area, so the mark stays small while the target stays easy.
+        float pad = box.Width * 0.32f;
+
+        using var pen = new Pen(_overClose ? Theme.Text : Theme.TextFaint, 1.6f)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+        };
+
+        g.DrawLine(pen, box.Left + pad, box.Top + pad, box.Right - pad, box.Bottom - pad);
+        g.DrawLine(pen, box.Right - pad, box.Top + pad, box.Left + pad, box.Bottom - pad);
+    }
 }
 
 /// <summary>

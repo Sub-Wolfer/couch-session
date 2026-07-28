@@ -324,6 +324,19 @@ public sealed class AppConfig
     /// config shows it again, which is the behaviour a "reset all settings" button implies anyway.
     /// </summary>
     public bool FirstRunWelcomeShown { get; set; }
+
+    /// <summary>
+    /// The version whose guide banner was dismissed, or empty while it should still be shown.
+    ///
+    /// A version rather than a flag, so an update brings it back once. The banner explains the guide
+    /// button, which is the control the whole app is driven by — worth one reminder after an update
+    /// that may have changed how it behaves, and worth nothing on the two hundredth launch of a
+    /// version somebody has been using for a month.
+    ///
+    /// Reset with everything else, because "reset all settings" means the app as it arrived, and it
+    /// arrived with the banner up.
+    /// </summary>
+    public string GuideBannerDismissedAt { get; set; } = "";
     public int ShortcutControllerHdrVendor { get; set; }
     public int ShortcutControllerHdrProduct { get; set; }
 
