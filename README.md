@@ -235,8 +235,7 @@ No extra software is needed for any of them.
 
 <div align="center">
 
-<img src="docs/screenshots/controller.png" width="420" alt="The Controller page">
-<img src="docs/screenshots/hotkeys.png" width="420" alt="The Hotkeys page">
+<img src="docs/screenshots/controller.png" width="800" alt="The Controller page">
 
 </div>
 
