@@ -7039,6 +7039,13 @@ public sealed class SettingsForm : Form
 
             _appsToClose.Clear();
             _appsToClose.AddRange(Config.AppsToClose);
+
+            // [BUG] Loading the list was not enough. The Performance page builds its rows from
+            // _appsToClose while the page is being constructed, which happens before this runs — so
+            // the list was drawn empty, said "No apps chosen", and nothing ever rebuilt it. The saved
+            // apps were still in the config and still closed at session start; there was simply no way
+            // to see or remove them.
+            RebuildAppRows();
             _powerPlan.Enabled = Config.ChangePowerPlan;
 
             _powerPlan.SelectedIndex = Guid.TryParse(Config.SessionPowerPlan, out _)
