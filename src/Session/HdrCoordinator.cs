@@ -305,9 +305,29 @@ public sealed class HdrCoordinator : IDisposable
 
     public IntPtr RunningGameWindow()
     {
-        // Stay with the window already chosen while it still exists. Re-deciding every time is what
-        // let a minimized game hand its identity back to its launcher.
-        if (CouchMode.Steam.BigPictureLauncher.StillAWindow(_gameWindow)) return _gameWindow;
+        // Hold the window already chosen, but let a bigger one take over.
+        //
+        // Both directions have bitten. Deciding afresh every call meant a minimized game handed its
+        // identity back to the launcher behind it. Never re-deciding meant the launcher, which opens
+        // first and is briefly the only window there is, kept the title for the whole session and got
+        // moved to the television in the game's place.
+        //
+        // So: keep it while it is minimized, because a minimized window has no area and would lose to
+        // anything. Otherwise let the largest game window win, which is how the real window takes over
+        // the moment it appears.
+        if (CouchMode.Steam.BigPictureLauncher.StillAWindow(_gameWindow))
+        {
+            if (CouchMode.Steam.BigPictureLauncher.IsMinimized(_gameWindow)) return _gameWindow;
+
+            var better = CouchMode.Steam.BigPictureLauncher.LargerOf(
+                             _gameWindow, CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow());
+
+            if (better == _gameWindow) return _gameWindow;
+
+            Log.Info("A larger game window has appeared; the smaller one was its launcher.");
+            _gameWindow = better;
+            return better;
+        }
 
         IntPtr tracked = IntPtr.Zero;
 
