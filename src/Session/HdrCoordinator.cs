@@ -292,20 +292,38 @@ public sealed class HdrCoordinator : IDisposable
 
     public IntPtr RunningGameWindow()
     {
+        IntPtr tracked = IntPtr.Zero;
+
         var p = _watcher.RunningProcess;
         if (p is not null)
         {
             try
             {
                 p.Refresh();
-                if (!p.HasExited && p.MainWindowHandle != IntPtr.Zero) return p.MainWindowHandle;
+                if (!p.HasExited) tracked = p.MainWindowHandle;
             }
-            catch { /* stale handle — fall through */ }
+            catch { /* stale handle — leave it at zero */ }
         }
 
-        // Not a watched (HDR-checked) game, or its window is not up yet — fall back to whatever Steam
-        // reports running, so an unchecked game is still recognised and returned to.
-        return CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow();
+        // Whatever Steam reports running, chosen by size. Also covers a game the watcher is not
+        // following at all, and one whose window was not up when the watcher latched on.
+        var largest = CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow();
+
+        // [BUG] The tracked process used to win outright, and for a game with its own launcher that
+        // is the wrong window. DOOM Eternal keeps its launcher running behind the game, the launcher
+        // starts first so the watcher latches onto it, and its executable is under steamapps\common
+        // like everything else — so nothing about its identity gives it away. Starting a session moved
+        // the launcher to the television and left the game where it was.
+        //
+        // Size is what separates them: the game fills a screen, the launcher is a small window someone
+        // pressed Play in.
+        var chosen = CouchMode.Steam.BigPictureLauncher.LargerOf(tracked, largest);
+
+        if (chosen != tracked && tracked != IntPtr.Zero)
+            Log.Info("The tracked process owns a smaller window than the game's; using the larger one "
+                   + "(a launcher left running behind its game).");
+
+        return chosen;
     }
 
     public HdrCoordinator(AppConfig config)

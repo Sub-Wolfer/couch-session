@@ -561,6 +561,31 @@ public static class BigPictureLauncher
     /// or not. Used so a session started or resumed while a game is up drops straight back into it
     /// rather than reopening Big Picture over the top.
     /// </summary>
+    /// <summary>
+    /// Whichever of two windows covers more of the screen, ignoring any that has gone.
+    ///
+    /// For telling a game apart from its own launcher. Several titles keep the launcher running
+    /// behind the game — DOOM Eternal is one — and both are real windows belonging to real processes
+    /// under the same install folder, so nothing about their identity separates them. Their size does:
+    /// the game is filling a screen and the launcher is a small window someone clicked Play in.
+    /// </summary>
+    public static IntPtr LargerOf(IntPtr a, IntPtr b)
+    {
+        if (a == IntPtr.Zero) return b;
+        if (b == IntPtr.Zero || a == b) return a;
+
+        return Area(b) > Area(a) ? b : a;
+    }
+
+    private static long Area(IntPtr hwnd)
+    {
+        // A minimized window reports a nonsense rectangle, so it loses to anything real — which is
+        // right: a minimized launcher is certainly not the window the player is looking at.
+        if (hwnd == IntPtr.Zero || IsIconic(hwnd) || !GetWindowRect(hwnd, out var r)) return 0;
+
+        return (long)Math.Max(0, r.Right - r.Left) * Math.Max(0, r.Bottom - r.Top);
+    }
+
     public static IntPtr FindRunningGameWindow()
     {
         if (RunningAppId() == 0) return IntPtr.Zero;   // Steam says nothing is running
