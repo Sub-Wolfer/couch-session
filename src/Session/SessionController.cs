@@ -543,6 +543,8 @@ public sealed class SessionController
 
             // Cache where the TV actually landed. Big Picture is placed against these bounds
             // rather than "the primary screen", which is wrong in keep-others mode.
+            ReportDisplays("after the switch to the TV");
+
             _tvBounds = DisplayManager.BoundsOf(Config.TvDisplayPath);
 
             // Failsafe: prove the TV really came up before handing the session over. Without
@@ -641,6 +643,15 @@ public sealed class SessionController
             lock (_gate) State = TvState.Tv;
             RaiseStateChanged();
             Log.Info("TV mode active.");
+
+            // [BUG] The desk monitors came back during a session set to switch them off, and the
+            // straggler check above never fired — so at the moment it looked, only the television
+            // was active. Something re-attaches them a few seconds later, which is the same thing
+            // an HDR change provokes: Windows re-applying its own saved arrangement.
+            //
+            // Checked again once the desktop has settled, and once more after that, using the same
+            // routine the HDR repair uses. Both are cheap when nothing came back.
+            HoldTheCouchArrangement();
 
             if (Config.ShowNotifications && Config.ShowSessionNotifications)
             {
@@ -1216,6 +1227,36 @@ public sealed class SessionController
             catch (Exception ex)
             {
                 Log.Warn($"Could not hold the game on the couch display: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Put the session's display arrangement back if something restores the desktop's.
+    ///
+    /// Two passes, a few seconds apart. The first covers Windows re-applying its saved topology as the
+    /// switch settles; the second covers a game doing it when its renderer starts, which is later.
+    /// ReassertCouchDisplay does nothing when nothing came back, so a session that behaves pays only
+    /// for two display queries.
+    /// </summary>
+    private void HoldTheCouchArrangement()
+    {
+        _ = Task.Run(async () =>
+        {
+            foreach (var wait in new[] { 3000, 6000 })
+            {
+                try
+                {
+                    await Task.Delay(wait).ConfigureAwait(false);
+
+                    if (State != TvState.Tv) return;
+                    ReassertCouchDisplay();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn($"Could not re-check the session's displays: {ex.Message}");
+                    return;
+                }
             }
         });
     }
