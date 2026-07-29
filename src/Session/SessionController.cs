@@ -166,7 +166,13 @@ public sealed class SessionController
         // So it is asked again once the desktop has settled, and only if the game really did come
         // back, so a game that stayed down is never poked twice.
         ReMinimizeAfterDisplaysSettle();
-        ResizeGameForDesktopDisplay();
+        // Unless the game is meant to stay where it is. Swapping to the desktop keeps the couch
+        // display connected, so a game left on it still has a screen, and moving it back is a
+        // disturbance a fullscreen game does not always survive cleanly.
+        if (Config.KeepGameOnCouchDisplay)
+            Log.Info("Leaving the game on the couch display, as asked.");
+        else
+            ResizeGameForDesktopDisplay();
 
         // A normal return to the desktop, but skip the teardown hook that would close the game — the
         // whole point of this path is to keep it running. closeBigPicture is passed through so the

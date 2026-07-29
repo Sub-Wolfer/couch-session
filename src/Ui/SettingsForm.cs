@@ -205,6 +205,7 @@ public sealed class SettingsForm : Form
     private readonly Dropdown _onControllerOff = new();
     private readonly Dropdown _onControllerLost = new();
     private readonly ToggleSwitch _muteOnDesktop = new();
+    private readonly ToggleSwitch _keepGameOnTv = new();
 
     private readonly GameIcons _icons = new();
     private readonly HashSet<string> _checkedGames = new(StringComparer.OrdinalIgnoreCase);
@@ -2757,6 +2758,12 @@ public sealed class SettingsForm : Form
         // for "why is my game still making noise" comes looking under Audio.
         AddToggle(audio, Words.MuteOnDesktop, _muteOnDesktop, Words.MuteOnDesktopWhy,
                   titleEmphasis: Theme.Good, setting: nameof(AppConfig.MuteGameOnDesktop));
+
+        // Beside the mute setting for the same reason that one is here: both are about a game left
+        // running after you have gone back to the desk, and both are reached from two different
+        // pages' worth of triggers.
+        AddToggle(audio, Words.KeepGameOnTv, _keepGameOnTv, Words.KeepGameOnTvWhy,
+                  setting: nameof(AppConfig.KeepGameOnCouchDisplay));
 
         AddPageReset(page, DisplayPage);
 
@@ -7069,6 +7076,7 @@ public sealed class SettingsForm : Form
             _onControllerLost.SelectedIndex = Math.Min((int)Config.OnControllerLost,
                                                        (int)DisconnectAction.ComeBackAndAsk);
             _muteOnDesktop.Checked = Config.MuteGameOnDesktop;
+            _keepGameOnTv.Checked = Config.KeepGameOnCouchDisplay;
 
             // Registry is the truth for startup, except on a first run where nothing is written yet.
             _startWithWindows.Checked = StartupRegistration.IsEnabled()
@@ -7209,6 +7217,7 @@ public sealed class SettingsForm : Form
         Config.OnControllerLost = DisconnectOf(_onControllerLost, DisconnectAction.Ignore,
                                                most: DisconnectAction.ComeBackAndAsk);
         Config.MuteGameOnDesktop = _muteOnDesktop.Checked;
+        Config.KeepGameOnCouchDisplay = _keepGameOnTv.Checked;
 
         // Only a real device sets this; the first entry is "any controller", which is empty.
         if (_triggerPad.SelectedItem is ControllerDevice pad)

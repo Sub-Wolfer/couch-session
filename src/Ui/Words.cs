@@ -1228,6 +1228,14 @@ internal static class Words
     // Appended to audio devices that are remembered but not switched on right now.
     public const string AudioDeviceOff = "— off";
 
+    public const string KeepGameOnTv = "Leave a game on the TV when you swap to the desktop";
+    public const string KeepGameOnTvWhy =
+
+            "The couch display stays connected either way, so the game always has a screen. **On**, "
+            + "it is left exactly where it is and untouched, so going back to the session drops "
+            + "straight into it. **Off**, its window is brought to your monitor and resized to fit, "
+            + "which is tidier at the desk but is a change some fullscreen games do not take well.";
+
     public const string MuteOnDesktop = "Mute a game left running on the desktop";
     public const string MuteOnDesktopWhy =
         
