@@ -343,10 +343,15 @@ Things that are known to be wrong or awkward. Listed here rather than left to be
 
 - **Exclusive-fullscreen games minimize when the session prompt appears.** Windows does that itself the moment such a game loses focus, and it cannot be avoided while also taking the controller away from the game so you can answer. Setting a game to *borderless* fullscreen avoids it entirely, which is worth doing anyway.
 
-- **Big Picture doesn't open if you start a session while a game is already running.** It can't be: Steam puts Big Picture's window up several seconds after it's asked for, and it takes the
-  foreground when it does. Behind a running game that means the shell owns your controller on a
-  screen you can't see, and the game stops responding. So it's left closed, and opened when you
-  choose **Close the game, stay on the TV** at the end of a session, which is when you need it.
+- **Big Picture doesn't open if you start a session while a game is already running.** It's left
+  closed on purpose, and opened when you choose **Close the game, stay on the TV** at the end of a
+  session, which is when you actually need it.
+
+  The reason is Steam's **Use the Big Picture Overlay when using a controller** setting. With it on,
+  Steam draws its overlay in Big Picture mode whenever a pad is in use, and that overlay takes the
+  foreground when it appears. Behind a running game that means the overlay owns your controller on a
+  screen you can't see, and the game stops responding. Turning that setting off in Steam avoids it
+  entirely.
 
 - **HDR can quietly do nothing on a display that supports it.** HDR is only switched when Windows reports the display as capable, and Windows does not always agree with the display itself. Nothing on screen says so, there is no way to overrule it yet, and the log is the only place it is recorded.
 
