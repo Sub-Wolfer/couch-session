@@ -688,6 +688,91 @@ public sealed class HdrCoordinator : IDisposable
         });
     }
 
+    /// <summary>
+    /// Whether a game is parked on the couch display with the session over. Set by the tray.
+    ///
+    /// The one case where HDR must not follow: swapping to the desktop hands primary back to the
+    /// monitor, but the game has not moved, so neither should HDR.
+    /// </summary>
+    public Func<bool>? GameParked { get; set; }
+
+    /// <summary>When this last moved HDR itself, so its own change is not treated as a new one.</summary>
+    private DateTime _followedAtUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Move HDR to the display that has just become primary.
+    ///
+    /// HDR belongs on the screen the game is being played on, and that is normally the primary — so
+    /// starting a session mid-game should carry HDR from the monitor to the television rather than
+    /// leave it on a screen nobody is looking at.
+    ///
+    /// Every exit logs. A previous attempt at this returned silently at its first guard and looked
+    /// exactly like an event that never arrived, which cost an evening of chasing the wrong thing.
+    /// </summary>
+    public void FollowPrimaryDisplay()
+    {
+        if (!_weTurnedItOn)
+        {
+            Log.Info("Auto HDR: display changed, but this app is not holding HDR on; nothing to move.");
+            return;
+        }
+
+        if (_hdrOn is not { Length: > 0 } was)
+        {
+            Log.Warn("Auto HDR: holding HDR on but no display recorded; cannot move it.");
+            return;
+        }
+
+        // Switching HDR makes Windows re-apply its topology, which arrives here as another display
+        // change. Without this the move would answer its own echo and could ping-pong.
+        if (DateTime.UtcNow - _followedAtUtc < TimeSpan.FromSeconds(4))
+        {
+            Log.Info("Auto HDR: display changed, but that was this app's own HDR change; ignoring it.");
+            return;
+        }
+
+        if (GameParked?.Invoke() == true)
+        {
+            Log.Info("Auto HDR: primary moved, but a game is parked on the couch display; "
+                   + "leaving HDR where the game is.");
+            return;
+        }
+
+        var now = Display.DisplayManager.CurrentPrimaryDevicePath();
+
+        if (now is not { Length: > 0 })
+        {
+            Log.Warn("Auto HDR: could not identify the new primary display; leaving HDR alone.");
+            return;
+        }
+
+        if (string.Equals(now, was, StringComparison.OrdinalIgnoreCase))
+        {
+            Log.Info("Auto HDR: display changed, but the primary is still the one holding HDR.");
+            return;
+        }
+
+        try
+        {
+            _followedAtUtc = DateTime.UtcNow;
+
+            HdrControl.SetHdrFor(was, false);
+
+            // Recorded either way. If the new primary cannot do HDR then nothing is holding it on any
+            // more, and still claiming the old display would switch off a screen this app has left.
+            _hdrOn = HdrControl.SetHdrFor(now, true) ? now : null;
+            _weTurnedItOn = _hdrOn is not null;
+
+            Log.Info(_hdrOn is null
+                         ? "Auto HDR: the new primary cannot do HDR, so HDR is no longer held."
+                         : "Auto HDR followed the primary display: moved.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Auto HDR could not follow the primary display: {ex.Message}");
+        }
+    }
+
     /// <summary>A short toast, only when the user asked for notifications.</summary>
     private void Notify(string title, string detail, Color accent)
     {

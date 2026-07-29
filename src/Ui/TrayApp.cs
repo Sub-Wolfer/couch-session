@@ -135,6 +135,18 @@ public sealed class TrayApp : IDisposable
         // Windows re-applies its saved display arrangement when HDR changes; this puts the
         // session's arrangement back. Guarded on the session inside the handler.
         _hdr.ReassertDisplays = () => _session.ReassertCouchDisplay();
+        _hdr.GameParked = () => _leftRunning;
+
+        // Proven to arrive before anything is built on it, which is the lesson from the first
+        // attempt: the handler logs on every entry, so an event that never fires and a handler that
+        // returns early can never look the same again.
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (_, _) => OnUi(() =>
+        {
+            Log.Info("Windows reported a display change.");
+
+            try { _hdr.FollowPrimaryDisplay(); }
+            catch (Exception ex) { Log.Warn($"Auto HDR display follow failed: {ex.Message}"); }
+        });
 
         Input.PadShortcut.LastSeen = config.LastPadFamily;
         Input.PadShortcut.HasSeenAPad = config.HasSeenAPad;
