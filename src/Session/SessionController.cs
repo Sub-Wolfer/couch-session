@@ -129,6 +129,50 @@ public sealed class SessionController
         catch (Exception ex) { Log.Warn($"Could not bring the session's windows back: {ex.Message}"); }
     }
 
+    /// <summary>
+    /// Put a window that was opened at the desk onto the couch display, at that display's size.
+    ///
+    /// Only for a game that was already running when the session began. Anything launched afterwards
+    /// opens on the television by itself, because by then it is the primary display.
+    ///
+    /// Restored first if it is minimized: a minimized window ignores a move, and the game this is for
+    /// has often just been minimized by the display switch.
+    /// </summary>
+    private void MoveOntoCouchDisplay(IntPtr window)
+    {
+        if (window == IntPtr.Zero) return;
+
+        var bounds = _tvBounds ?? DisplayManager.BoundsOf(Config.TvDisplayPath);
+
+        if (bounds is not { } couch)
+        {
+            Log.Warn("Could not find the couch display's bounds to move the game onto.");
+            return;
+        }
+
+        try
+        {
+            if (IsIconic(window)) ShowWindow(window, SW_RESTORE);
+
+            SetWindowPos(window, IntPtr.Zero, couch.Left, couch.Top, couch.Width, couch.Height,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+
+            Log.Info($"Moved the running game onto the couch display: {couch.Width}x{couch.Height} "
+                   + $"at {couch.Left},{couch.Top}.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not move the running game onto the couch display: {ex.Message}");
+        }
+    }
+
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy,
+                                            uint flags);
+
     private const int SW_RESTORE = 9;
 
     /// <summary>
@@ -400,6 +444,13 @@ public sealed class SessionController
                 {
                     // A game is already running — do not reload Big Picture over the top of it; put the
                     // player straight back into the game.
+                    //
+                    // [BUG] It was only brought to the front, never moved. A game launched at the desk
+                    // keeps the window it opened with, so starting a session around it left the game on
+                    // the monitor — and in TV-only mode that monitor is then detached out from under it.
+                    // Windows puts an orphaned window somewhere of its own choosing, at whatever size it
+                    // had, which is a 3440-wide window on a 1080 television.
+                    MoveOntoCouchDisplay(game);
                     BringToForeground(game);
                     Log.Info("A game is already running; returned straight to it without reopening Big Picture.");
                 }
