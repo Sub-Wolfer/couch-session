@@ -609,6 +609,15 @@ public sealed class SessionController
 
                     // Last, so the game ends up in front of the shell just opened behind it.
                     BringToForeground(game);
+
+                    // And again once Big Picture has actually arrived.
+                    //
+                    // [BUG] Fronting the game once was not enough, and the failure was invisible:
+                    // Steam takes several seconds to put Big Picture's window up, and when it does
+                    // it takes the foreground. The game was fronted before that happened, so the
+                    // shell ended up owning the controller on a display the user could not see —
+                    // the game was on screen and nothing reached it.
+                    KeepGameInFrontOfBigPicture();
                     Log.Info("A game is already running; returned straight to it without reopening Big Picture.");
                 }
                 else if (BigPictureLauncher.FindWindow() == IntPtr.Zero
@@ -1147,6 +1156,59 @@ public sealed class SessionController
 
         BigPictureLauncher.Launch();
         Log.Info("Requested Steam Big Picture.");
+    }
+
+    /// <summary>
+    /// Hold the game in front while Big Picture opens behind it.
+    ///
+    /// Only for a session started around a game that was already running. Big Picture is opened so
+    /// there is something on the television when the game closes, and it must never end up in
+    /// front: it is a shell the player did not ask for, and while it holds the foreground the pad
+    /// is driving it instead of the game.
+    ///
+    /// Bounded and self-terminating. It stops as soon as the game has held the front twice in a
+    /// row, so a Steam that behaves costs two cheap checks.
+    /// </summary>
+    private void KeepGameInFrontOfBigPicture()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(12);
+                int held = 0;
+
+                while (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(600).ConfigureAwait(false);
+
+                    var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
+                    if (game == IntPtr.Zero) return;
+
+                    if (GetForegroundWindow() == game)
+                    {
+                        if (++held >= 2) return;
+                        continue;
+                    }
+
+                    held = 0;
+
+                    // Only when Big Picture is the thing in the way. Anything else in front is the
+                    // user's own doing and none of this app's business.
+                    var bp = BigPictureLauncher.FindWindow();
+                    if (bp == IntPtr.Zero || GetForegroundWindow() != bp) continue;
+
+                    Log.Info("Big Picture took the foreground from the game it opened behind; "
+                           + "putting the game back in front.");
+
+                    BringToForeground(game);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"Could not keep the game in front of Big Picture: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>Called by the watcher once Big Picture is up and the TV is active.</summary>
