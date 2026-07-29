@@ -1254,7 +1254,23 @@ public sealed class SessionController
     /// Restore desktop audio, retrying briefly. Endpoints disappear and re-enumerate around a
     /// display change, so the device is often missing for a second or two right after the switch.
     /// </summary>
-    private static void RestoreDesktopAudio(string deviceId)
+    /// <summary>
+    /// Which audio switch is the current one.
+    ///
+    /// [BUG] Restoring the desktop device does not just set it, it holds it for several seconds
+    /// against Windows changing its mind. Start a session inside that window and the teardown of
+    /// the *previous* session is still holding: it saw the television device arrive, called it
+    /// interference, and put the desk device back. The log showed it plainly — "TV audio device
+    /// selected" at 21:51:54, then "putting it back" at 21:51:55, then "Desktop audio restored and
+    /// held" two seconds into a session that had only just begun. Sound stayed at the desk for the
+    /// whole session.
+    ///
+    /// Every switch takes a ticket. A hold whose ticket is no longer the current one stops, because
+    /// something newer has since decided where the sound should be.
+    /// </summary>
+    private int _audioTicket;
+
+    private void RestoreDesktopAudio(string deviceId)
     {
         // Two phases, because there are two different ways this fails.
         //
@@ -1266,13 +1282,21 @@ public sealed class SessionController
         // default of its own — and that choice can land *after* ours, silently overwriting it.
         // The old code called SetDefaultPlaybackDevice once, never looked again, and reported
         // success. Setting a value is not the same as it being set.
+        int ticket = Interlocked.Increment(ref _audioTicket);
+
         var appear = DateTime.UtcNow + TimeSpan.FromSeconds(8);
 
         while (DateTime.UtcNow < appear)
         {
+            if (Volatile.Read(ref _audioTicket) != ticket)
+            {
+                Log.Info("Desktop audio restore abandoned: something newer is deciding the audio now.");
+                return;
+            }
+
             if (AudioManager.DeviceExists(deviceId) && Apply(deviceId))
             {
-                Hold(deviceId);
+                Hold(deviceId, ticket);
                 return;
             }
             Thread.Sleep(400);
@@ -1305,7 +1329,7 @@ public sealed class SessionController
     /// something on this machine is determined to own the default device, fighting it forever
     /// would mean the audio device flapping every few seconds for as long as the app runs.
     /// </summary>
-    private static void Hold(string deviceId)
+    private void Hold(string deviceId, int ticket)
     {
         var until = DateTime.UtcNow + TimeSpan.FromSeconds(6);
         int corrections = 0;
@@ -1313,6 +1337,14 @@ public sealed class SessionController
         while (DateTime.UtcNow < until)
         {
             Thread.Sleep(700);
+
+            // The whole point of the ticket. A session starting mid-hold moves the sound to the
+            // television on purpose, and that is not interference to be corrected.
+            if (Volatile.Read(ref _audioTicket) != ticket)
+            {
+                Log.Info("Desktop audio hold released: a session has taken the audio.");
+                return;
+            }
 
             var now = AudioManager.GetDefaultPlaybackDeviceId();
             if (string.Equals(now, deviceId, StringComparison.OrdinalIgnoreCase)) continue;
@@ -1332,6 +1364,13 @@ public sealed class SessionController
     }
 
     private void SwitchAudioTo(string deviceId, string label)
+    {
+        // Takes the ticket, which stops any hold left running from the last teardown.
+        Interlocked.Increment(ref _audioTicket);
+        SwitchAudioCore(deviceId, label);
+    }
+
+    private void SwitchAudioCore(string deviceId, string label)
     {
         if (!Config.SwitchAudio || string.IsNullOrWhiteSpace(deviceId)) return;
 
