@@ -51,6 +51,9 @@ public sealed class SessionController
     /// optional "close the game when the session ends".</summary>
     public Action? BeforeTeardown { get; set; }
 
+    /// <summary>Run as a session begins, while the desktop's displays are all still attached.</summary>
+    public Action? BeforeDisplayChange { get; set; }
+
     /// <summary>The window of the game currently running, or zero when none is. Set by the tray app so
     /// a session started (or resumed) while a game is already up goes straight back to the game rather
     /// than reloading Big Picture over the top of it.</summary>
@@ -278,6 +281,16 @@ public sealed class SessionController
             // display is missing from it, the restore will remove that display no matter what the
             // detach step is told to do — so this is worth knowing at the start, not deduced at the end.
             ReportDisplays("as the session started");
+
+            // Take HDR off whatever it is on before anything moves.
+            //
+            // [BUG] Auto HDR follows the primary display, and it did that from the display-change
+            // event — which arrives *after* the switch. In TV-only mode the desk monitor has been
+            // detached by then, and HDR cannot be changed on a display that is not attached: the call
+            // logged "that display is not attached; leaving it alone" and the monitor kept HDR, so
+            // both screens ended up in it. Doing it here is the only moment the old display is still
+            // there to be switched. The follow then only has to turn the new one on.
+            BeforeDisplayChange?.Invoke();
 
             // Recorded before anything moves, and merged with what is already known so a display
             // that happens to be switched off right now keeps the position it had last time.

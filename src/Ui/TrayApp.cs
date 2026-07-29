@@ -136,6 +136,7 @@ public sealed class TrayApp : IDisposable
         // session's arrangement back. Guarded on the session inside the handler.
         _hdr.ReassertDisplays = () => _session.ReassertCouchDisplay();
         _hdr.GameParked = () => _leftRunning;
+        _session.BeforeDisplayChange = () => _hdr.ReleaseBeforeDisplayChange();
 
         // Proven to arrive before anything is built on it, which is the lesson from the first
         // attempt: the handler logs on every entry, so an event that never fires and a handler that

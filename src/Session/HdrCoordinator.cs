@@ -696,6 +696,23 @@ public sealed class HdrCoordinator : IDisposable
     /// </summary>
     public Func<bool>? GameParked { get; set; }
 
+    /// <summary>
+    /// Switch HDR off on the display holding it, while that display is still attached.
+    ///
+    /// Called as a session begins. Ownership is deliberately kept: the display is still the one this
+    /// app is responsible for until the follow moves it, and the follow's own switch-off then finds
+    /// it already off and says so, which costs one log line and no behaviour.
+    /// </summary>
+    public void ReleaseBeforeDisplayChange()
+    {
+        if (!_weTurnedItOn || _hdrOn is not { Length: > 0 } was) return;
+
+        Log.Info("Auto HDR: taking HDR off the current display before the session moves them.");
+
+        try { HdrControl.SetHdrFor(was, false); }
+        catch (Exception ex) { Log.Warn($"Auto HDR could not release the display first: {ex.Message}"); }
+    }
+
     /// <summary>When this last moved HDR itself, so its own change is not treated as a new one.</summary>
     private DateTime _followedAtUtc = DateTime.MinValue;
 
