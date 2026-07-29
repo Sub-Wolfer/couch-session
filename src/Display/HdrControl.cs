@@ -161,7 +161,15 @@ public static class HdrControl
             return false;
         }
 
-        if (status.Enabled == enable) return true;   // already where we want it
+        // [BUG] This returned silently, and that silence hid a real fault for weeks. HDR would be
+        // switched on for the couch display, primary would move back to the desk monitor by the time
+        // the game closed, and the switch-off would find the desk monitor already off, report success
+        // and leave the couch display in HDR. The log showed nothing at all for the failing step.
+        if (status.Enabled == enable)
+        {
+            Log.Info($"HDR: the primary display is already {(enable ? "on" : "off")}; nothing to do.");
+            return true;
+        }
 
         bool ok = Apply(path.Value, enable);
         Log.Info($"HDR {(enable ? "on" : "off")} for the primary display: {(ok ? "done" : "failed")}.");
@@ -195,7 +203,11 @@ public static class HdrControl
                 return false;
             }
 
-            if (status.Enabled == enable) return true;
+            if (status.Enabled == enable)
+            {
+                Log.Info($"HDR: that display is already {(enable ? "on" : "off")}; nothing to do.");
+                return true;
+            }
 
             bool ok = Apply(path.Value, enable);
             Log.Info($"HDR {(enable ? "on" : "off")} for a named display: {(ok ? "done" : "failed")}.");

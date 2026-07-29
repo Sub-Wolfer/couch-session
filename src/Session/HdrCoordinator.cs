@@ -32,15 +32,6 @@ public sealed class HdrCoordinator : IDisposable
     private string? _hdrOn;
 
     /// <summary>
-    /// Whether a game is parked on the couch display with the session over.
-    ///
-    /// The one case where HDR must NOT follow the primary display. Swapping to the desktop puts the
-    /// monitor back in charge, but the game is still on the television, so moving HDR would wash out
-    /// the desktop just returned to and strip HDR from the game about to be resumed.
-    /// </summary>
-    public Func<bool>? GameParked { get; set; }
-
-    /// <summary>
     /// The user turned HDR on by hotkey with no game running, so the next game to launch is the one
     /// they turned it on for. It is remembered (and its HDR held until it closes) whether or not it
     /// was already on the list — which is the right order for HDR, since most games read the display
@@ -630,49 +621,6 @@ public sealed class HdrCoordinator : IDisposable
     /// </summary>
     private static bool Off(string? where) =>
         where is { Length: > 0 } ? HdrControl.SetHdrFor(where, false) : HdrControl.SetPrimaryHdr(false);
-
-    /// <summary>
-    /// Move HDR to the display that has just become primary.
-    ///
-    /// HDR belongs on the screen the game is being played on, and that is normally the primary —
-    /// so starting a session mid-game should carry HDR from the monitor to the television rather
-    /// than leave it behind on a screen nobody is looking at.
-    ///
-    /// The exception is a game parked on the couch display with the session over. Primary goes
-    /// back to the monitor there, but the game has not moved, so neither does HDR.
-    /// </summary>
-    public void FollowPrimaryDisplay()
-    {
-        if (!_weTurnedItOn || _hdrOn is not { Length: > 0 } was) return;
-
-        if (GameParked?.Invoke() == true)
-        {
-            Log.Info("Auto HDR: primary moved, but a game is parked on the couch display; "
-                   + "leaving HDR where the game is.");
-            return;
-        }
-
-        var now = Display.DisplayManager.CurrentPrimaryDevicePath();
-        if (now is not { Length: > 0 } || string.Equals(now, was, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        try
-        {
-            HdrControl.SetHdrFor(was, false);
-
-            // Recorded either way. If the new primary cannot do HDR there is nothing holding it on
-            // any more, and continuing to claim the old display would switch off a screen this app
-            // no longer has HDR on.
-            _hdrOn = HdrControl.SetHdrFor(now, true) ? now : null;
-            _weTurnedItOn = _hdrOn is not null;
-
-            Log.Info($"Auto HDR followed the primary display: {(_hdrOn is null ? "the new one cannot do HDR" : "moved")}.");
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Auto HDR could not follow the primary display: {ex.Message}");
-        }
-    }
 
     /// <summary>A short toast, only when the user asked for notifications.</summary>
     private void Notify(string title, string detail, Color accent)
