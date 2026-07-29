@@ -241,8 +241,15 @@ public sealed class SessionController
             SetWindowPos(window, IntPtr.Zero, couch.Left, couch.Top, couch.Width, couch.Height,
                          SWP_NOZORDER | SWP_NOACTIVATE);
 
-            Log.Info($"Moved {BigPictureLauncher.Describe(window)} onto the couch display: "
+            Log.Info($"Asked {BigPictureLauncher.Describe(window)} onto the couch display: "
                    + $"{couch.Width}x{couch.Height} at {couch.Left},{couch.Top}.");
+
+            // [BUG] It said "Moved" and never checked. A fullscreen game does not have to accept a
+            // move: GTA V was a 5760x2520 scaled fullscreen window, the call returned, the log claimed
+            // success, and the game stayed on the desk monitor. The same shape of fault as the silent
+            // HDR return and the minimize that did not stick — a call with no verification is a call
+            // that cannot be told from a failure.
+            HoldOntoCouchDisplay(window, couch);
         }
         catch (Exception ex)
         {
@@ -1152,6 +1159,65 @@ public sealed class SessionController
 
         BigPictureLauncher.Launch();
         Log.Info("Requested Steam Big Picture.");
+    }
+
+    /// <summary>
+    /// Check the game actually landed on the couch display, and ask again if it did not.
+    ///
+    /// A game rendering fullscreen owns its window and can put it straight back, exactly as one can
+    /// refuse to stay minimized. Bounded and self-terminating: it stops as soon as the window is where
+    /// it was asked to be twice in a row, so a game that moves cleanly costs two cheap checks.
+    ///
+    /// Position only, deliberately. A game may legitimately render at a different size to the display
+    /// it is on, and insisting on an exact match would fight something that is not wrong.
+    /// </summary>
+    private void HoldOntoCouchDisplay(IntPtr window, Rectangle couch)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(8);
+                int settled = 0, asks = 0;
+
+                while (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(700).ConfigureAwait(false);
+
+                    if (!GetWindowRect(window, out var now)) return;
+
+                    // On the right screen is the test, not at the exact pixel: a game may centre
+                    // itself or letterbox, and either is fine as long as it is on the television.
+                    bool onCouch = now.Left >= couch.Left - 8 && now.Left < couch.Right
+                                && now.Top >= couch.Top - 8 && now.Top < couch.Bottom;
+
+                    if (onCouch)
+                    {
+                        if (++settled >= 2)
+                        {
+                            if (asks > 0) Log.Info($"The game settled on the couch display after {asks} more ask(s).");
+                            return;
+                        }
+
+                        continue;
+                    }
+
+                    settled = 0;
+                    asks++;
+
+                    SetWindowPos(window, IntPtr.Zero, couch.Left, couch.Top, couch.Width, couch.Height,
+                                 SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+
+                Log.Warn($"The game would not stay on the couch display after {asks} attempts. "
+                       + "A game rendering fullscreen can refuse to be moved; quitting it and starting "
+                       + "it again inside the session is the reliable way round.");
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"Could not hold the game on the couch display: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>Called by the watcher once Big Picture is up and the TV is active.</summary>
