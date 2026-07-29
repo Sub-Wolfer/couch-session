@@ -132,6 +132,10 @@ public sealed class TrayApp : IDisposable
         // switched on already draws the right family rather than defaulting to Xbox. Written
         // back only when it actually changes — PadShortcut raises this from its detection, which
         // runs on every repaint of a shortcut box.
+        // Windows re-applies its saved display arrangement when HDR changes; this puts the
+        // session's arrangement back. Guarded on the session inside the handler.
+        _hdr.ReassertDisplays = () => _session.ReassertCouchDisplay();
+
         Input.PadShortcut.LastSeen = config.LastPadFamily;
         Input.PadShortcut.HasSeenAPad = config.HasSeenAPad;
 

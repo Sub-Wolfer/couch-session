@@ -182,6 +182,7 @@ public sealed class HdrCoordinator : IDisposable
             _watcher.AdoptRunning();
             _weTurnedItOn = true;
             _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+            RepairDisplaysAfterHdr();
         }
         else if (!on)
         {
@@ -348,6 +349,7 @@ public sealed class HdrCoordinator : IDisposable
 
             _weTurnedItOn = true;
             _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+            RepairDisplaysAfterHdr();
             Notify(Words.NoticeHdrOn, Words.NoticeHdrSessionReady, Theme.Good);
         }
         catch (Exception ex)
@@ -543,6 +545,7 @@ public sealed class HdrCoordinator : IDisposable
                 // obvious cause.
                 _weTurnedItOn = true;
                 _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+                RepairDisplaysAfterHdr();
 
                 // The toast is for the armed case only. Announcing "HDR on" when nothing was turned
                 // on would be reporting an event that did not happen; the hotkey press is a thing the
@@ -566,6 +569,7 @@ public sealed class HdrCoordinator : IDisposable
 
             _weTurnedItOn = true;
             _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+            RepairDisplaysAfterHdr();
             Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
         }
         catch (Exception ex)
@@ -621,6 +625,34 @@ public sealed class HdrCoordinator : IDisposable
     /// </summary>
     private static bool Off(string? where) =>
         where is { Length: > 0 } ? HdrControl.SetHdrFor(where, false) : HdrControl.SetPrimaryHdr(false);
+
+    /// <summary>
+    /// Put the session's displays back after an HDR change disturbed them. Set by the tray.
+    ///
+    /// Null outside a session, and the handler checks again itself, so this can never fire at a desk.
+    /// </summary>
+    public Action? ReassertDisplays { get; set; }
+
+    /// <summary>
+    /// Give Windows its moment to re-apply a topology, then undo it.
+    ///
+    /// Delayed because the re-attach does not happen during the HDR call — it arrives a beat later,
+    /// as the driver re-enumerates, so checking immediately finds nothing wrong.
+    /// </summary>
+    private void RepairDisplaysAfterHdr()
+    {
+        if (ReassertDisplays is not { } repair) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(1500).ConfigureAwait(false);
+                repair();
+            }
+            catch (Exception ex) { Log.Warn($"Could not repair the displays after HDR: {ex.Message}"); }
+        });
+    }
 
     /// <summary>A short toast, only when the user asked for notifications.</summary>
     private void Notify(string title, string detail, Color accent)

@@ -192,6 +192,47 @@ public sealed class SessionController
         }
     }
 
+    /// <summary>
+    /// Put the session's display arrangement back after something outside this app disturbed it.
+    ///
+    /// Switching HDR provokes Windows into re-applying its own saved topology: on a machine where a
+    /// session had detached the desk monitor, turning HDR on for a game brought that monitor back,
+    /// handed it primary, and the game opened there instead of on the television. Reproduced with a
+    /// 3440 desk display and a 1080 couch display, and it does not happen with HDR switched off.
+    ///
+    /// This does not stop Windows doing it. It puts the arrangement back immediately afterwards,
+    /// which is the same thing the teardown already does in reverse and the only lever this app has.
+    /// </summary>
+    public void ReassertCouchDisplay()
+    {
+        if (State != TvState.Tv || Config.TvDisplayPath is not { Length: > 0 } couch) return;
+
+        try
+        {
+            if (Config.DisplayMode == TvDisplayMode.TvOnly)
+            {
+                var attached = DisplayManager.AttachedBounds();
+
+                // Only when something really did come back. Detaching is expensive and visible, so it
+                // must never run as a matter of routine.
+                foreach (var path in attached.Keys.ToArray())
+                {
+                    if (string.Equals(path, couch, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    Log.Warn("A display came back during the session; detaching it again.");
+                    try { DisplayManager.Detach(path); }
+                    catch (Exception ex) { Log.Warn($"Could not detach it: {ex.Message}"); }
+                }
+            }
+
+            DisplayManager.EnsurePrimary(couch);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Could not re-assert the couch display: {ex.Message}");
+        }
+    }
+
     public void EnterTvMode()
     {
         // The one gate that cannot be got around.
