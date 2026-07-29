@@ -627,6 +627,7 @@ public static class BigPictureLauncher
         long bestArea = 0;
         IntPtr fallback = IntPtr.Zero;   // any game window, used when the game is parked minimised
         IntPtr launcher = IntPtr.Zero;   // a window whose executable is named like a launcher
+        IntPtr game = IntPtr.Zero;       // any non-launcher game window, minimized or not
         long launcherArea = 0;
         uint self = (uint)Environment.ProcessId;
 
@@ -659,6 +660,11 @@ public static class BigPictureLauncher
                 return true;
             }
 
+            // Any non-launcher game window, whatever state it is in. A minimized window reports no
+            // area, so without this a minimized game loses to a visible launcher — which is exactly
+            // what kept happening.
+            if (game == IntPtr.Zero) game = hwnd;
+
             if (area > bestArea) { bestArea = area; best = hwnd; }
             return true;
         }, IntPtr.Zero);
@@ -674,6 +680,10 @@ public static class BigPictureLauncher
         // The name is what actually separates them, and it is not a guess: a launcher executable is
         // called one. See LooksLikeALauncher. Size still decides between two real game windows.
         if (best != IntPtr.Zero) return best;
+
+        // A minimized game still beats a launcher that happens to be on screen.
+        if (game != IntPtr.Zero) return game;
+
         if (launcher != IntPtr.Zero) return launcher;
 
         return fallback;

@@ -305,31 +305,31 @@ public sealed class HdrCoordinator : IDisposable
 
     public IntPtr RunningGameWindow()
     {
-        // Hold the window already chosen, but let a bigger one take over.
+        // Ask the search, and trust it.
         //
-        // Both directions have bitten. Deciding afresh every call meant a minimized game handed its
-        // identity back to the launcher behind it. Never re-deciding meant the launcher, which opens
-        // first and is briefly the only window there is, kept the title for the whole session and got
-        // moved to the television in the game's place.
+        // [BUG] This used to hold the window it had chosen and only give it up to a *larger* one, and
+        // that comparison caused every version of the launcher bug. DOOM Eternal's launcher is
+        // 1920x1080, so it is not small; a minimized game reports no size at all, so it always lost.
+        // Three fixes were built on top of that comparison before the log finally named the window
+        // and showed the premise was wrong.
         //
-        // So: keep it while it is minimized, because a minimized window has no area and would lose to
-        // anything. Otherwise let the largest game window win, which is how the real window takes over
-        // the moment it appears.
-        if (CouchMode.Steam.BigPictureLauncher.StillAWindow(_gameWindow))
+        // The search knows how to tell a game from a launcher now — by name, which is what actually
+        // separates them — so there is nothing left for a size comparison here to add.
+        var found = CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow();
+
+        if (found != IntPtr.Zero)
         {
-            if (CouchMode.Steam.BigPictureLauncher.IsMinimized(_gameWindow)) return _gameWindow;
+            if (found != _gameWindow)
+            {
+                Log.Info($"Game window is {CouchMode.Steam.BigPictureLauncher.Describe(found)}.");
+                _gameWindow = found;
+            }
 
-            var better = CouchMode.Steam.BigPictureLauncher.LargerOf(
-                             _gameWindow, CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow());
-
-            if (better == _gameWindow) return _gameWindow;
-
-            Log.Info($"Game window changed to {CouchMode.Steam.BigPictureLauncher.Describe(better)} "
-                   + $"from {CouchMode.Steam.BigPictureLauncher.Describe(_gameWindow)}.");
-            _gameWindow = better;
-            return better;
+            return found;
         }
 
+        // Nothing Steam knows about — an Epic or GOG game, or one whose window is not up yet. The
+        // process the watcher is following is the only answer left.
         IntPtr tracked = IntPtr.Zero;
 
         var p = _watcher.RunningProcess;
@@ -343,26 +343,8 @@ public sealed class HdrCoordinator : IDisposable
             catch { /* stale handle — leave it at zero */ }
         }
 
-        // Whatever Steam reports running, chosen by size. Also covers a game the watcher is not
-        // following at all, and one whose window was not up when the watcher latched on.
-        var largest = CouchMode.Steam.BigPictureLauncher.FindRunningGameWindow();
-
-        // [BUG] The tracked process used to win outright, and for a game with its own launcher that
-        // is the wrong window. DOOM Eternal keeps its launcher running behind the game, the launcher
-        // starts first so the watcher latches onto it, and its executable is under steamapps\common
-        // like everything else — so nothing about its identity gives it away. Starting a session moved
-        // the launcher to the television and left the game where it was.
-        //
-        // Size is what separates them: the game fills a screen, the launcher is a small window someone
-        // pressed Play in.
-        var chosen = CouchMode.Steam.BigPictureLauncher.LargerOf(tracked, largest);
-
-        if (chosen != tracked && tracked != IntPtr.Zero)
-            Log.Info($"Chose {CouchMode.Steam.BigPictureLauncher.Describe(chosen)} over the tracked "
-                   + $"{CouchMode.Steam.BigPictureLauncher.Describe(tracked)} (a launcher behind its game).");
-
-        _gameWindow = chosen;
-        return chosen;
+        _gameWindow = tracked;
+        return tracked;
     }
 
     public HdrCoordinator(AppConfig config)
