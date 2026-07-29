@@ -179,8 +179,8 @@ public sealed class SessionController
             SetWindowPos(window, IntPtr.Zero, couch.Left, couch.Top, couch.Width, couch.Height,
                          SWP_NOZORDER | SWP_NOACTIVATE);
 
-            Log.Info($"Moved the running game onto the couch display: {couch.Width}x{couch.Height} "
-                   + $"at {couch.Left},{couch.Top}.");
+            Log.Info($"Moved {BigPictureLauncher.Describe(window)} onto the couch display: "
+                   + $"{couch.Width}x{couch.Height} at {couch.Left},{couch.Top}.");
         }
         catch (Exception ex)
         {

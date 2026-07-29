@@ -569,6 +569,33 @@ public static class BigPictureLauncher
     /// under the same install folder, so nothing about their identity separates them. Their size does:
     /// the game is filling a screen and the launcher is a small window someone clicked Play in.
     /// </summary>
+    /// <summary>
+    /// A window described for the log: the process that owns it, and its size.
+    ///
+    /// Three rounds of "the launcher moved again" were spent unable to tell from the log which window
+    /// the app had actually chosen. One line settles it.
+    /// </summary>
+    public static string Describe(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return "no window";
+
+        try
+        {
+            GetWindowThreadProcessId(hwnd, out uint pid);
+
+            string name = "?";
+            try { using var p = System.Diagnostics.Process.GetProcessById((int)pid); name = p.ProcessName; }
+            catch { }
+
+            if (IsIconic(hwnd)) return $"{name} (pid {pid}, minimized)";
+
+            return GetWindowRect(hwnd, out var r)
+                       ? $"{name} (pid {pid}, {r.Right - r.Left}x{r.Bottom - r.Top})"
+                       : $"{name} (pid {pid}, size unknown)";
+        }
+        catch { return "a window that could not be described"; }
+    }
+
     /// <summary>Whether a window is minimized, for callers deciding whether to trust its size.</summary>
     public static bool IsMinimized(IntPtr hwnd) => hwnd != IntPtr.Zero && IsIconic(hwnd);
 

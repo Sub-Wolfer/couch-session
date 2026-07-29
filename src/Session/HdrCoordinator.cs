@@ -324,7 +324,8 @@ public sealed class HdrCoordinator : IDisposable
 
             if (better == _gameWindow) return _gameWindow;
 
-            Log.Info("A larger game window has appeared; the smaller one was its launcher.");
+            Log.Info($"Game window changed to {CouchMode.Steam.BigPictureLauncher.Describe(better)} "
+                   + $"from {CouchMode.Steam.BigPictureLauncher.Describe(_gameWindow)}.");
             _gameWindow = better;
             return better;
         }
@@ -357,8 +358,8 @@ public sealed class HdrCoordinator : IDisposable
         var chosen = CouchMode.Steam.BigPictureLauncher.LargerOf(tracked, largest);
 
         if (chosen != tracked && tracked != IntPtr.Zero)
-            Log.Info("The tracked process owns a smaller window than the game's; using the larger one "
-                   + "(a launcher left running behind its game).");
+            Log.Info($"Chose {CouchMode.Steam.BigPictureLauncher.Describe(chosen)} over the tracked "
+                   + $"{CouchMode.Steam.BigPictureLauncher.Describe(tracked)} (a launcher behind its game).");
 
         _gameWindow = chosen;
         return chosen;
