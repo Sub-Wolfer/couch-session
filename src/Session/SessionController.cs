@@ -131,7 +131,12 @@ public sealed class SessionController
     /// anti-cheat risk); the game simply keeps running in the background, and starting a session again
     /// drops straight back into it.
     /// </summary>
-    public void MinimizeToDesktop(bool closeBigPicture = true)
+    /// <param name="leaveGameOnCouch">
+    /// Leave the game's window on the television rather than bringing it to the monitor. Asked in
+    /// the prompt at the moment of swapping, because the two answers suit different games and a
+    /// setting decided days earlier would be one more thing to remember.
+    /// </param>
+    public void MinimizeToDesktop(bool closeBigPicture = true, bool leaveGameOnCouch = false)
     {
         lock (_gate) { if (State != TvState.Tv) return; }
 
@@ -169,7 +174,7 @@ public sealed class SessionController
         // Unless the game is meant to stay where it is. Swapping to the desktop keeps the couch
         // display connected, so a game left on it still has a screen, and moving it back is a
         // disturbance a fullscreen game does not always survive cleanly.
-        if (Config.KeepGameOnCouchDisplay)
+        if (leaveGameOnCouch)
             Log.Info("Leaving the game on the couch display, as asked.");
         else
             ResizeGameForDesktopDisplay();

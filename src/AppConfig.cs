@@ -495,19 +495,10 @@ public sealed class AppConfig
     /// </summary>
     public bool MuteGameOnDesktop { get; set; } = true;
 
-    /// <summary>
-    /// Leave a game on the television when you swap to the desktop, instead of bringing it back.
-    ///
-    /// Two reasonable answers, which is why it is a setting. Bringing the window back means a game
-    /// left running is sized for the monitor you are now looking at, rather than sitting at the
-    /// television's resolution behind everything. Leaving it there means the game is not disturbed at
-    /// all: it keeps the display it built its renderer against, and resuming the session drops
-    /// straight back in with nothing to recover from.
-    ///
-    /// Off by default, so the behaviour is unchanged for anyone who has not asked for this. The couch
-    /// display stays connected on this path either way, so there is always a screen to leave it on.
-    /// </summary>
-    public bool KeepGameOnCouchDisplay { get; set; }
+    // A setting for "leave the game on the TV when swapping to the desktop" lived here briefly. It
+    // is asked in the session-end prompt instead, next to the swap it belongs to, for the same reason
+    // CloseGameOnSessionEnd was removed: a setting that pre-answers a question the user is about to
+    // be asked is one they have to keep in their head for no benefit.
 
     /// <summary>
     /// What happens when the last controller disconnects mid-session.

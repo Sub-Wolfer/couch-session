@@ -26,6 +26,15 @@ internal sealed class SessionEndPrompt : Form
         Stay, Close, Minimize, CloseToBigPicture,
 
         /// <summary>
+        /// Swap to the desktop and leave the game on the television, untouched.
+        ///
+        /// Separate from Minimize because the two do different things to the game's window, and it is
+        /// a decision worth making at the moment rather than in a settings page. A game that built its
+        /// renderer against the television does not always survive being moved to a monitor.
+        /// </summary>
+        MinimizeLeaveOnTv,
+
+        /// <summary>
         /// Go back into a session that is still running behind the desktop.
         ///
         /// Only ever offered by the prompt that lands on the desk after a controller disconnects. The

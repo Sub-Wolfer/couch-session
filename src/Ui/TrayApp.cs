@@ -855,6 +855,7 @@ public sealed class TrayApp : IDisposable
         {
             new SessionEndPrompt.Option(Words.ConfirmCloseYes, SessionEndPrompt.Choice.Close, Theme.Bad, Words.ConfirmCloseYesWhat),
             new SessionEndPrompt.Option(Words.ConfirmCloseToBigPicture, SessionEndPrompt.Choice.CloseToBigPicture, Theme.Warn, Words.ConfirmCloseToBigPictureWhat),
+            new SessionEndPrompt.Option(Words.ConfirmCloseLeaveOnTv, SessionEndPrompt.Choice.MinimizeLeaveOnTv, Theme.Info, Words.ConfirmCloseLeaveOnTvWhat),
             new SessionEndPrompt.Option(Words.ConfirmCloseMinimize, SessionEndPrompt.Choice.Minimize, Theme.Info, Words.ConfirmCloseMinimizeWhat),
         }.Concat(NavigationOptions()).ToArray();
 
@@ -903,6 +904,7 @@ public sealed class TrayApp : IDisposable
                     RunBackground("Returning to the desktop", () => _session.ReturnToDesktop());
                     break;
 
+                case SessionEndPrompt.Choice.MinimizeLeaveOnTv:
                 case SessionEndPrompt.Choice.Minimize:
                     OnUi(() => _front.End());   // its timer lives on the UI thread
                     if (bigPictureStillUp) _watcher.Suppress();
@@ -926,9 +928,13 @@ public sealed class TrayApp : IDisposable
                     //
                     // Leaving the game running and taking its shell away is not what "swap to
                     // desktop" says or what tabbing out means.
+                    // The only difference between the two: whether the game's window is brought to
+                    // the monitor or left where it is.
+                    bool leaveOnTv = choice == SessionEndPrompt.Choice.MinimizeLeaveOnTv;
+
                     RunBackground("Minimizing to the desktop", () =>
                     {
-                        _session.MinimizeToDesktop(closeBigPicture: false);
+                        _session.MinimizeToDesktop(closeBigPicture: false, leaveGameOnCouch: leaveOnTv);
                         MuteIfWanted();
                     });
                     break;

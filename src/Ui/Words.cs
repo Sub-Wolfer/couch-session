@@ -242,7 +242,14 @@ internal static class Words
     public const string PromptMouseOff = "Turn the controller mouse off";
 
     public const string ConfirmCloseMinimize = "Swap to desktop";
-    public const string ConfirmCloseMinimizeWhat = "Your game keeps running.";
+    public const string ConfirmCloseMinimizeWhat = "It comes to your monitor.";
+
+    // The second half of the same decision, asked here rather than set in advance. A setting that
+    // pre-answers a question the user is about to be asked is one they have to keep in their head,
+    // which is the reasoning that removed CloseGameOnSessionEnd. Some games do not survive being
+    // moved between displays, so this is the safer of the two and says so by being offered.
+    public const string ConfirmCloseLeaveOnTv = "Swap to desktop, leave it on the TV";
+    public const string ConfirmCloseLeaveOnTvWhat = "Untouched, ready to go back to.";
 
     public const string ConfirmCloseToBigPicture = "Close the game, stay on the TV";
     public const string ConfirmCloseToBigPictureWhat = "Big Picture stays up for the next one.";
@@ -1227,14 +1234,6 @@ internal static class Words
 
     // Appended to audio devices that are remembered but not switched on right now.
     public const string AudioDeviceOff = "— off";
-
-    public const string KeepGameOnTv = "Leave a game on the TV when you swap to the desktop";
-    public const string KeepGameOnTvWhy =
-
-            "The couch display stays connected either way, so the game always has a screen. **On**, "
-            + "it is left exactly where it is and untouched, so going back to the session drops "
-            + "straight into it. **Off**, its window is brought to your monitor and resized to fit, "
-            + "which is tidier at the desk but is a change some fullscreen games do not take well.";
 
     public const string MuteOnDesktop = "Mute a game left running on the desktop";
     public const string MuteOnDesktopWhy =
