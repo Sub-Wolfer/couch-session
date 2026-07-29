@@ -347,11 +347,9 @@ Things that are known to be wrong or awkward. Listed here rather than left to be
   closed on purpose, and opened when you choose **Close the game, stay on the TV** at the end of a
   session, which is when you actually need it.
 
-  The reason is Steam's **Use the Big Picture Overlay when using a controller** setting. With it on,
-  Steam draws its overlay in Big Picture mode whenever a pad is in use, and that overlay takes the
-  foreground when it appears. Behind a running game that means the overlay owns your controller on a
-  screen you can't see, and the game stops responding. Turning that setting off in Steam avoids it
-  entirely.
+  Steam's **Use the Big Picture Overlay when using a controller** setting matters here. Leave it
+  **on**, which is Steam's default: sessions started around a running game behave correctly with it
+  on, and the controller reaches the game rather than a shell you can't see.
 
 - **HDR can quietly do nothing on a display that supports it.** HDR is only switched when Windows reports the display as capable, and Windows does not always agree with the display itself. Nothing on screen says so, there is no way to overrule it yet, and the log is the only place it is recorded.
 
