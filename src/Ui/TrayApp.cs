@@ -938,7 +938,33 @@ public sealed class TrayApp : IDisposable
                     RunBackground("Closing the game", () =>
                     {
                         _hdr.CloseRunningGame();
-                        BigPictureLauncher.BringToFront();
+
+                        // [BUG] This only ever brought Big Picture to the front, which does nothing
+                        // when there is no Big Picture. A game started at the desk before any session
+                        // means the session found a game already running and deliberately did not open
+                        // the shell over the top of it — so "close the game, stay on the TV" closed the
+                        // game and left the television showing a desktop, with a controller in the
+                        // user's hand and nothing on screen able to answer it.
+                        //
+                        // Opened if it is not there, revealed if it is. Revealing is held rather than
+                        // asked once because the game's window is still going as this runs and takes
+                        // the foreground with it on the way out.
+                        if (BigPictureLauncher.FindWindow() == IntPtr.Zero)
+                        {
+                            if (BigPictureLauncher.IsSteamInstalled())
+                            {
+                                Log.Info("Big Picture was never opened this session; opening it now.");
+                                BigPictureLauncher.Launch();
+                            }
+                            else
+                            {
+                                Log.Warn("Staying on the TV with no Steam installed; nothing to show.");
+                            }
+                        }
+                        else
+                        {
+                            BigPictureLauncher.Reveal(TimeSpan.FromSeconds(8));
+                        }
                     });
                     break;
 

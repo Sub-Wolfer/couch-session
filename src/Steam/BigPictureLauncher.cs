@@ -211,6 +211,44 @@ public static class BigPictureLauncher
     /// couch back to the Steam shell when resuming a parked session, so its own "Resume game" — and the
     /// overlay it manages — take over rather than us poking the game window directly.
     /// </summary>
+    /// <summary>
+    /// Bring Big Picture back and keep asking until it is actually there.
+    ///
+    /// [BUG] A single BringToFront after closing a game did not stick. The call landed while the
+    /// game's window was still being torn down, and a dying fullscreen window takes the foreground
+    /// with it on the way out — so the couch was handed back to a desktop nobody could see from the
+    /// sofa. One press asks once; this asks until it is true.
+    ///
+    /// Stops as soon as Big Picture is genuinely in front, so the ordinary case costs one attempt.
+    /// </summary>
+    public static void Reveal(TimeSpan within)
+    {
+        var deadline = DateTime.UtcNow + within;
+
+        while (true)
+        {
+            var hwnd = FindWindow();
+
+            if (hwnd != IntPtr.Zero)
+            {
+                if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+                BringToFront();
+
+                if (GetForegroundWindow() == hwnd) return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                Log.Info(hwnd == IntPtr.Zero
+                             ? "Big Picture was not open to come back to after the game closed."
+                             : "Big Picture would not come to the front after the game closed.");
+                return;
+            }
+
+            Thread.Sleep(400);
+        }
+    }
+
     public static void BringToFront()
     {
         var hwnd = FindWindow();
