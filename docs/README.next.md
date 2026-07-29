@@ -2,7 +2,7 @@
   THE WORKING README. Not the published one.
 
   This is the draft for the NEXT release. It describes features that are built but not yet
-  in any download, so it must not replace README.md until that release is out — a reader who
+  in any download, so it must not replace README.md until that release is out. A reader who
   follows the download button gets whatever was last published, and the page beside it has
   to describe that build and no other.
 
@@ -368,7 +368,7 @@ Things that are known to be wrong or awkward. Listed here rather than left to be
 
   It isn't needed. Steam's **Use the Big Picture Overlay when using a controller** setting, which is
   on by default, means pressing the Guide button in a game opens Steam's controller-friendly Big
-  Picture *overlay* — the thing the session prompt appears over — without any Big Picture window
+  Picture *overlay*, the thing the session prompt appears over, without any Big Picture window
   being open at all. Opening one as well only put a shell behind your game that could take the
   foreground and your controller with it. Leave that Steam setting on and this works as intended.
 
