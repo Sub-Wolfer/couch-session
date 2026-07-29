@@ -345,10 +345,27 @@ public sealed class HdrCoordinator : IDisposable
 
             if (status.Enabled) return;
 
-            if (!HdrControl.SetPrimaryHdr(true)) return;
+            // [BUG] The display was named twice: SetPrimaryHdr resolved the primary itself, and
+            // then CurrentPrimaryDevicePath was asked again afterwards to record which one it
+            // had been. Those two answers are not reliably the same. Switching HDR provokes
+            // Windows into re-applying its saved topology, so between the change landing and the
+            // question being asked, primary can have moved to a display this app never touched —
+            // and the switch-off at game close then aimed at that one, found HDR already off
+            // there, and left the real screen in HDR. The log said "already off; nothing to do".
+            //
+            // Named once now, before anything moves, and both the switch-on and the record use
+            // that single answer. SetPrimaryHdr is still the fallback for the case where the
+            // primary cannot be resolved to a device path at all.
+            var target = Display.DisplayManager.CurrentPrimaryDevicePath();
+
+            bool lit = target is { Length: > 0 }
+                           ? HdrControl.SetHdrFor(target, true)
+                           : HdrControl.SetPrimaryHdr(true);
+
+            if (!lit) return;
 
             _weTurnedItOn = true;
-            _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+            _hdrOn = target;
             RepairDisplaysAfterHdr();
             Notify(Words.NoticeHdrOn, Words.NoticeHdrSessionReady, Theme.Good);
         }
@@ -565,10 +582,27 @@ public sealed class HdrCoordinator : IDisposable
                 return;
             }
 
-            if (!HdrControl.SetPrimaryHdr(true)) return;
+            // [BUG] The display was named twice: SetPrimaryHdr resolved the primary itself, and
+            // then CurrentPrimaryDevicePath was asked again afterwards to record which one it
+            // had been. Those two answers are not reliably the same. Switching HDR provokes
+            // Windows into re-applying its saved topology, so between the change landing and the
+            // question being asked, primary can have moved to a display this app never touched —
+            // and the switch-off at game close then aimed at that one, found HDR already off
+            // there, and left the real screen in HDR. The log said "already off; nothing to do".
+            //
+            // Named once now, before anything moves, and both the switch-on and the record use
+            // that single answer. SetPrimaryHdr is still the fallback for the case where the
+            // primary cannot be resolved to a device path at all.
+            var target = Display.DisplayManager.CurrentPrimaryDevicePath();
+
+            bool lit = target is { Length: > 0 }
+                           ? HdrControl.SetHdrFor(target, true)
+                           : HdrControl.SetPrimaryHdr(true);
+
+            if (!lit) return;
 
             _weTurnedItOn = true;
-            _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
+            _hdrOn = target;
             RepairDisplaysAfterHdr();
             Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
         }
