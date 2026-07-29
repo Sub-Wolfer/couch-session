@@ -132,6 +132,18 @@ public sealed class TrayApp : IDisposable
         // switched on already draws the right family rather than defaulting to Xbox. Written
         // back only when it actually changes — PadShortcut raises this from its detection, which
         // runs on every repaint of a shortcut box.
+        // HDR follows the main display, except past a parked game.
+        //
+        // Windows announces a topology change here, which is the moment a session start hands primary
+        // to the television. Posted to the UI thread because SystemEvents fires on its own.
+        _hdr.GameParked = () => _leftRunning;
+
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (_, _) => OnUi(() =>
+        {
+            try { _hdr.FollowPrimaryDisplay(); }
+            catch (Exception ex) { Log.Warn($"Auto HDR display follow failed: {ex.Message}"); }
+        });
+
         Input.PadShortcut.LastSeen = config.LastPadFamily;
         Input.PadShortcut.HasSeenAPad = config.HasSeenAPad;
 
