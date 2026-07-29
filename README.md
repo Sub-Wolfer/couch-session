@@ -68,9 +68,11 @@ wants a keyboard. One press back and the desk is exactly as you left it.
 |---|---|
 | 🖥️&nbsp;**Display** | Switches to your TV, on its own or alongside your monitors, at the resolution and refresh rate you picked for it. Puts your desktop and its windows back afterwards. |
 | 🔊&nbsp;**Sound** | Moves audio to the TV on the way out and back to your desk on the way in. Can mute a game you left running behind you. |
-| 🌈&nbsp;**HDR** | On for the whole session, or only while a game you ticked is running. Off again when it closes, even if it was already on beforehand. The list learns from your hotkey presses. |
+| 🌈&nbsp;**HDR** | On for the whole session, or only while a game you ticked is running. It follows your main display, so starting a session mid-game carries HDR to the TV. Off again when the game closes. |
 | 🎮&nbsp;**Controller** | Start and end sessions from the pad. Use it as a mouse for launchers that ignore controllers. Decide what happens if it disconnects. Tested on Xbox and PS5 pads. |
 | ⚡&nbsp;**Performance** | Power plan, game priority, and silencing notifications for the session. Shortcuts to a few Windows settings that are not. |
+| 🧹&nbsp;**Free up memory** | Ask chosen apps to close when a session starts, and open them again after. It asks, exactly as Alt+F4 asks, and never forces one. |
+| 👀&nbsp;**Preview** | See every change a session will make before you start it, and whether each one is put back afterwards. |
 | 🔄&nbsp;**Updates** | Shows you what changed in a new version as soon as it finds one, and installs it with one click. Never while you're playing. |
 | 🖱️&nbsp;**Desk only** | Turn the couch half off entirely and keep HDR and performance. One switch, and the settings it hides are remembered. |
 
@@ -233,6 +235,41 @@ Smart HDR keeps the list current by watching which games you switch it on for by
 <img src="docs/screenshots/hdr-switching.png" width="800" alt="The HDR Switching page with a game list">
 
 </div>
+
+---
+
+## 🧹 Freeing up the machine
+
+A browser, a chat client and a music player are gigabytes of memory and a steady trickle of
+background work that nobody is using from the sofa. Pick the apps you want out of the way and
+they're asked to close when a session starts, and opened again when it ends.
+
+**Asked, never forced.** Each one gets the same close request Alt+F4 sends. An app that refuses,
+which usually means it has something unsaved, is left running and the log says so. Nothing here
+ever ends a process, and that is a deliberate limit rather than a missing feature.
+
+Choose them from a list of what's open right now, with the memory each one is holding, or point
+at an executable yourself. The shell, Steam and Couch Session can never be closed whatever you
+pick, and anything running as administrator isn't offered, because this app runs without those
+rights and could not close it anyway.
+
+Windows and documents don't come back. Windows offers no way to ask an app to reopen what it had,
+so a browser returns without its tabs.
+
+---
+
+## 👀 See what a session will do first
+
+This app changes things outside itself: your display arrangement, the default sound device, HDR,
+the power plan, and now other people's open applications. Every one of those is explained on its
+own row on some page, and nobody reads seven pages before pressing a button.
+
+**Preview session** lists them in one place, worked out from your settings as they stand, with one
+column answering the question underneath the question: what happens when it ends. Your desktop
+comes back, your sound comes back, HDR goes off, those apps are opened again or left closed.
+
+Anything that would stop a session working comes first, in warning color, and the button to start
+one is not offered while that's true.
 
 ---
 
