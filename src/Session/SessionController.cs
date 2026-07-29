@@ -1150,12 +1150,7 @@ public sealed class SessionController
     }
 
     /// <summary>Called by the watcher once Big Picture is up and the TV is active.</summary>
-    /// <param name="bringToFront">
-    /// False when a game is already running. Big Picture still has to be put on the couch display
-    /// at the couch display's size — otherwise it stays wherever Steam opened it, which is the desk
-    /// monitor — but it must not be pulled in front of the game to do it.
-    /// </param>
-    public void PlaceBigPicture(IntPtr hwnd, bool bringToFront = true)
+    public void PlaceBigPicture(IntPtr hwnd)
     {
         try
         {
@@ -1169,7 +1164,7 @@ public sealed class SessionController
             // picks it from the library and Steam brings it forward — so all this has to do is not
             // stay pinned on top of it. The front guard handles that: it releases the pin the moment
             // the game is actually the window in front.
-            BigPictureLauncher.PlaceOn(hwnd, bounds, bringToFront);
+            BigPictureLauncher.PlaceOn(hwnd, bounds, bringToFront: true);
 
             // Not optional: Steam re-lays-out its window from state sized for the display it
             // opened on, so without this it ends up letterboxed or overflowing whenever the
@@ -1179,9 +1174,7 @@ public sealed class SessionController
             // On top from the first frame, so the Steam client window or a stray dialog cannot sit
             // in front of it on the TV. The front guard maintains this and releases it once a game
             // or launcher comes forward.
-            // Never pinned when it is sitting behind a game. Pinning it there would put the shell
-            // over the thing being played, which is the one outcome this whole path avoids.
-            if (Config.BigPictureAlwaysOnTop && bringToFront)
+            if (Config.BigPictureAlwaysOnTop)
                 BigPictureLauncher.SetAlwaysOnTop(hwnd, true);
 
             // Last, so it is not undone by the window moving underneath it.
