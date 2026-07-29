@@ -626,6 +626,8 @@ public static class BigPictureLauncher
         IntPtr best = IntPtr.Zero;
         long bestArea = 0;
         IntPtr fallback = IntPtr.Zero;   // any game window, used when the game is parked minimised
+        IntPtr launcher = IntPtr.Zero;   // a window whose executable is named like a launcher
+        long launcherArea = 0;
         uint self = (uint)Environment.ProcessId;
 
         EnumWindows((hwnd, _) =>
@@ -650,13 +652,48 @@ public static class BigPictureLauncher
 
             if (!GetWindowRect(hwnd, out var r)) return true;
             long area = (long)Math.Max(0, r.Right - r.Left) * Math.Max(0, r.Bottom - r.Top);
+
+            if (LooksLikeALauncher(path))
+            {
+                if (area > launcherArea) { launcherArea = area; launcher = hwnd; }
+                return true;
+            }
+
             if (area > bestArea) { bestArea = area; best = hwnd; }
             return true;
         }, IntPtr.Zero);
 
-        // Prefer the largest real window; fall back to any game window (a minimised one reports a tiny
-        // size) so a parked game still resumes instead of reopening Big Picture over the top.
-        return best != IntPtr.Zero ? best : fallback;
+        // A game before its launcher, always.
+        //
+        // [BUG] This used to answer with the largest window, on the reasoning that a game fills a
+        // screen and a launcher is a small box you press Play in. DOOM Eternal's launcher is
+        // 1920x1080 — the log said so plainly, after three attempts at fixing this by size — so it
+        // won whenever the game was minimized or on a smaller screen, and the session moved the
+        // launcher to the television and left the game behind.
+        //
+        // The name is what actually separates them, and it is not a guess: a launcher executable is
+        // called one. See LooksLikeALauncher. Size still decides between two real game windows.
+        if (best != IntPtr.Zero) return best;
+        if (launcher != IntPtr.Zero) return launcher;
+
+        return fallback;
+    }
+
+    /// <summary>
+    /// Whether an executable's name says it is a launcher rather than the game.
+    ///
+    /// A heuristic, and a strong one: publishers name these things plainly. DOOM Eternal ships
+    /// idTechLauncher.exe beside its game, and it keeps running behind it — which is the whole
+    /// reason this exists. Only consulted to break a tie between two windows that are both real
+    /// game processes, so the cost of a false positive is picking the other window of the same
+    /// game, and a game genuinely called "launcher" still wins when it is the only candidate.
+    /// </summary>
+    private static bool LooksLikeALauncher(string path)
+    {
+        var name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+        return name.Contains("launcher", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("bootstrap", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Whether a process is an actual Steam-installed game — its executable under a Steam

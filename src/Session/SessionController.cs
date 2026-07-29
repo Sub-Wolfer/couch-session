@@ -27,6 +27,67 @@ public sealed class SessionController
     private DisplaySnapshot? _displaySnapshot;
 
     /// <summary>
+    /// Put a still-running game back onto the desk display, at the desk display's size.
+    ///
+    /// The mirror of MoveOntoCouchDisplay. Going out, a game opened at the desk keeps a window
+    /// sized for the monitor and has to be resized for the television; coming home it has a window
+    /// sized for the television and the same is true in reverse. Without this a game left running
+    /// comes back as a 1920x1080 window on a 3440 monitor.
+    ///
+    /// This cannot make a game re-render at the new resolution — nothing in Windows can ask for
+    /// that, and a game reads the display when it builds its renderer. What it can do is give the
+    /// game a window that matches the display, which is the whole story for a borderless game and
+    /// the best available for an exclusive-fullscreen one.
+    ///
+    /// After the topology has settled, for the reason everything else here waits: the desk display
+    /// is not back at its own resolution until the restore has finished, so its bounds read wrong
+    /// if they are asked for too early.
+    /// </summary>
+    private void ResizeGameForDesktopDisplay()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(3000).ConfigureAwait(false);
+
+                var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
+                if (game == IntPtr.Zero) return;
+
+                var primary = DisplayManager.CurrentPrimaryDevicePath();
+                if (primary is not { Length: > 0 }) return;
+
+                var bounds = DisplayManager.BoundsOf(primary);
+                if (bounds is not { } desk) return;
+
+                // Left alone if it already fits. A game that handled the change itself does not
+                // need helping, and resizing it would be a second disruption for nothing.
+                if (GetWindowRect(game, out var now)
+                 && now.Right - now.Left == desk.Width && now.Bottom - now.Top == desk.Height)
+                {
+                    return;
+                }
+
+                SetWindowPos(game, IntPtr.Zero, desk.Left, desk.Top, desk.Width, desk.Height,
+                             SWP_NOZORDER | SWP_NOACTIVATE);
+
+                Log.Info($"Resized {BigPictureLauncher.Describe(game)} for the desk display: "
+                       + $"{desk.Width}x{desk.Height}.");
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"Could not resize the game for the desk display: {ex.Message}");
+            }
+        });
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct WinRect { public int Left, Top, Right, Bottom; }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hwnd, out WinRect rect);
+
+    /// <summary>
     /// Whether the couch-audio-is-already-in-use warning has been shown this run.
     ///
     /// Deliberately not saved with the settings. It is a reminder rather than a preference, and one
@@ -105,6 +166,7 @@ public sealed class SessionController
         // So it is asked again once the desktop has settled, and only if the game really did come
         // back, so a game that stayed down is never poked twice.
         ReMinimizeAfterDisplaysSettle();
+        ResizeGameForDesktopDisplay();
 
         // A normal return to the desktop, but skip the teardown hook that would close the game — the
         // whole point of this path is to keep it running. closeBigPicture is passed through so the
