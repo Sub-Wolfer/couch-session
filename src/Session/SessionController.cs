@@ -84,6 +84,17 @@ public sealed class SessionController
         }
         catch (Exception ex) { Log.Warn($"Minimising the game and Big Picture failed: {ex.Message}"); }
 
+        // And again once the displays have finished moving.
+        //
+        // [BUG] Minimizing here worked and did not stick. The log proved it: "asked the game window
+        // to minimize — it did", and the game was still on screen afterwards. What undoes it is the
+        // topology restore below — a fullscreen game watching for display changes restores itself when
+        // one arrives, which is a beat after this runs.
+        //
+        // So it is asked again once the desktop has settled, and only if the game really did come
+        // back, so a game that stayed down is never poked twice.
+        ReMinimizeAfterDisplaysSettle();
+
         // A normal return to the desktop, but skip the teardown hook that would close the game — the
         // whole point of this path is to keep it running. closeBigPicture is passed through so the
         // Big-Picture-only minimize can leave Big Picture alive (minimized) to drop back into.
@@ -172,6 +183,30 @@ public sealed class SessionController
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy,
                                             uint flags);
+
+    /// <summary>Ask the game to minimize once more, after the display work has finished.</summary>
+    private void ReMinimizeAfterDisplaysSettle()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Long enough to be past the topology restore and the settle that follows it.
+                await Task.Delay(2500).ConfigureAwait(false);
+
+                var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
+                if (game == IntPtr.Zero || IsIconic(game)) return;
+
+                bool went = ShowWindow(game, SW_FORCEMINIMIZE);
+                Log.Info($"The game came back up after the displays moved; minimized it again — "
+                       + $"{(went ? "it did" : "it refused")}.");
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"Could not re-minimize the game after the displays moved: {ex.Message}");
+            }
+        });
+    }
 
     private const int SW_RESTORE = 9;
 
