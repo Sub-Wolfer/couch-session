@@ -569,6 +569,9 @@ public static class BigPictureLauncher
     /// under the same install folder, so nothing about their identity separates them. Their size does:
     /// the game is filling a screen and the launcher is a small window someone clicked Play in.
     /// </summary>
+    /// <summary>Whether a window handle still refers to a real window.</summary>
+    public static bool StillAWindow(IntPtr hwnd) => hwnd != IntPtr.Zero && IsWindow(hwnd);
+
     public static IntPtr LargerOf(IntPtr a, IntPtr b)
     {
         if (a == IntPtr.Zero) return b;

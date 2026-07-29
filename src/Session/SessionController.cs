@@ -76,8 +76,19 @@ public sealed class SessionController
 
         try
         {
+            // Logged either way. This was added once and lost in a merge, and its absence is why
+            // the next round of testing could not tell a missing window from a refused minimize.
             var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
-            if (game != IntPtr.Zero) ShowWindow(game, SW_FORCEMINIMIZE);
+
+            if (game == IntPtr.Zero)
+            {
+                Log.Warn("Swapping to the desktop: no game window was found, so nothing was minimized.");
+            }
+            else
+            {
+                bool went = ShowWindow(game, SW_FORCEMINIMIZE);
+                Log.Info($"Swapping to the desktop: asked the game window to minimize — {(went ? "it did" : "it refused")}.");
+            }
 
             var bp = BigPictureLauncher.FindWindow();
             if (bp != IntPtr.Zero) ShowWindow(bp, SW_FORCEMINIMIZE);

@@ -290,8 +290,25 @@ public sealed class HdrCoordinator : IDisposable
         }
     }
 
+    /// <summary>
+    /// The window already decided to be the game, kept for as long as it exists.
+    ///
+    /// [BUG] The choice was made afresh on every call, by size — and size stops telling the truth the
+    /// moment the game is minimized. A minimized window has no area, so the launcher sitting behind it
+    /// became the larger one and inherited the title: swapping to the desktop minimized the game, the
+    /// next call handed back the launcher, and the re-minimize then minimized *that* and reported
+    /// success while the game sat there in front of everything.
+    ///
+    /// Decided once and held. Cleared when the game stops, so the next one decides for itself.
+    /// </summary>
+    private IntPtr _gameWindow;
+
     public IntPtr RunningGameWindow()
     {
+        // Stay with the window already chosen while it still exists. Re-deciding every time is what
+        // let a minimized game hand its identity back to its launcher.
+        if (CouchMode.Steam.BigPictureLauncher.StillAWindow(_gameWindow)) return _gameWindow;
+
         IntPtr tracked = IntPtr.Zero;
 
         var p = _watcher.RunningProcess;
@@ -323,6 +340,7 @@ public sealed class HdrCoordinator : IDisposable
             Log.Info("The tracked process owns a smaller window than the game's; using the larger one "
                    + "(a launcher left running behind its game).");
 
+        _gameWindow = chosen;
         return chosen;
     }
 
@@ -646,6 +664,8 @@ public sealed class HdrCoordinator : IDisposable
     /// </summary>
     private void OnGameStopped(GameEntry game)
     {
+        _gameWindow = IntPtr.Zero;
+
         if (_running > 0 && --_running == 0) GameActivityChanged?.Invoke(false);
 
         GamePriority.Restore();
