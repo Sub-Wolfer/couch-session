@@ -195,22 +195,55 @@ public sealed class SessionController
     private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy,
                                             uint flags);
 
-    /// <summary>Ask the game to minimize once more, after the display work has finished.</summary>
+    /// <summary>
+    /// Keep asking the game to minimize until it stays down, or until the teardown is well over.
+    ///
+    /// [BUG] One retry at 2.5 seconds was not enough. The log showed both attempts reporting
+    /// success and the game still on screen: an exclusive-fullscreen game re-acquires its display
+    /// every time the topology settles, and the teardown settles more than once — the restore, the
+    /// position pass, and the window layout each move things. So it went down, came back, went down
+    /// again, and came back after the last attempt had already run.
+    ///
+    /// Polled instead of timed, and it stops the moment it has stayed down twice in a row, so a
+    /// game that minimizes on the first ask costs two cheap checks.
+    /// </summary>
     private void ReMinimizeAfterDisplaysSettle()
     {
         _ = Task.Run(async () =>
         {
             try
             {
-                // Long enough to be past the topology restore and the settle that follows it.
-                await Task.Delay(2500).ConfigureAwait(false);
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+                int stayedDown = 0;
+                int asks = 0;
 
-                var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
-                if (game == IntPtr.Zero || IsIconic(game)) return;
+                while (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(700).ConfigureAwait(false);
 
-                bool went = ShowWindow(game, SW_FORCEMINIMIZE);
-                Log.Info($"The game came back up after the displays moved; minimized it again — "
-                       + $"{(went ? "it did" : "it refused")}.");
+                    var game = RunningGameWindow?.Invoke() ?? IntPtr.Zero;
+                    if (game == IntPtr.Zero) return;
+
+                    if (IsIconic(game))
+                    {
+                        // Twice, not once. A game that is about to bounce back is minimized at the
+                        // moment it is checked, so one look is not evidence of anything.
+                        if (++stayedDown >= 2)
+                        {
+                            if (asks > 0) Log.Info($"The game stayed minimized after {asks} more ask(s).");
+                            return;
+                        }
+
+                        continue;
+                    }
+
+                    stayedDown = 0;
+                    asks++;
+                    ShowWindow(game, SW_FORCEMINIMIZE);
+                }
+
+                Log.Warn($"The game kept putting itself back after {asks} attempts; leaving it up. "
+                       + "An exclusive-fullscreen game can refuse to stay minimized.");
             }
             catch (Exception ex)
             {
@@ -496,7 +529,23 @@ public sealed class SessionController
                     // the monitor — and in TV-only mode that monitor is then detached out from under it.
                     // Windows puts an orphaned window somewhere of its own choosing, at whatever size it
                     // had, which is a 3440-wide window on a 1080 television.
+                    // Big Picture goes up behind it, at the start of a session only.
+                    //
+                    // It used to be skipped entirely when a game was already running, on the
+                    // reasoning that dropping the shell on top of a game is the wrong thing to do.
+                    // True, and the answer is to open it *behind* rather than not at all: without it,
+                    // closing the game left the television showing a desktop with a controller in
+                    // somebody's hand and nothing on screen able to answer.
+                    if (BigPictureLauncher.FindWindow() == IntPtr.Zero
+                     && BigPictureLauncher.IsSteamInstalled())
+                    {
+                        BigPictureLauncher.Launch();
+                        Log.Info("Opened Big Picture behind the running game, ready for when it closes.");
+                    }
+
                     MoveOntoCouchDisplay(game);
+
+                    // Last, so the game ends up in front of the shell just opened behind it.
                     BringToForeground(game);
                     Log.Info("A game is already running; returned straight to it without reopening Big Picture.");
                 }
