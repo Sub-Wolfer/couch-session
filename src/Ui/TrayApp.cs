@@ -724,15 +724,54 @@ public sealed class TrayApp : IDisposable
             {
                 _session.EnterTvMode();
 
-                // A game already running was brought to the front by EnterTvMode — don't front Big
-                // Picture over it.
-                if (_hdr.RunningGameWindow() != IntPtr.Zero) return;
+                // A game already running was brought to the front by EnterTvMode, so Big Picture must
+                // not be fronted over it.
+                //
+                // [BUG] That used to mean returning here and not placing it at all, which left it
+                // wherever Steam had opened it — the desk monitor — so closing the game revealed a
+                // shell sitting on the wrong screen. Placed without being fronted instead: the couch
+                // display, at the couch display's size, still behind the game.
+                bool behindAGame = _hdr.RunningGameWindow() != IntPtr.Zero;
 
-                // Already running? Place it now — the watcher's Opened event has been and gone.
-                var hwnd = BigPictureLauncher.FindWindow();
-                if (hwnd != IntPtr.Zero) _session.PlaceBigPicture(hwnd);
+                // Waited for, because EnterTvMode may have only just asked for it. Placing it needs a
+                // window, and Steam takes a few seconds to put one up.
+                PlaceBigPictureWhenItArrives(!behindAGame);
             });
         }
+    }
+
+    /// <summary>
+    /// Put Big Picture on the couch display as soon as it has a window, for up to fifteen seconds.
+    ///
+    /// Steam opens it where it likes and re-lays it out from state sized for the display it opened on,
+    /// so it has to be placed whether or not it is the window in front.
+    /// </summary>
+    private void PlaceBigPictureWhenItArrives(bool bringToFront)
+    {
+        _ = Task.Run(async () =>
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var hwnd = BigPictureLauncher.FindWindow();
+
+                if (hwnd != IntPtr.Zero)
+                {
+                    OnUi(() =>
+                    {
+                        try { _session.PlaceBigPicture(hwnd, bringToFront); }
+                        catch (Exception ex) { Log.Warn($"Could not place Big Picture: {ex.Message}"); }
+                    });
+
+                    return;
+                }
+
+                await Task.Delay(500).ConfigureAwait(false);
+            }
+
+            Log.Info("Big Picture never appeared, so there was nothing to place on the couch display.");
+        });
     }
 
     private void LaunchBigPicture()
