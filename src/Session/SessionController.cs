@@ -601,6 +601,12 @@ public sealed class SessionController
                     // early, and fronting it repeatedly afterwards is a fight with Steam that Steam
                     // wins often enough to matter.
                     //
+                    // It is also not needed. Steam's "Use the Big Picture Overlay when using a
+                    // controller" setting, on by default, gives a game the controller-friendly Big
+                    // Picture *overlay* when the Guide button is pressed — which is what the session
+                    // prompt draws over — with no Big Picture window open at all. Opening one only
+                    // added a shell that could take the foreground and the controller with it.
+                    //
                     // It is opened when the player asks to stay on the television instead, which is
                     // the moment they actually need it. See the CloseToBigPicture prompt choice.
                     MoveOntoCouchDisplay(game);
