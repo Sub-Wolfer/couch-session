@@ -22,25 +22,6 @@ public sealed class HdrCoordinator : IDisposable
     private bool _weTurnedItOn;
 
     /// <summary>
-    /// The display HDR was actually switched on for.
-    ///
-    /// [BUG] Ownership used to be the bool above and nothing else, and switching off called
-    /// SetPrimaryHdr(false), which acts on whatever is primary at that moment. Start a ticked game at
-    /// the desk, begin a session while it is still running, quit the game: HDR went off on the
-    /// television and the monitor was left in HDR, with a washed-out desktop and nothing saying why.
-    /// </summary>
-    private string? _hdrOn;
-
-    /// <summary>
-    /// Whether a game is parked on the couch display with the session over.
-    ///
-    /// The one case where HDR must NOT follow the primary display. Swapping to the desktop puts the
-    /// monitor back in charge, but the game is still on the television, so moving HDR would wash out
-    /// the desktop just returned to and strip HDR from the game about to be resumed.
-    /// </summary>
-    public Func<bool>? GameParked { get; set; }
-
-    /// <summary>
     /// The user turned HDR on by hotkey with no game running, so the next game to launch is the one
     /// they turned it on for. It is remembered (and its HDR held until it closes) whether or not it
     /// was already on the list — which is the right order for HDR, since most games read the display
@@ -190,12 +171,10 @@ public sealed class HdrCoordinator : IDisposable
         {
             _watcher.AdoptRunning();
             _weTurnedItOn = true;
-            _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
         }
         else if (!on)
         {
             _weTurnedItOn = false;   // the hotkey just turned HDR off; nothing is holding it on now
-            _hdrOn = null;
         }
 
         return game.Name;
@@ -356,7 +335,6 @@ public sealed class HdrCoordinator : IDisposable
             if (!HdrControl.SetPrimaryHdr(true)) return;
 
             _weTurnedItOn = true;
-            _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
             Notify(Words.NoticeHdrOn, Words.NoticeHdrSessionReady, Theme.Good);
         }
         catch (Exception ex)
@@ -376,7 +354,6 @@ public sealed class HdrCoordinator : IDisposable
         if (_watcher.Current is not null) return;
 
         _weTurnedItOn = false;
-        _hdrOn = null;
 
         try
         {
@@ -551,7 +528,6 @@ public sealed class HdrCoordinator : IDisposable
                 // on is one hotkey press. The other way round leaves a washed-out desktop with no
                 // obvious cause.
                 _weTurnedItOn = true;
-                _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
 
                 // The toast is for the armed case only. Announcing "HDR on" when nothing was turned
                 // on would be reporting an event that did not happen; the hotkey press is a thing the
@@ -574,7 +550,6 @@ public sealed class HdrCoordinator : IDisposable
             if (!HdrControl.SetPrimaryHdr(true)) return;
 
             _weTurnedItOn = true;
-            _hdrOn = Display.DisplayManager.CurrentPrimaryDevicePath();
             Notify(Words.NoticeHdrOn, $"{game.Name} {Words.NoticeHdrRunning}", Theme.Good);
         }
         catch (Exception ex)
@@ -606,71 +581,16 @@ public sealed class HdrCoordinator : IDisposable
         // Straight off. The watcher only reports a stop once nothing belonging to the game is
         // running at all, so there is nothing left to wait for.
         if (!_weTurnedItOn) return;
-
-        var where = _hdrOn;
         _weTurnedItOn = false;
-        _hdrOn = null;
 
         try
         {
-            if (Off(where))
+            if (HdrControl.SetPrimaryHdr(false))
                 Notify(Words.NoticeHdrOff, $"{game.Name} {Words.NoticeHdrClosed}", Theme.TextDim);
         }
         catch (Exception ex)
         {
             Log.Error($"Auto HDR failed to turn off after {game.Name}", ex);
-        }
-    }
-
-    /// <summary>
-    /// Switch HDR off on the display it was switched on for, falling back to the primary.
-    ///
-    /// The fallback covers a recorded display that has since been unplugged, and the case where
-    /// nothing was recorded because the claim came from an older build's saved state.
-    /// </summary>
-    private static bool Off(string? where) =>
-        where is { Length: > 0 } ? HdrControl.SetHdrFor(where, false) : HdrControl.SetPrimaryHdr(false);
-
-    /// <summary>
-    /// Move HDR to the display that has just become primary.
-    ///
-    /// HDR belongs on the screen the game is being played on, and that is normally the primary —
-    /// so starting a session mid-game should carry HDR from the monitor to the television rather
-    /// than leave it behind on a screen nobody is looking at.
-    ///
-    /// The exception is a game parked on the couch display with the session over. Primary goes
-    /// back to the monitor there, but the game has not moved, so neither does HDR.
-    /// </summary>
-    public void FollowPrimaryDisplay()
-    {
-        if (!_weTurnedItOn || _hdrOn is not { Length: > 0 } was) return;
-
-        if (GameParked?.Invoke() == true)
-        {
-            Log.Info("Auto HDR: primary moved, but a game is parked on the couch display; "
-                   + "leaving HDR where the game is.");
-            return;
-        }
-
-        var now = Display.DisplayManager.CurrentPrimaryDevicePath();
-        if (now is not { Length: > 0 } || string.Equals(now, was, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        try
-        {
-            HdrControl.SetHdrFor(was, false);
-
-            // Recorded either way. If the new primary cannot do HDR there is nothing holding it on
-            // any more, and continuing to claim the old display would switch off a screen this app
-            // no longer has HDR on.
-            _hdrOn = HdrControl.SetHdrFor(now, true) ? now : null;
-            _weTurnedItOn = _hdrOn is not null;
-
-            Log.Info($"Auto HDR followed the primary display: {(_hdrOn is null ? "the new one cannot do HDR" : "moved")}.");
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Auto HDR could not follow the primary display: {ex.Message}");
         }
     }
 
@@ -690,12 +610,9 @@ public sealed class HdrCoordinator : IDisposable
     public void RestoreNow()
     {
         if (!_weTurnedItOn) return;
-
-        var where = _hdrOn;
         _weTurnedItOn = false;
-        _hdrOn = null;
 
-        try { Off(where); }
+        try { HdrControl.SetPrimaryHdr(false); }
         catch (Exception ex) { Log.Warn($"Auto HDR could not be turned off on exit: {ex.Message}"); }
     }
 

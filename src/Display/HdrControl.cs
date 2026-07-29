@@ -168,46 +168,6 @@ public static class HdrControl
         return ok;
     }
 
-    /// <summary>
-    /// Enable or disable HDR on one named display, whatever is primary.
-    ///
-    /// The counterpart to SetPrimaryHdr, for the caller that knows exactly which screen it means.
-    /// Auto HDR needs this: it has to be able to switch a display back off after the primary has
-    /// moved away from it, and "the primary" is by then the wrong answer.
-    /// </summary>
-    public static bool SetHdrFor(string monitorDevicePath, bool enable)
-    {
-        if (string.IsNullOrWhiteSpace(monitorDevicePath)) return false;
-
-        try
-        {
-            var path = DisplayManager.ActivePathFor(monitorDevicePath);
-            if (path is null)
-            {
-                Log.Info("HDR: that display is not attached; leaving it alone.");
-                return false;
-            }
-
-            var status = StatusOf(path.Value);
-            if (!status.Supported)
-            {
-                Log.Info("HDR: that display does not report HDR support; leaving it alone.");
-                return false;
-            }
-
-            if (status.Enabled == enable) return true;
-
-            bool ok = Apply(path.Value, enable);
-            Log.Info($"HDR {(enable ? "on" : "off")} for a named display: {(ok ? "done" : "failed")}.");
-            return ok;
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"HDR: could not change that display: {ex.Message}");
-            return false;
-        }
-    }
-
     private static bool Apply(PathInfo path, bool enable)
     {
         if (HasModernHdrApi && SetViaHdrState(path, enable)) return true;
