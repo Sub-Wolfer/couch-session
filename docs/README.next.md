@@ -263,8 +263,9 @@ at an executable yourself. The shell, Steam and Couch Session can never be close
 pick, and anything running as administrator isn't offered, because this app runs without those
 rights and could not close it anyway.
 
-Windows and documents don't come back. Windows offers no way to ask an app to reopen what it had,
-so a browser returns without its tabs.
+Two browser windows closed come back as two. Your tabs and documents don't, because Windows offers
+no way to ask an app to reopen what it had, so each window opens however that app chooses to
+start.
 
 ---
 

@@ -616,9 +616,10 @@ internal static class Words
     public const string ReopenAppsDesk = "Open them again afterwards";
     public const string ReopenAppsDeskWhy =
 
-            "Starts the apps this closed once the game quits, and only those. **Windows and "
-            + "documents don't come back** — Windows offers no way to ask an app to reopen what it "
-            + "had, so a browser returns without its tabs.";
+            "Starts the apps this closed once the game quits, and only those. Two browser windows "
+            + "closed come back as two. **Your tabs and documents don't** — Windows offers no way "
+            + "to ask an app to reopen what it had, so each window opens however that app chooses "
+            + "to start.";
 
     public const string AppsToClose = "Apps to close";
     public const string AppsToCloseWhy =
@@ -632,9 +633,10 @@ internal static class Words
     public const string ReopenApps = "Open them again afterwards";
     public const string ReopenAppsWhy =
 
-            "Starts the apps this closed once the session ends, and only those. **Windows and "
-            + "documents don't come back** — Windows offers no way to ask an app to reopen what it "
-            + "had, so a browser returns without its tabs.";
+            "Starts the apps this closed once the session ends, and only those. Two browser "
+            + "windows closed come back as two. **Your tabs and documents don't** — Windows offers "
+            + "no way to ask an app to reopen what it had, so each window opens however that app "
+            + "chooses to start.";
 
     public const string AppPickerTitle = "Choose an open app";
     public const string AppPickerWhy =

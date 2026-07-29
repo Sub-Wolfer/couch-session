@@ -24,8 +24,16 @@ public sealed class ResourceControl
     /// <summary>How long each app gets to close itself before this gives up on it.</summary>
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(6);
 
-    /// <summary>What was actually closed, in the order it was closed, for restarting afterwards.</summary>
-    private readonly List<string> _closed = [];
+    /// <summary>
+    /// What was closed, in order, with how many windows each app had.
+    ///
+    /// The count matters. A browser with two windows open used to come back with one, because
+    /// restarting meant launching the executable once — and one launch is one window. Opening it
+    /// as many times as there were windows gives the same number back.
+    /// </summary>
+    private readonly List<ClosedApp> _closed = [];
+
+    private sealed record ClosedApp(string Path, int Windows);
 
     /// <summary>Whether anything is waiting to be restarted, for the session preview and the log.</summary>
     public int ClosedCount => _closed.Count;
@@ -72,7 +80,7 @@ public sealed class ResourceControl
 
         int started = 0;
 
-        foreach (var path in _closed)
+        foreach (var (path, windows) in _closed)
         {
             try
             {
@@ -82,15 +90,28 @@ public sealed class ResourceControl
                     continue;
                 }
 
-                // UseShellExecute so it starts the way a double-click would, with its own working
-                // directory and without inheriting this process's handles.
-                Process.Start(new ProcessStartInfo(path)
-                {
-                    UseShellExecute = true,
-                    WorkingDirectory = Path.GetDirectoryName(path) ?? "",
-                });
+                // Once per window that was closed, capped so a stray count cannot open a wall of
+                // windows. Most apps are single-instance and quietly focus what is already open,
+                // which is the right outcome there; a browser opens another window, which is the
+                // right outcome for the case this exists for.
+                int many = Math.Clamp(windows, 1, 4);
 
-                started++;
+                for (int i = 0; i < many; i++)
+                {
+                    // UseShellExecute so it starts the way a double-click would, with its own
+                    // working directory and without inheriting this process's handles.
+                    Process.Start(new ProcessStartInfo(path)
+                    {
+                        UseShellExecute = true,
+                        WorkingDirectory = Path.GetDirectoryName(path) ?? "",
+                    });
+
+                    // A beat between them. Launched back to back, the second often arrives before
+                    // the first app is listening and is swallowed.
+                    if (i < many - 1) Thread.Sleep(700);
+                }
+
+                started += many;
             }
             catch (Exception ex)
             {
@@ -98,7 +119,7 @@ public sealed class ResourceControl
             }
         }
 
-        Log.Info($"Resource control: restarted {started} of {_closed.Count} closed app(s).");
+        Log.Info($"Resource control: reopened {started} window(s) across {_closed.Count} app(s).");
         _closed.Clear();
     }
 
@@ -177,8 +198,10 @@ public sealed class ResourceControl
 
         if (allGone)
         {
-            if (!_closed.Contains(path, StringComparer.OrdinalIgnoreCase)) _closed.Add(path);
-            Log.Info($"Resource control: {name} closed.");
+            if (!_closed.Any(c => string.Equals(c.Path, path, StringComparison.OrdinalIgnoreCase)))
+                _closed.Add(new ClosedApp(path, windows));
+
+            Log.Info($"Resource control: {name} closed ({windows} window(s)).");
             return true;
         }
 
