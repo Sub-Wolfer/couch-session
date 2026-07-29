@@ -44,20 +44,15 @@ public sealed class ResourceControl
         var wanted = new HashSet<string>(config.AppsToClose, StringComparer.OrdinalIgnoreCase);
         int asked = 0, went = 0;
 
+        // One pass per app, not per process. An app is several processes and the request goes to its
+        // windows, so asking once per process would ask the same windows over and over.
         foreach (var path in wanted)
         {
-            foreach (var proc in Running(path))
-            {
-                using (proc)
-                {
-                    asked++;
-                    if (Ask(proc, path)) went++;
-                }
-            }
+            asked++;
+            if (AskEverythingToClose(path)) went++;
         }
 
-        if (asked == 0) Log.Info("Resource control: none of the chosen apps were running.");
-        else Log.Info($"Resource control: asked {asked} app(s) to close, {went} did.");
+        Log.Info($"Resource control: asked {asked} app(s) to close, {went} did.");
     }
 
     /// <summary>
@@ -111,52 +106,104 @@ public sealed class ResourceControl
     public void Forget() => _closed.Clear();
 
     /// <summary>
-    /// Ask one process to close and wait for it. Never ends it.
+    /// Ask every window belonging to this executable to close, then wait for it to go.
     ///
-    /// A process with no main window is skipped rather than ended. Chrome and Discord run several
-    /// processes each and only one of them owns a window; asking that one closes the family, and
-    /// there is nothing useful or safe to do with the rest.
+    /// [BUG] This used to call CloseMainWindow on each matching process, which closes exactly one
+    /// window: the process's "main" one. A browser is several processes and several windows, and
+    /// closing one window of Edge closes that window and leaves the rest — two open windows came
+    /// back as one closed and one still there. Alt+F4 has the same scope, which is why the request
+    /// has to go to every window rather than to the app.
+    ///
+    /// Still only ever a request. WM_CLOSE is what Alt+F4 sends; a window that puts up "save your
+    /// work?" simply stays, and nothing here escalates.
     /// </summary>
-    private bool Ask(Process proc, string path)
+    private bool AskEverythingToClose(string path)
     {
         string name = Path.GetFileNameWithoutExtension(path);
 
+        var mine = new HashSet<int>();
+        var live = Running(path).ToList();
+
+        foreach (var proc in live)
+        {
+            try { mine.Add(proc.Id); } catch { }
+        }
+
+        if (mine.Count == 0) return false;
+
+        int windows = 0;
+
         try
         {
-            proc.Refresh();
-
-            if (proc.MainWindowHandle == IntPtr.Zero)
+            EnumWindows((hwnd, _) =>
             {
-                // A helper process of an app whose window belongs to a sibling. Closing the one with
-                // the window takes these with it, so there is nothing to do here.
-                return false;
-            }
+                if (!IsWindowVisible(hwnd)) return true;
 
-            if (!proc.CloseMainWindow())
-            {
-                Log.Info($"Resource control: {name} refused the close request; leaving it running.");
-                return false;
-            }
+                GetWindowThreadProcessId(hwnd, out uint pid);
+                if (!mine.Contains((int)pid)) return true;
 
-            if (proc.WaitForExit((int)Grace.TotalMilliseconds))
-            {
-                if (!_closed.Contains(path, StringComparer.OrdinalIgnoreCase)) _closed.Add(path);
-                Log.Info($"Resource control: {name} closed.");
+                // Posted, not sent. SendMessage would block this thread inside another app's
+                // window procedure for as long as it wants to think about it, and a browser
+                // deciding whether to warn about unsaved tabs can take a while.
+                PostMessage(hwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                windows++;
                 return true;
-            }
-
-            // Almost always an unsaved-changes prompt. Ending it here is exactly the thing this
-            // feature will not do.
-            Log.Info($"Resource control: {name} did not close within {Grace.TotalSeconds:0}s "
-                   + "(it may be asking about unsaved work); leaving it running.");
-            return false;
+            }, IntPtr.Zero);
         }
         catch (Exception ex)
         {
-            Log.Warn($"Resource control: could not ask {name} to close: {ex.Message}");
+            Log.Warn($"Resource control: could not list {name}'s windows: {ex.Message}");
+        }
+
+        if (windows == 0)
+        {
+            // Only helper processes, whose windows belong to a sibling that is not on the list.
+            foreach (var proc in live) proc.Dispose();
             return false;
         }
+
+        Log.Info($"Resource control: asked {windows} {name} window(s) to close.");
+
+        bool allGone = true;
+
+        foreach (var proc in live)
+        {
+            using (proc)
+            {
+                try { if (!proc.WaitForExit((int)Grace.TotalMilliseconds)) allGone = false; }
+                catch { /* already gone, or cannot be watched */ }
+            }
+        }
+
+        if (allGone)
+        {
+            if (!_closed.Contains(path, StringComparer.OrdinalIgnoreCase)) _closed.Add(path);
+            Log.Info($"Resource control: {name} closed.");
+            return true;
+        }
+
+        // Almost always an unsaved-changes prompt on one of the windows. Ending it here is exactly
+        // the thing this feature will not do.
+        Log.Info($"Resource control: {name} did not fully close within {Grace.TotalSeconds:0}s "
+               + "(it may be asking about unsaved work); leaving what is left running.");
+        return false;
     }
+
+    private const uint WM_CLOSE = 0x0010;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr param);
+
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr param);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
 
     /// <summary>Every running process started from exactly this executable.</summary>
     private static IEnumerable<Process> Running(string path)
