@@ -309,7 +309,7 @@ Things that are known to be wrong or awkward. Listed here rather than left to be
   some keep the resolution of the screen they left, and some lose their display mode entirely.
   **Borderless fullscreen handles it best** and is worth setting for anything you play this way, but
   even that is not guaranteed. If a game ends up wrong, the reliable fix is to end the session, quit
-  the game, and start both again — a game that launches inside a session gets the right display from
+  the game, and start both again. A game that launches inside a session gets the right display from
   the beginning and has nothing to recover from.
 
 - **Exclusive-fullscreen games minimize when the session prompt appears.** Windows does that itself the moment such a game loses focus, and it cannot be avoided while also taking the controller away from the game so you can answer. Setting a game to *borderless* fullscreen avoids it entirely, which is worth doing anyway.
